@@ -582,54 +582,84 @@ function Footer() {
 }
 
 
+
 /* ═══════════════════════════════════════════════════════════════
-   [ALGORITHM] — Surgical Readiness Algorithm Components
+   [ALGORITHM] — Surgical Readiness Algorithm (Updated)
    This is the full interactive pre-op assessment tool.
+   Includes: patient/provider role selection, smoking/alcohol/anemia
+   assessment, severity-graded anemia protocols, expandable patient
+   cards with SVG domain icons.
    ═══════════════════════════════════════════════════════════════ */
 
 const STEPS = ["demographics", "surgery", "medical", "medications", "fitness", "nutrition"];
 const STEP_LABELS = ["Patient Info", "Surgery Details", "Medical History", "Medications", "Fitness Baseline", "Nutrition"];
+const STEP_NUMS = ["01", "02", "03", "04", "05", "06"];
+
+const SR = {
+  navy: "#1B3A5C", teal: "#0D7C66", tealLight: "#E6F5F0", tealDark: "#095C4B",
+  patientTeal: "#0D7C66", providerNavy: "#1B3A5C",
+  lightBlue: "#E8F0FE", lightOrange: "#FFF3E8",
+  bg: "#F8FAFB", white: "#FFFFFF", offWhite: "#F1F5F4",
+  border: "#DDE5E3", borderLight: "#EDF1F0",
+  text: "#1A2B3C", textSecondary: "#4A6274", muted: "#7C8E9B",
+  success: "#0D7C66", danger: "#C53030", warning: "#B7791F",
+  dangerBg: "#FFF5F5", warningBg: "#FFFFF0",
+  cardShadow: "0 1px 3px rgba(27,58,92,0.06), 0 1px 2px rgba(27,58,92,0.04)",
+  font: "'DM Sans', 'Segoe UI', sans-serif",
+};
+
+function SRLogo({ size = 36 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: size * 0.28, background: SR.navy,
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      fontFamily: SR.font, fontWeight: 700, fontSize: size * 0.4, color: SR.teal,
+      letterSpacing: "-0.5px", flexShrink: 0, boxShadow: "0 2px 8px rgba(27,58,92,0.15)",
+    }}>SR</div>
+  );
+}
 
 function Chip({ label, selected, onClick }) {
   return (
     <button onClick={onClick} style={{
-      padding: "8px 16px", borderRadius: "20px", border: `1.5px solid ${selected ? BRAND.teal : BRAND.border}`,
-      background: selected ? BRAND.tealLight : BRAND.white, color: selected ? BRAND.teal : BRAND.text,
-      cursor: "pointer", fontSize: "13px", fontWeight: selected ? 600 : 400, transition: "all 0.2s", fontFamily: FONT,
+      padding: "8px 16px", borderRadius: "20px", border: `1.5px solid ${selected ? SR.teal : SR.border}`,
+      background: selected ? SR.tealLight : SR.white, color: selected ? SR.teal : SR.text,
+      cursor: "pointer", fontSize: "13px", fontWeight: selected ? 600 : 400, transition: "all 0.2s",
+      fontFamily: SR.font,
     }}>{label}</button>
   );
 }
 
-function AlgoField({ label, children, hint }) {
+function Field({ label, children, hint }) {
   return (
     <div style={{ marginBottom: "20px" }}>
-      <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: BRAND.navy, marginBottom: "6px", fontFamily: FONT }}>{label}</label>
+      <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: SR.navy, marginBottom: "6px", fontFamily: SR.font }}>{label}</label>
       {children}
-      {hint && <div style={{ fontSize: "11px", color: BRAND.muted, marginTop: "4px" }}>{hint}</div>}
+      {hint && <div style={{ fontSize: "11px", color: SR.muted, marginTop: "4px" }}>{hint}</div>}
     </div>
   );
 }
 
-function AlgoInput({ value, onChange, type = "text", placeholder, min, max, step }) {
+function Input({ value, onChange, type = "text", placeholder, min, max, step }) {
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
       min={min} max={max} step={step}
       style={{
-        width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1px solid ${BRAND.border}`,
-        fontSize: "14px", fontFamily: FONT, outline: "none", boxSizing: "border-box",
-        background: BRAND.white, transition: "border-color 0.2s",
+        width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1px solid ${SR.border}`,
+        fontSize: "14px", fontFamily: SR.font, outline: "none", boxSizing: "border-box",
+        background: SR.white, transition: "border-color 0.2s",
       }}
-      onFocus={e => e.target.style.borderColor = BRAND.teal}
-      onBlur={e => e.target.style.borderColor = BRAND.border}
+      onFocus={e => e.target.style.borderColor = SR.teal}
+      onBlur={e => e.target.style.borderColor = SR.border}
     />
   );
 }
 
-function AlgoSelect({ value, onChange, options }) {
+function Select({ value, onChange, options }) {
   return (
     <select value={value} onChange={e => onChange(e.target.value)} style={{
-      width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1px solid ${BRAND.border}`,
-      fontSize: "14px", fontFamily: FONT, background: BRAND.white, cursor: "pointer",
+      width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1px solid ${SR.border}`,
+      fontSize: "14px", fontFamily: SR.font, background: SR.white, cursor: "pointer",
       outline: "none", boxSizing: "border-box",
     }}>
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -651,22 +681,45 @@ function MultiChip({ options, selected, onChange }) {
 function StepDemographics({ data, update }) {
   return (
     <>
+      <Field label="I am a...">
+        <div style={{ display: "flex", gap: "12px" }}>
+          {[{ value: "patient", label: "Patient", desc: "Preparing for surgery", icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="3.5" stroke="currentColor" strokeWidth="2"/><path d="M7 21v-4a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          )}, { value: "provider", label: "Provider", desc: "Optimizing a patient", icon: (
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 4v6m0 0v6m0-6h6m-6 0H6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"/><rect x="4" y="18" width="16" height="3" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
+          )}].map(r => {
+            const sel = data.userRole === r.value;
+            return (
+              <button key={r.value} onClick={() => update("userRole", r.value)} style={{
+                flex: 1, padding: "16px", borderRadius: "12px", cursor: "pointer",
+                border: `2px solid ${sel ? SR.teal : SR.border}`,
+                background: sel ? SR.tealLight : SR.white,
+                transition: "all 0.2s", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px",
+              }}>
+                <div style={{ color: sel ? SR.teal : SR.muted }}>{r.icon}</div>
+                <div style={{ fontSize: "14px", fontWeight: 700, color: sel ? SR.teal : SR.text, fontFamily: SR.font }}>{r.label}</div>
+                <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>{r.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="Age"><AlgoInput type="number" value={data.age || ""} onChange={v => update("age", v)} placeholder="Years" min="1" max="120" /></AlgoField>
-        <AlgoField label="Sex">
-          <AlgoSelect value={data.sex || ""} onChange={v => update("sex", v)} options={[
+        <Field label="Age"><Input type="number" value={data.age || ""} onChange={v => update("age", v)} placeholder="Years" min="1" max="120" /></Field>
+        <Field label="Sex">
+          <Select value={data.sex || ""} onChange={v => update("sex", v)} options={[
             { value: "", label: "Select..." }, { value: "male", label: "Male" }, { value: "female", label: "Female" },
           ]} />
-        </AlgoField>
+        </Field>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
-        <AlgoField label="Height (inches)"><AlgoInput type="number" value={data.height || ""} onChange={v => update("height", v)} placeholder="e.g. 68" /></AlgoField>
-        <AlgoField label="Weight (lbs)"><AlgoInput type="number" value={data.weight || ""} onChange={v => update("weight", v)} placeholder="e.g. 180" /></AlgoField>
-        <AlgoField label="BMI" hint="Auto-calculated">
-          <div style={{ padding: "10px 14px", borderRadius: "8px", background: BRAND.lightBlue, fontSize: "14px", fontWeight: 600, color: BRAND.navy, fontFamily: FONT }}>
+        <Field label="Height (inches)"><Input type="number" value={data.height || ""} onChange={v => update("height", v)} placeholder="e.g. 68" /></Field>
+        <Field label="Weight (lbs)"><Input type="number" value={data.weight || ""} onChange={v => update("weight", v)} placeholder="e.g. 180" /></Field>
+        <Field label="BMI" hint="Auto-calculated">
+          <div style={{ padding: "10px 14px", borderRadius: "8px", background: SR.tealLight, fontSize: "14px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>
             {data.height && data.weight ? (703 * parseFloat(data.weight) / (parseFloat(data.height) ** 2)).toFixed(1) : "—"}
           </div>
-        </AlgoField>
+        </Field>
       </div>
     </>
   );
@@ -675,36 +728,36 @@ function StepDemographics({ data, update }) {
 function StepSurgery({ data, update }) {
   return (
     <>
-      <AlgoField label="Type of Surgery"><AlgoInput value={data.surgeryType || ""} onChange={v => update("surgeryType", v)} placeholder="e.g., Total knee replacement, Colectomy" /></AlgoField>
+      <Field label="Type of Surgery"><Input value={data.surgeryType || ""} onChange={v => update("surgeryType", v)} placeholder="e.g., Total knee replacement, Colectomy" /></Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="Surgical Risk Category">
-          <AlgoSelect value={data.riskCategory || ""} onChange={v => update("riskCategory", v)} options={[
+        <Field label="Surgical Risk Category">
+          <Select value={data.riskCategory || ""} onChange={v => update("riskCategory", v)} options={[
             { value: "", label: "Select..." }, { value: "low", label: "Low Risk" }, { value: "elevated", label: "Elevated Risk" }, { value: "high", label: "High Risk (Vascular/Cardiac)" },
           ]} />
-        </AlgoField>
-        <AlgoField label="Weeks Until Surgery"><AlgoInput type="number" value={data.weeksUntil || ""} onChange={v => update("weeksUntil", v)} placeholder="e.g. 6" min="0" /></AlgoField>
+        </Field>
+        <Field label="Weeks Until Surgery"><Input type="number" value={data.weeksUntil || ""} onChange={v => update("weeksUntil", v)} placeholder="e.g. 6" min="0" /></Field>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="Expected Duration">
-          <AlgoSelect value={data.duration || ""} onChange={v => update("duration", v)} options={[
+        <Field label="Expected Duration">
+          <Select value={data.duration || ""} onChange={v => update("duration", v)} options={[
             { value: "", label: "Select..." }, { value: "short", label: "< 2 hours" }, { value: "medium", label: "2–6 hours" }, { value: "long", label: "> 6 hours" },
           ]} />
-        </AlgoField>
-        <AlgoField label="ERAS Pathway Available?">
-          <AlgoSelect value={data.eras || ""} onChange={v => update("eras", v)} options={[
+        </Field>
+        <Field label="ERAS Pathway Available?">
+          <Select value={data.eras || ""} onChange={v => update("eras", v)} options={[
             { value: "", label: "Select..." }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
           ]} />
-        </AlgoField>
+        </Field>
       </div>
-      <AlgoField label="Expected Blood Loss">
-        <AlgoSelect value={data.bloodLoss || ""} onChange={v => update("bloodLoss", v)} options={[
+      <Field label="Expected Blood Loss">
+        <Select value={data.bloodLoss || ""} onChange={v => update("bloodLoss", v)} options={[
           { value: "", label: "Select..." }, { value: "minimal", label: "Minimal (< 200 mL)" }, { value: "moderate", label: "Moderate (200–500 mL)" }, { value: "significant", label: "Significant (> 500 mL)" },
         ]} />
-      </AlgoField>
-      <AlgoField label="Surgery Involves (select all that apply)">
+      </Field>
+      <Field label="Surgery Involves (select all that apply)">
         <MultiChip options={["Joint replacement", "Spinal surgery", "Foreign body/implant", "Open chest/cardiac", "Vascular", "Neurologic", "Cancer resection", "Bariatric"]}
           selected={data.surgeryTags || []} onChange={v => update("surgeryTags", v)} />
-      </AlgoField>
+      </Field>
     </>
   );
 }
@@ -716,13 +769,73 @@ function StepMedical({ data, update }) {
     { key: "endocrine", label: "Endocrine / Metabolic", items: ["Type 1 Diabetes", "Type 2 Diabetes", "HbA1c > 8", "Insulin pump", "Pheochromocytoma", "Adrenal disease"] },
     { key: "other", label: "Other", items: ["Cirrhosis/liver disease", "Renal insufficiency/dialysis", "Anemia (Hgb <13)", "Bleeding disorder", "Sickle cell disease", "Seizure disorder", "Myasthenia gravis", "Rheumatoid arthritis", "Down syndrome", "Active cancer/chemo", "History of MH", "Difficult airway history", "Frailty/recent falls"] },
   ];
+  const showCigPerDay = data.smokingStatus === "current";
+  const showAlcoholSub = data.alcoholUse === "moderate" || data.alcoholUse === "heavy";
   return (
     <>
       {categories.map(cat => (
-        <AlgoField key={cat.key} label={cat.label}>
+        <Field key={cat.key} label={cat.label}>
           <MultiChip options={cat.items} selected={data[cat.key] || []} onChange={v => update(cat.key, v)} />
-        </AlgoField>
+        </Field>
       ))}
+
+      {/* ── Smoking, Alcohol & Anemia Subsection ── */}
+      <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: `2px solid ${SR.borderLight}` }}>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: SR.navy, marginBottom: "16px", fontFamily: SR.font }}>Smoking, Alcohol & Anemia Assessment</div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <Field label="Smoking Status">
+            <Select value={data.smokingStatus || ""} onChange={v => update("smokingStatus", v)} options={[
+              { value: "", label: "Select..." }, { value: "never", label: "Never smoker" },
+              { value: "former_gt8", label: "Former (quit >8 weeks ago)" },
+              { value: "former_lt8", label: "Former (quit <8 weeks ago)" },
+              { value: "current", label: "Current smoker" },
+            ]} />
+          </Field>
+          {showCigPerDay && (
+            <Field label="Cigarettes per day" hint="≥20/day = heavy smoker">
+              <Input type="number" value={data.cigPerDay || ""} onChange={v => update("cigPerDay", v)} placeholder="e.g. 10" min="1" />
+            </Field>
+          )}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <Field label="Alcohol Use">
+            <Select value={data.alcoholUse || ""} onChange={v => update("alcoholUse", v)} options={[
+              { value: "", label: "Select..." }, { value: "none", label: "None / Rare" },
+              { value: "light", label: "Light (1–7 drinks/week)" },
+              { value: "moderate", label: "Moderate (8–14 drinks/week)" },
+              { value: "heavy", label: "Heavy (>14 drinks/week)" },
+            ]} />
+          </Field>
+          {showAlcoholSub && (
+            <Field label="Binge drinking episodes?">
+              <Select value={data.bingeDrinking || ""} onChange={v => update("bingeDrinking", v)} options={[
+                { value: "", label: "Select..." }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+              ]} />
+            </Field>
+          )}
+        </div>
+
+        {showAlcoholSub && (
+          <Field label="History of alcohol withdrawal (seizures / DTs)?">
+            <Select value={data.withdrawalHistory || ""} onChange={v => update("withdrawalHistory", v)} options={[
+              { value: "", label: "Select..." }, { value: "yes", label: "Yes" }, { value: "no", label: "No" }, { value: "unknown", label: "Unknown" },
+            ]} />
+          </Field>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+          <Field label="Hemoglobin (g/dL)" hint="Enables severity-graded anemia protocol">
+            <Input type="number" value={data.hemoglobin || ""} onChange={v => update("hemoglobin", v)} placeholder="e.g. 11.5" min="3" max="22" step="0.1" />
+          </Field>
+          <Field label="Known Iron Deficiency?">
+            <Select value={data.ironDeficiency || ""} onChange={v => update("ironDeficiency", v)} options={[
+              { value: "", label: "Select..." }, { value: "yes", label: "Yes" }, { value: "no", label: "No" }, { value: "unknown", label: "Unknown" },
+            ]} />
+          </Field>
+        </div>
+      </div>
     </>
   );
 }
@@ -738,20 +851,20 @@ function StepMedications({ data, update }) {
   return (
     <>
       {medGroups.map(g => (
-        <AlgoField key={g.key} label={g.label}>
+        <Field key={g.key} label={g.label}>
           <MultiChip options={g.items} selected={data[g.key] || []} onChange={v => update(g.key, v)} />
-        </AlgoField>
+        </Field>
       ))}
-      <AlgoField label="GLP-1 RA Details (if applicable)">
+      <Field label="GLP-1 RA Details (if applicable)">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <AlgoSelect value={data.glp1Phase || ""} onChange={v => update("glp1Phase", v)} options={[
+          <Select value={data.glp1Phase || ""} onChange={v => update("glp1Phase", v)} options={[
             { value: "", label: "Escalation phase?" }, { value: "yes", label: "Yes — still titrating up" }, { value: "no", label: "No — stable dose" },
           ]} />
-          <AlgoSelect value={data.glp1GI || ""} onChange={v => update("glp1GI", v)} options={[
+          <Select value={data.glp1GI || ""} onChange={v => update("glp1GI", v)} options={[
             { value: "", label: "GI symptoms?" }, { value: "none", label: "None" }, { value: "mild", label: "Mild (occasional nausea)" }, { value: "active", label: "Active (nausea/vomiting/bloating)" },
           ]} />
         </div>
-      </AlgoField>
+      </Field>
     </>
   );
 }
@@ -759,37 +872,37 @@ function StepMedications({ data, update }) {
 function StepFitness({ data, update }) {
   return (
     <>
-      <AlgoField label="Current Exercise Level">
-        <AlgoSelect value={data.exerciseLevel || ""} onChange={v => update("exerciseLevel", v)} options={[
+      <Field label="Current Exercise Level">
+        <Select value={data.exerciseLevel || ""} onChange={v => update("exerciseLevel", v)} options={[
           { value: "", label: "Select..." }, { value: "sedentary", label: "Sedentary — no regular exercise" },
           { value: "light", label: "Light — walking 1–2x/week" }, { value: "moderate", label: "Moderate — 3–4x/week, moderate intensity" },
           { value: "active", label: "Active — 5+x/week, vigorous" },
         ]} />
-      </AlgoField>
+      </Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="DASI Score (if available)" hint="Duke Activity Status Index (0–58.2). Score < 34 = < 4 METs">
-          <AlgoInput type="number" value={data.dasiScore || ""} onChange={v => update("dasiScore", v)} placeholder="0–58.2" min="0" max="58.2" step="0.1" />
-        </AlgoField>
-        <AlgoField label="Estimated METs" hint="If DASI not available">
-          <AlgoSelect value={data.mets || ""} onChange={v => update("mets", v)} options={[
+        <Field label="DASI Score (if available)" hint="Duke Activity Status Index (0–58.2). Score < 34 = < 4 METs">
+          <Input type="number" value={data.dasiScore || ""} onChange={v => update("dasiScore", v)} placeholder="0–58.2" min="0" max="58.2" step="0.1" />
+        </Field>
+        <Field label="Estimated METs" hint="If DASI not available">
+          <Select value={data.mets || ""} onChange={v => update("mets", v)} options={[
             { value: "", label: "Select..." }, { value: "lt4", label: "< 4 METs (can't climb 1 flight)" },
             { value: "4-7", label: "4–7 METs (climb 2 flights, walk uphill)" }, { value: "gt7", label: "> 7 METs (vigorous activities)" },
           ]} />
-        </AlgoField>
+        </Field>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="VO2max (if known, mL/kg/min)"><AlgoInput type="number" value={data.vo2max || ""} onChange={v => update("vo2max", v)} placeholder="e.g., 28" /></AlgoField>
-        <AlgoField label="Grip Strength (if known, kg)"><AlgoInput type="number" value={data.gripStrength || ""} onChange={v => update("gripStrength", v)} placeholder="e.g., 35" /></AlgoField>
+        <Field label="VO2max (if known, mL/kg/min)"><Input type="number" value={data.vo2max || ""} onChange={v => update("vo2max", v)} placeholder="e.g., 28" /></Field>
+        <Field label="Grip Strength (if known, kg)"><Input type="number" value={data.gripStrength || ""} onChange={v => update("gripStrength", v)} placeholder="e.g., 35" /></Field>
       </div>
-      <AlgoField label="Tracks HRV?">
-        <AlgoSelect value={data.tracksHRV || ""} onChange={v => update("tracksHRV", v)} options={[
+      <Field label="Tracks HRV?">
+        <Select value={data.tracksHRV || ""} onChange={v => update("tracksHRV", v)} options={[
           { value: "", label: "Select..." }, { value: "yes", label: "Yes — wearable device" }, { value: "no", label: "No" },
         ]} />
-      </AlgoField>
-      <AlgoField label="Current thermal conditioning habits">
+      </Field>
+      <Field label="Current thermal conditioning habits">
         <MultiChip options={["Sauna use", "Cold plunge/cold showers", "Contrast therapy", "None"]}
           selected={data.thermalHabits || []} onChange={v => update("thermalHabits", v)} />
-      </AlgoField>
+      </Field>
     </>
   );
 }
@@ -797,36 +910,36 @@ function StepFitness({ data, update }) {
 function StepNutrition({ data, update }) {
   return (
     <>
-      <AlgoField label="Current Daily Protein Intake (estimate)">
-        <AlgoSelect value={data.proteinLevel || ""} onChange={v => update("proteinLevel", v)} options={[
+      <Field label="Current Daily Protein Intake (estimate)">
+        <Select value={data.proteinLevel || ""} onChange={v => update("proteinLevel", v)} options={[
           { value: "", label: "Select..." }, { value: "low", label: "Low — minimal meat/protein sources" },
           { value: "moderate", label: "Moderate — some protein each meal" }, { value: "high", label: "High — actively tracking 1.2+ g/kg/day" },
         ]} />
-      </AlgoField>
+      </Field>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-        <AlgoField label="Albumin (if available, g/dL)"><AlgoInput type="number" value={data.albumin || ""} onChange={v => update("albumin", v)} placeholder="e.g. 3.8" step="0.1" /></AlgoField>
-        <AlgoField label="Recent Unintentional Weight Loss?">
-          <AlgoSelect value={data.weightLoss || ""} onChange={v => update("weightLoss", v)} options={[
+        <Field label="Albumin (if available, g/dL)"><Input type="number" value={data.albumin || ""} onChange={v => update("albumin", v)} placeholder="e.g. 3.8" step="0.1" /></Field>
+        <Field label="Recent Unintentional Weight Loss?">
+          <Select value={data.weightLoss || ""} onChange={v => update("weightLoss", v)} options={[
             { value: "", label: "Select..." }, { value: "no", label: "No" }, { value: "mild", label: "Yes — < 5% in 3 months" }, { value: "significant", label: "Yes — > 5% in 3 months" },
           ]} />
-        </AlgoField>
+        </Field>
       </div>
-      <AlgoField label="Current Eating Pattern">
-        <AlgoSelect value={data.eatingPattern || ""} onChange={v => update("eatingPattern", v)} options={[
+      <Field label="Current Eating Pattern">
+        <Select value={data.eatingPattern || ""} onChange={v => update("eatingPattern", v)} options={[
           { value: "", label: "Select..." }, { value: "regular", label: "Regular — 3 meals/day" },
           { value: "if", label: "Intermittent fasting — 16:8 or similar" }, { value: "restricted", label: "Calorie-restricted / dieting" },
           { value: "irregular", label: "Irregular — skips meals frequently" },
         ]} />
-      </AlgoField>
-      <AlgoField label="Existing Supplements">
+      </Field>
+      <Field label="Existing Supplements">
         <MultiChip options={["Protein supplement", "Multivitamin", "Omega-3/fish oil", "Vitamin D", "Iron", "Immunonutrition (Impact/equivalent)", "None"]}
           selected={data.supplements || []} onChange={v => update("supplements", v)} />
-      </AlgoField>
+      </Field>
     </>
   );
 }
 
-/* ─── Plan Generator (evidence-based logic) ─── */
+// ───────── PLAN GENERATOR ─────────
 function generatePlan(d) {
   const patient = [];
   const provider = [];
@@ -862,38 +975,47 @@ function generatePlan(d) {
   if (cardiac.includes("Prior MI (within 6 months)")) alerts.push({ type: "danger", text: "MI within 6 months — optimal to wait ≥60 days for elective NCS (2024 AHA/ACC Class 1). Proceed only after careful risk-benefit analysis." });
   if (cardiac.includes("Prior stroke") || allConditions.includes("Prior stroke")) alerts.push({ type: "warning", text: "Prior stroke — delay elective NCS for at least 9 months if possible (Class 2b). If <3 months since stroke, high risk of recurrent event." });
   if (other.includes("History of MH")) alerts.push({ type: "danger", text: "MALIGNANT HYPERTHERMIA history — ensure dantrolene availability. MHAUS registry consultation. Avoid triggering agents." });
-  if (d.weightLoss === "significant" || (d.albumin && parseFloat(d.albumin) < 3.0)) alerts.push({ type: "warning", text: "MALNUTRITION RISK — significant weight loss or low albumin. Consider nutritional optimization before proceeding." });
+  if (d.weightLoss === "significant" || (d.albumin && parseFloat(d.albumin) < 3.0)) alerts.push({ type: "warning", text: "MALNUTRITION RISK — significant weight loss or low albumin. Consider nutritional optimization before proceeding. May benefit from 7–14 day preoperative nutritional supplementation." });
+
+  // Anemia alerts
+  const hgb = d.hemoglobin ? parseFloat(d.hemoglobin) : null;
+  if (hgb !== null && hgb < 8) alerts.push({ type: "danger", text: "SEVERE ANEMIA (Hgb < 8 g/dL) — consider preoperative transfusion and hematology consult. Defer elective surgery if possible." });
+  // Smoking alerts
+  if (d.smokingStatus === "current" && d.cigPerDay && parseInt(d.cigPerDay) >= 20) alerts.push({ type: "warning", text: "HEAVY SMOKER (≥20 cigarettes/day) — significantly elevated risk of pulmonary complications, wound infection, and impaired healing." });
+  // Alcohol alerts
+  if (d.withdrawalHistory === "yes") alerts.push({ type: "danger", text: "ALCOHOL WITHDRAWAL HISTORY (seizures/DTs) — high risk perioperative withdrawal. Requires formal withdrawal prevention protocol, possible ICU monitoring, addiction medicine consult. Do NOT stop alcohol abruptly without medical supervision." });
+  if (d.alcoholUse === "heavy") alerts.push({ type: "warning", text: "HEAVY ALCOHOL USE (>14 drinks/week) — elevated perioperative risk: immune suppression (2–5x infection), coagulopathy, hepatic dysfunction, withdrawal risk. Recommend supervised cessation ≥4 weeks before surgery." });
 
   // Patient track: Exercise
   const unsafeForExercise = cardiac.includes("Prior MI (within 6 months)") || allConditions.includes("Uncontrolled HTN (DBP >110)");
   if (!unsafeForExercise) {
     const level = d.exerciseLevel || "sedentary";
     if (weeks >= 4) {
-      if (level === "sedentary") patient.push({ domain: "Exercise", priority: "high", title: "Prehabilitation Program — Start Immediately", detail: `Begin with 20-minute walks 5x/week. Progress to 30–40 minutes by week 2. Add resistance training 2x/week from week 2. Target: 500+ total minutes of prehabilitation before surgery. Consider HIIT 2x/week if tolerated after 2 weeks of base building.` });
-      else if (level === "light") patient.push({ domain: "Exercise", priority: "high", title: "Increase Exercise Intensity", detail: "Increase walking to 30–45 minutes 5x/week. Add resistance training 3x/week. Introduce interval training 2x/week. Target: 500+ total prehabilitation minutes." });
-      else if (level === "moderate") patient.push({ domain: "Exercise", priority: "medium", title: "Optimize Training for Surgery", detail: "Maintain current frequency. Add 2 HIIT sessions/week. Ensure resistance training includes functional movements relevant to post-surgical mobility. Track grip strength weekly." });
+      if (level === "sedentary") patient.push({ domain: "Exercise", priority: "high", title: "Prehabilitation Program — Start Immediately", detail: `Begin with 20-minute walks 5x/week. Progress to 30–40 minutes by week 2. Add resistance training (bodyweight or light weights) 2x/week from week 2. Target: 500+ total minutes of prehabilitation before surgery. Consider HIIT 2x/week if tolerated after 2 weeks of base building.` });
+      else if (level === "light") patient.push({ domain: "Exercise", priority: "high", title: "Increase Exercise Intensity", detail: "Increase walking to 30–45 minutes 5x/week. Add resistance training 3x/week. Introduce interval training (alternating brisk walking with moderate pace) 2x/week. Target: 500+ total prehabilitation minutes." });
+      else if (level === "moderate") patient.push({ domain: "Exercise", priority: "medium", title: "Optimize Training for Surgery", detail: "Maintain current frequency. Add 2 HIIT sessions/week (sustained greater post-surgical fitness vs. moderate-intensity per evidence). Ensure resistance training includes functional movements relevant to post-surgical mobility. Track grip strength weekly." });
       else patient.push({ domain: "Exercise", priority: "low", title: "Maintain Fitness, Taper Before Surgery", detail: "Continue current program. Reduce volume by 30% in the final week before surgery (taper like athletic event preparation). Prioritize recovery and sleep in the final 3 days." });
     } else {
-      patient.push({ domain: "Exercise", priority: "high", title: `Accelerated Prehab (${weeks} weeks available)`, detail: `Limited time window. Focus on daily walking (30 min minimum) and resistance training 3x/week. Every session counts.` });
+      patient.push({ domain: "Exercise", priority: "high", title: `Accelerated Prehab (${weeks} weeks available)`, detail: `Limited time window. Focus on daily walking (30 min minimum) and resistance training 3x/week. Every session counts — evidence shows even short prehabilitation periods improve outcomes. Target as many minutes as possible before surgery.` });
     }
   } else {
-    patient.push({ domain: "Exercise", priority: "high", title: "Exercise — Physician Clearance Required", detail: "Active cardiac conditions detected. Do NOT begin exercise program without explicit physician clearance." });
+    patient.push({ domain: "Exercise", priority: "high", title: "Exercise — Physician Clearance Required", detail: "Active cardiac conditions detected (recent MI or uncontrolled HTN). Do NOT begin exercise program without explicit physician clearance. Gentle ambulation may be acceptable — discuss with your care team." });
   }
 
   // Patient track: Nutrition
   const proteinTarget = (weightKg * 1.5).toFixed(0);
-  patient.push({ domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg)`, detail: `Current weight ~${weightKg.toFixed(0)} kg → target 1.2–2.0 g/kg/day. Aim for ${proteinTarget}g. Distribute across 3–4 meals.` });
+  patient.push({ domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg)`, detail: `Current weight ~${weightKg.toFixed(0)} kg → target 1.2–2.0 g/kg/day. Aim for ${proteinTarget}g as the middle of the range. Distribute across 3–4 meals. Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein. If current intake is low, increase gradually over 1 week.` });
   if (surgeryTags.includes("Cancer resection") || other.includes("Active cancer/chemo")) {
-    patient.push({ domain: "Nutrition", priority: "high", title: "Immunonutrition Recommended", detail: "Cancer surgery patients benefit from preoperative immunonutrition (arginine, omega-3, nucleotides) for minimum 5–7 days before surgery." });
+    patient.push({ domain: "Nutrition", priority: "high", title: "Immunonutrition Recommended", detail: "Cancer surgery patients benefit from preoperative immunonutrition (arginine, omega-3, nucleotides) for minimum 5–7 days before surgery. Evidence: 54% reduction in infectious complications (OR 0.46). Discuss with your surgical team about starting Impact Advanced Recovery or equivalent formula." });
   }
-  patient.push({ domain: "Nutrition", priority: "medium", title: "Preoperative Carbohydrate Loading", detail: "Day before surgery: 800 mL carbohydrate-rich clear drink in the evening. Morning of surgery: 400 mL 2–3 hours before. Do NOT fast from midnight — modern evidence supports carb loading per ERAS protocols." });
+  patient.push({ domain: "Nutrition", priority: "medium", title: "Preoperative Carbohydrate Loading", detail: "Day before surgery: 800 mL carbohydrate-rich clear drink in the evening. Morning of surgery: 400 mL carbohydrate drink 2–3 hours before (confirm with anesthesia team). This reduces insulin resistance, anxiety, and hunger. Do NOT fast from midnight — modern evidence supports carb loading per ERAS protocols." });
 
   // Patient track: Metabolic
   const isDiabetic = endocrine.some(e => e.includes("Diabetes") || e.includes("HbA1c"));
   if (!isDiabetic && weeks >= 3) {
-    patient.push({ domain: "Metabolic Prep", priority: "medium", title: "Consider Strategic Intermittent Fasting", detail: "Consider 14:10 or 16:8 time-restricted eating starting 3+ weeks before surgery. STOP fasting 3 days before surgery and switch to carbohydrate loading." });
+    patient.push({ domain: "Metabolic Prep", priority: "medium", title: "Consider Strategic Intermittent Fasting", detail: "If not already practicing: consider 14:10 or 16:8 time-restricted eating starting 3+ weeks before surgery. This activates AMPK/SIRT1/autophagy pathways that precondition cells against surgical stress. STOP fasting 3 days before surgery and switch to carbohydrate loading. NOTE: This is a directional recommendation based on strong preclinical evidence; human surgical RCTs are still emerging." });
   } else if (isDiabetic) {
-    patient.push({ domain: "Metabolic Prep", priority: "low", title: "Fasting Protocol — Not Recommended", detail: "Given diabetes/metabolic conditions, strategic fasting is NOT recommended without close endocrine supervision." });
+    patient.push({ domain: "Metabolic Prep", priority: "low", title: "Fasting Protocol — Not Recommended", detail: "Given diabetes/metabolic conditions, strategic fasting is NOT recommended without close endocrine supervision. Focus instead on blood glucose optimization and carbohydrate loading per ERAS protocol." });
   }
 
   // Patient track: Thermal
@@ -901,130 +1023,315 @@ function generatePlan(d) {
   if (!thermalContraindicated && weeks >= 4) {
     const currentThermal = d.thermalHabits || [];
     if (currentThermal.includes("None") || currentThermal.length === 0) {
-      patient.push({ domain: "Thermal", priority: "low", title: "Consider Gradual Thermal Conditioning", detail: "If accessible and cleared by physician: begin with short sauna sessions (10 min) or cool water exposure. Build gradually over weeks." });
+      patient.push({ domain: "Thermal", priority: "low", title: "Consider Gradual Thermal Conditioning", detail: "If accessible and cleared by physician: begin with short sauna sessions (10 min at moderate temperature) or cool (not ice cold) water exposure. Build gradually over weeks. Heat exposure upregulates HSPs and Nrf2 pathways; cold trains autonomic flexibility. This is an emerging area — no surgical outcome RCTs exist yet." });
     } else {
-      patient.push({ domain: "Thermal", priority: "low", title: "Continue Thermal Conditioning", detail: "Continue your current practice. Reduce intensity in the final 3 days before surgery." });
+      patient.push({ domain: "Thermal", priority: "low", title: "Continue Thermal Conditioning", detail: "Continue your current sauna/cold exposure practice through preparation. Reduce intensity in the final 3 days before surgery. Evidence supports HSP upregulation (heat) and autonomic flexibility training (cold) as relevant to surgical stress tolerance." });
     }
   } else if (thermalContraindicated) {
-    patient.push({ domain: "Thermal", priority: "medium", title: "Thermal Conditioning — Contraindicated", detail: "Active cardiac conditions detected. Sauna and cold exposure are NOT recommended." });
+    patient.push({ domain: "Thermal", priority: "medium", title: "Thermal Conditioning — Contraindicated", detail: "Active cardiac conditions detected. Sauna and cold exposure are NOT recommended given risk of hemodynamic instability. Focus preparation on gentle exercise, nutrition, and stress reduction." });
   }
 
   // Patient track: Stress/Sleep + Tracking
-  patient.push({ domain: "Stress & Sleep", priority: "medium", title: "Sleep Optimization & Stress Reduction", detail: "Target 7–9 hours sleep nightly. Consider box breathing (4-4-4-4) 10 min daily. Limit screen time 1 hour before bed." });
+  patient.push({ domain: "Stress & Sleep", priority: "medium", title: "Sleep Optimization & Stress Reduction", detail: "Target 7–9 hours sleep nightly throughout preparation. Consider: box breathing (4-4-4-4) or diaphragmatic breathing practice 10 min daily (improves HRV). Limit screen time 1 hour before bed. Preoperative anxiety alters immune markers before surgery even begins — stress management is biological preparation." });
   if (d.tracksHRV === "yes") {
-    patient.push({ domain: "Self-Tracking", priority: "medium", title: "Track HRV Trend", detail: "Monitor your HRV weekly. Aim for an upward trend during prehabilitation." });
+    patient.push({ domain: "Self-Tracking", priority: "medium", title: "Track HRV Trend", detail: "Monitor your HRV weekly. Aim for an upward trend during prehabilitation — rising HRV reflects improving autonomic flexibility. A drop in HRV in the days before surgery may indicate overtraining or stress — scale back if this occurs." });
   }
-  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength, walking endurance, energy level (1–10), sleep quality (1–10), protein intake adherence." });
+  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength (if dynamometer available), walking endurance (timed walk), energy level (1–10), sleep quality (1–10), protein intake adherence. These create accountability and show measurable progress." });
+
+  // Patient track: Smoking
+  if (d.smokingStatus === "current") {
+    if (weeks >= 8) {
+      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking Now — Ideal Window", detail: "You have the ideal time window for cessation. Quitting now significantly reduces pulmonary complications. Ciliary recovery begins in 2–4 weeks, immune and wound healing improvement in 6–8 weeks. Carbon monoxide clears in just 24–48 hours. Ask your physician about nicotine replacement therapy (NRT) or prescription support (varenicline). This is the single most impactful change you can make for your surgical outcome." });
+    } else if (weeks >= 4) {
+      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking — Meaningful Benefit Still Achievable", detail: `With ${weeks} weeks until surgery, 4 weeks of cessation still significantly reduces complications vs. continued smoking. Carbon monoxide clears immediately (24–48h), airway reactivity improves in 1–2 weeks. Ask about nicotine replacement therapy. If you cannot quit entirely, even reduction helps — but complete cessation is strongly preferred.` });
+    } else {
+      patient.push({ domain: "Smoking", priority: "high", title: "Stop Smoking — Even 24–48 Hours Helps", detail: "Even stopping 24–48 hours before surgery is beneficial: carboxyhemoglobin normalizes (from 5–15% down to normal), directly improving tissue oxygenation during surgery. Do NOT smoke the day of surgery. Discuss nicotine replacement therapy with your anesthesiologist. Every smoke-free hour before surgery improves your oxygen delivery." });
+    }
+  } else if (d.smokingStatus === "former_lt8") {
+    patient.push({ domain: "Smoking", priority: "medium", title: "Stay Smoke-Free — You're in the Recovery Window", detail: "Great job quitting! You're still in the early recovery window. Continue any NRT you're using. Your airways are healing — ciliary function is recovering and airway reactivity is decreasing. Staying smoke-free through surgery gives you the best possible outcome." });
+  }
+
+  // Patient track: Alcohol
+  if (d.alcoholUse === "heavy") {
+    patient.push({ domain: "Alcohol", priority: "high", title: "Alcohol Cessation — Critical for Safety", detail: "Heavy alcohol use significantly increases surgical risk: 2–5x higher infection rates, impaired blood clotting, liver function changes, and risk of withdrawal after surgery. Stop drinking at least 4 weeks before surgery. IMPORTANT: If you have a history of withdrawal symptoms (shaking, seizures, DTs), do NOT stop abruptly — you need physician-supervised tapering. Contact your doctor immediately to plan safe cessation." });
+  } else if (d.alcoholUse === "moderate") {
+    patient.push({ domain: "Alcohol", priority: "medium", title: "Reduce and Stop Alcohol Before Surgery", detail: "Moderate alcohol use affects immune function, wound healing, and liver metabolism of anesthetic drugs. Begin reducing intake now and stop completely at least 48 hours before surgery (ideally 2+ weeks). If you find it difficult to cut back, discuss this honestly with your physician — they can help." });
+  } else if (d.alcoholUse === "light") {
+    patient.push({ domain: "Alcohol", priority: "low", title: "Stop Alcohol ≥48 Hours Before Surgery", detail: "Stop all alcohol at least 48 hours before surgery. Even light alcohol use interacts with anesthetic medications and affects platelet function. This is a straightforward step that helps ensure the safest possible anesthetic." });
+  }
+
+  // Patient track: Anemia nutritional
+  const hasAnemiaCondition = other.includes("Anemia (Hgb <13)");
+  const hasAnemiaHgb = hgb !== null && hgb < 13;
+  if (hasAnemiaCondition || hasAnemiaHgb) {
+    const hgbDisplay = hgb !== null ? ` Your hemoglobin is ${hgb} g/dL.` : "";
+    patient.push({ domain: "Anemia", priority: "high", title: "Iron-Rich Diet for Anemia Correction", detail: `Anemia increases your risk of needing a blood transfusion during surgery.${hgbDisplay} Focus on iron-rich foods: red meat, liver, dark leafy greens (spinach, kale), lentils, beans, and fortified cereals. To boost absorption, pair iron-rich foods with vitamin C sources (citrus, bell peppers, tomatoes). Avoid tea, coffee, and calcium supplements within 1 hour of iron-rich meals as they block absorption. Your physician may also prescribe iron supplements or IV iron for faster correction.` });
+  }
 
   // Provider track: Medications
   if (cardioMeds.includes("ACE inhibitor") || cardioMeds.includes("ARB")) {
-    provider.push({ domain: "Medications", priority: "high", title: "ACE-I/ARB: Consider Withholding", detail: "2024 AHA/ACC Class 2b: Consider withholding on the morning of surgery to reduce intraoperative hypotension." });
+    provider.push({ domain: "Medications", priority: "high", title: "ACE-I/ARB: Consider Withholding", detail: "2024 AHA/ACC Class 2b: Consider withholding ACE inhibitor/ARB on the morning of surgery to reduce intraoperative hypotension. Continue all other antihypertensives. No change to K+ monitoring for diuretic patients." });
   }
   if (hasGLP1) {
     const risk = d.glp1Phase === "yes" || d.glp1GI === "active" ? "HIGH-RISK" : "Standard";
     provider.push({ domain: "Medications", priority: "high", title: `GLP-1 RA Management — ${risk}`, detail: risk === "HIGH-RISK"
-      ? "Escalation phase or active GI symptoms. Liquid diet 24h before surgery. Point-of-care gastric ultrasound on DOS."
-      : "Stable dose, no GI symptoms — most patients may continue GLP-1 RA. Standard NPO guidelines apply." });
+      ? "Escalation phase or active GI symptoms. Liquid diet 24h before surgery. Point-of-care gastric ultrasound on DOS. If retained gastric contents: rapid sequence induction or delay. Chart review with anesthesiologist required."
+      : "Stable dose, no GI symptoms — most patients may continue GLP-1 RA. Standard NPO guidelines apply. Monitor blood glucose perioperatively." });
   }
   if (hasSGLT2) {
-    provider.push({ domain: "Medications", priority: "high", title: "SGLT2 Inhibitor: HOLD 3–4 Days Before Surgery", detail: "Discontinue 3–4 days before. Order point-of-care ketones on DOS. Monitor for euglycemic DKA." });
+    provider.push({ domain: "Medications", priority: "high", title: "SGLT2 Inhibitor: HOLD 3–4 Days Before Surgery", detail: "Discontinue empagliflozin/dapagliflozin/canagliflozin 3–4 days before elective surgery. Order point-of-care ketones on DOS. Monitor for euglycemic DKA perioperatively. Ensure adequate hydration. Restart only when eating and drinking normally. (2024 AHA/ACC & ESAIC 2025)" });
   }
   if (hasBup) {
-    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine: CONTINUE Through Surgery", detail: "Do NOT discontinue perioperatively. Continue home dose. Supplement with multimodal analgesia." });
+    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine: CONTINUE Through Surgery", detail: "Do NOT discontinue buprenorphine perioperatively (ASRA/ASA/AAAM/ASAM consensus, reaffirmed 2024–2025). Continue home dose. Evidence: lower opioid requirements, similar pain scores, lower OUD relapse risk. Supplement with multimodal analgesia (regional, ketamine, acetaminophen, NSAIDs)." });
   }
   if (hasMethadone) {
-    provider.push({ domain: "Medications", priority: "high", title: "Methadone: Continue Maintenance Dose", detail: "Continue through surgery. If NPO: IV methadone at half the oral dose divided q6–12h. Order EKG for QTc monitoring." });
+    provider.push({ domain: "Medications", priority: "high", title: "Methadone: Continue Maintenance Dose", detail: "Continue methadone through surgery. If NPO: IV methadone at half the oral dose divided q6–12h. Order EKG for QTc monitoring. Multimodal analgesia approach." });
   }
   if (hasNaltrexone) {
     const isXR = painMeds.includes("Naltrexone (XR/Vivitrol)");
-    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone: HOLD ${isXR ? "30 Days" : "3 Days"} Before Surgery`, detail: isXR ? "Extended-release: must be held 30 days before surgery." : "Oral naltrexone: hold 3 days (72 hours) before surgery." });
+    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone: HOLD ${isXR ? "30 Days" : "3 Days"} Before Surgery`, detail: isXR ? "Extended-release naltrexone (Vivitrol): must be held 30 days before elective surgery to allow opioid receptor availability for intraoperative/postoperative analgesia." : "Oral naltrexone: hold 3 days (72 hours) before surgery." });
   }
   if (anticoag.length > 0) {
-    provider.push({ domain: "Medications", priority: "high", title: "Anticoagulation Management per ASRA 5th Ed (2025)", detail: `Active agents: ${anticoag.join(", ")}. Use ASRA 5th Edition drug-specific timing. Verify renal function for DOAC clearance timing.` });
+    provider.push({ domain: "Medications", priority: "high", title: "Anticoagulation Management per ASRA 5th Ed (2025)", detail: `Active anticoagulants: ${anticoag.join(", ")}. Use ASRA 5th Edition drug-specific timing for neuraxial and deep plexus blocks (now managed like neuraxial). Consider anti-Xa calibrated assays for DOACs which may allow earlier procedures. Note: "low dose" and "high dose" replace old "prophylactic/therapeutic" terminology. Verify renal function (CrCl) for DOAC clearance timing.` });
   }
 
-  // Provider track: Cardiac risk
+  // Provider track: Cardiac
   if (riskLevel === "elevated" || riskLevel === "high") {
-    provider.push({ domain: "Cardiac Risk", priority: "high", title: "2024 AHA/ACC Stepwise Algorithm", detail: `Risk level: ${riskLevel.toUpperCase()}. Use validated risk calculators (RCRI, ACS-NSQIP, MICA). Administer DASI questionnaire.` });
+    provider.push({ domain: "Cardiac Risk", priority: "high", title: "2024 AHA/ACC Stepwise Algorithm", detail: `Risk level: ${riskLevel.toUpperCase()}. Use validated risk calculators (RCRI, ACS-NSQIP, MICA). Administer DASI questionnaire for functional capacity (replaces subjective METs). For poor functional capacity + elevated risk: consider BNP/NT-proBNP (Class 2b) before stress testing (downgraded to Class 2b from 2a). BNP <92 or NT-proBNP <300 suggests lower risk.` });
   }
   if (cardiac.includes("Pacemaker/AICD")) {
-    provider.push({ domain: "Cardiac Risk", priority: "high", title: "CIED Management", detail: "Preoperative device interrogation required. Coordinate with EP team for reprogramming plan and magnet availability." });
+    provider.push({ domain: "Cardiac Risk", priority: "high", title: "CIED Management", detail: "Preoperative device interrogation required. Coordinate with EP team for reprogramming plan and magnet availability. Ensure deactivation/reactivation protocol established before surgery." });
   }
 
   // Provider track: Respiratory
   if (respiratory.includes("OSA (diagnosed)") || respiratory.includes("OSA (suspected/STOP-BANG ≥3)")) {
-    provider.push({ domain: "Respiratory", priority: "medium", title: "OSA Management", detail: "Instruct patient to bring PAP/CPAP to hospital. Plan for postoperative continuous pulse oximetry." });
+    provider.push({ domain: "Respiratory", priority: "medium", title: "OSA Management", detail: "Instruct patient to bring PAP/CPAP to hospital. For diagnosed OSA: assess for complications (pulmonary HTN, RV dysfunction). For suspected (STOP-BANG ≥3): consider formal sleep study referral if time permits. Plan for postoperative continuous pulse oximetry. If STOP-BANG ≥5: consider preoperative CPAP initiation." });
   }
   if (respiratory.includes("Unexplained dyspnea")) {
-    provider.push({ domain: "Respiratory", priority: "high", title: "Evaluate Unexplained Dyspnea", detail: "Consider BNP/NT-proBNP. Administer DASI questionnaire. PFTs only if needed for lung resection assessment." });
+    provider.push({ domain: "Respiratory", priority: "high", title: "Evaluate Unexplained Dyspnea", detail: "Consider BNP/NT-proBNP (Class 2b). If elevated, echocardiography before proceeding. Administer DASI questionnaire. PFTs only if needed to assess optimization for lung resection. Optimize bronchodilator therapy if obstructive component suspected." });
   }
 
   // Provider track: Endocrine
   if (isDiabetic) {
-    provider.push({ domain: "Endocrine", priority: "high", title: "Perioperative Glucose Management", detail: "Order A1C if none in 90 days. Intraoperative glucose target: 140–180 mg/dL (STS/ERAS)." });
+    provider.push({ domain: "Endocrine", priority: "high", title: "Perioperative Glucose Management", detail: `Order A1C if none in 90 days. Intraoperative glucose target: 140–180 mg/dL (STS/ERAS). Assess for GLP-1 RA and SGLT2i use. Order insulin subset in preop orders. For insulin pump patients: consider endocrine consult and follow institutional pump protocol.` });
   }
 
-  // Provider track: Hematologic
-  if (other.includes("Anemia (Hgb <13)") || d.bloodLoss === "significant") {
-    provider.push({ domain: "Hematologic", priority: "high", title: "Preoperative Anemia Management", detail: "Hgb <13 g/dL defines anemia requiring intervention. Order iron studies. Treat with IV iron 2–4 weeks before surgery." });
+  // Provider track: Hematologic (severity-graded)
+  if (hasAnemiaCondition || hasAnemiaHgb || d.bloodLoss === "significant") {
+    const ironDeficient = d.ironDeficiency === "yes";
+    const ironAppend = ironDeficient ? " IV iron is first-line (oral iron has poor bioavailability and insufficient time preoperatively). Ferric carboxymaltose allows single-dose correction." : "";
+    if (hgb !== null && hgb < 8) {
+      provider.push({ domain: "Hematologic", priority: "high", title: `Severe Anemia (Hgb ${hgb} g/dL) — URGENT`, detail: `DANGER: Hgb < 8 g/dL. Urgent hematology consult. Consider preoperative transfusion to Hgb ≥10. Order iron studies (ferritin, TIBC, serum iron, reticulocyte count), B12, folate. Rule out active blood loss. Consider deferring elective surgery. Type and crossmatch.${ironAppend}` });
+    } else if (hgb !== null && hgb < 10) {
+      provider.push({ domain: "Hematologic", priority: "high", title: `Moderate Anemia (Hgb ${hgb} g/dL)`, detail: `Order iron studies (ferritin, TIBC, serum iron, reticulocyte count), B12, folate. If iron-deficient: IV iron (ferric carboxymaltose or iron sucrose) 2–4 weeks preop. Consider hematology referral. Consider EPO if renal etiology contributing. Recheck Hgb 2 weeks post IV iron. Type and crossmatch for significant expected blood loss.${ironAppend}` });
+    } else if (hgb !== null && hgb < 13) {
+      provider.push({ domain: "Hematologic", priority: "high", title: `Mild Anemia (Hgb ${hgb} g/dL)`, detail: `Order iron studies (ferritin, TIBC, serum iron). Ferritin <30 or TSAT <20% = confirmed iron deficiency → IV iron 2–4 weeks preop. Ferritin 30–100 with low TSAT = functional deficiency → IV iron also recommended. Iron-replete: investigate other causes (chronic disease, B12/folate, renal). Type and screen for significant expected blood loss.${ironAppend}` });
+    } else {
+      provider.push({ domain: "Hematologic", priority: "high", title: "Anemia Management — Obtain Hemoglobin", detail: `Anemia indicated but no hemoglobin value entered. Order CBC with iron studies (ferritin, TIBC, serum iron). Treat confirmed iron deficiency with IV iron 2–4 weeks preop. Consider anemia clinic referral per institutional protocol. Recommend obtaining hemoglobin for severity grading.${ironAppend}` });
+    }
   }
   if (other.includes("Sickle cell disease")) {
-    provider.push({ domain: "Hematologic", priority: "high", title: "Sickle Cell Protocol", detail: "Order BMP, CBC, reticulocyte count, HbS. Target Hb ≥10 g/dL and HbS <30%." });
+    provider.push({ domain: "Hematologic", priority: "high", title: "Sickle Cell Protocol", detail: "Order BMP, CBC, reticulocyte count, HbS. Target Hb ≥10 g/dL and HbS <30%. Phenotypically matched blood for any transfusion. Coordinate with hematology." });
   }
 
   // Provider track: Frailty
   if (age >= 75 || other.includes("Frailty/recent falls")) {
-    provider.push({ domain: "Frailty/Age", priority: "high", title: "Frailty Screening & Geriatric Optimization", detail: "Screen with validated tool (Clinical Frailty Scale). Assess delirium risk (CAM). Cognitive screening. Advance care planning." });
+    provider.push({ domain: "Frailty/Age", priority: "high", title: "Frailty Screening & Geriatric Optimization", detail: "Screen with validated tool (Clinical Frailty Scale, mFI, or RAI). Frailty is stronger predictor than age alone. Assess delirium risk (CAM). Cognitive screening. Advance care planning/DNR discussion. Consider perioperative geriatrics consult. Routine age-based EKG is NOT supported by evidence (ESAIC 2025)." });
   }
 
   // Provider track: Surgery-specific
   if (needsImplant) {
-    provider.push({ domain: "Surgery-Specific", priority: "medium", title: "MRSA/MSSA Screening & Decolonization", detail: "Order nasal swab for MRSA/MSSA PCR screening. Prescribe mupirocin + CHG bathing per protocol." });
+    provider.push({ domain: "Surgery-Specific", priority: "medium", title: "MRSA/MSSA Screening & Decolonization", detail: "Order nasal swab for MRSA/MSSA PCR screening. Prescribe mupirocin nasal ointment + CHG bathing per institutional decolonization protocol for implant/foreign body procedures." });
   }
   if (surgeryTags.includes("Vascular")) {
-    provider.push({ domain: "Surgery-Specific", priority: "high", title: "Vascular Surgery — Elevated Risk Protocol", detail: "Biomarker-based risk stratification (BNP/NT-proBNP) especially valuable. Plan postoperative troponin surveillance." });
+    provider.push({ domain: "Surgery-Specific", priority: "high", title: "Vascular Surgery — Elevated Risk Protocol", detail: "Vascular surgery remains elevated-risk category. Biomarker-based risk stratification (BNP/NT-proBNP) especially valuable. Plan postoperative troponin surveillance for MINS detection." });
+  }
+
+  // Provider track: Smoking
+  if (d.smokingStatus === "current") {
+    const cigDay = parseInt(d.cigPerDay) || 0;
+    const nrtDose = cigDay >= 10 ? "21mg patch" : "14mg patch";
+    let smokingDetail = `Prescribe NRT: ${nrtDose} plus rescue gum/lozenge as needed. Consider varenicline (start 1–2 weeks before quit date, 12-week course) or bupropion. Refer to cessation program if timeline permits. Preoperative incentive spirometry education for ALL current smokers. Plan postoperative respiratory monitoring and aggressive pulmonary toilet.`;
+    if (cigDay >= 20) {
+      smokingDetail += " HEAVY SMOKER: consider PFTs if lung resection planned, optimize bronchodilators, higher NRT dose may be needed, plan enhanced postoperative pulmonary monitoring.";
+    }
+    provider.push({ domain: "Smoking", priority: "high", title: "Smoking Cessation Protocol", detail: smokingDetail });
+  } else if (d.smokingStatus === "former_lt8") {
+    provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation — Reinforce", detail: "Patient quit <8 weeks ago. Reinforce abstinence, continue NRT if in use. Order incentive spirometry education. Note: airway reactivity remains increased in first 8 weeks after cessation — standard precautions for airway management." });
+  }
+
+  // Provider track: Alcohol
+  if (d.alcoholUse === "heavy") {
+    let alcoholDetail = "LABS: CMP (LFTs), CBC with diff (thrombocytopenia, macrocytosis), PT/INR, magnesium, phosphate. Consider prealbumin. SUPPLEMENTS: Thiamine 100mg PO daily (mandatory — prevents Wernicke), folate 1mg daily, multivitamin.";
+    if (d.withdrawalHistory === "yes") {
+      alcoholDetail += " WITHDRAWAL HISTORY POSITIVE: DANGER. Order PAWSS score. Benzo-based prophylaxis protocol. CIWA-Ar monitoring. May require ICU postoperatively. Addiction medicine/psychiatry consult mandatory.";
+    } else {
+      alcoholDetail += " Order CIWA-Ar monitoring ×72h postoperatively. Low threshold for benzo rescue. Withdrawal typically 6–24h after last drink.";
+    }
+    alcoholDetail += " Counsel cessation ≥4 weeks preop. Addiction medicine referral if unable to abstain. Document prominently in anesthesia note (enzyme induction → higher anesthetic/opioid requirements).";
+    provider.push({ domain: "Alcohol", priority: "high", title: "Heavy Alcohol Use — Perioperative Protocol", detail: alcoholDetail });
+  } else if (d.alcoholUse === "moderate") {
+    provider.push({ domain: "Alcohol", priority: "medium", title: "Moderate Alcohol Use — Evaluation & Counseling", detail: "Counsel cessation ≥2 weeks preoperatively. Order CMP for liver screening. Consider thiamine supplementation. Monitor for subclinical withdrawal perioperatively. Document alcohol use in anesthesia note (may affect drug metabolism)." });
   }
 
   // Day of surgery
-  provider.push({ domain: "Day of Surgery", priority: "medium", title: "DOS Verification Checklist", detail: "Verify: medications held/continued per plan, labs within range, blood glucose on arrival, all consult clearances documented, resuscitation preferences confirmed." });
+  let dosItems = "Verify: medications held/continued per plan, labs within acceptable range, blood glucose on arrival, K+ for diuretic patients, pregnancy test if applicable, CPAP brought (if OSA), ketones checked (if was on SGLT2i), all consult clearances documented, resuscitation preferences confirmed.";
+  if (d.smokingStatus === "current") dosItems += " SMOKING: verify cessation status, NRT plan documented for admission, incentive spirometer at bedside.";
+  if (d.alcoholUse === "heavy") dosItems += " ALCOHOL: verify cessation duration, withdrawal risk plan active, thiamine administered, CIWA-Ar orders placed if indicated.";
+  if (d.withdrawalHistory === "yes") dosItems += " WITHDRAWAL: CIWA-Ar orders verified, benzodiazepine protocol ready, ICU bed available if needed.";
+  if ((hasAnemiaCondition || hasAnemiaHgb) && hgb !== null) dosItems += " ANEMIA: Hgb recheck if IV iron given, blood product availability confirmed with blood bank.";
+  provider.push({ domain: "Day of Surgery", priority: "medium", title: "DOS Verification Checklist", detail: dosItems });
 
   return { patient, provider, alerts, riskLevel };
 }
 
-/* ─── Plan Display Cards ─── */
-function PlanCard({ rec, color }) {
-  const priorityColors = { high: BRAND.danger, medium: BRAND.warning, low: BRAND.success };
-  const priorityLabels = { high: "HIGH", medium: "MED", low: "LOW" };
+// ───────── SVG DOMAIN ICONS ─────────
+const G = "#2ECC9B";
+const B = "#FFFFFF";
+
+function IconExercise() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="1" y="10" width="4" height="4" rx="1" fill={G}/><rect x="19" y="10" width="4" height="4" rx="1" fill={G}/><rect x="5" y="8" width="3" height="8" rx="1" fill={B}/><rect x="16" y="8" width="3" height="8" rx="1" fill={B}/><rect x="8" y="11" width="8" height="2" rx="1" fill={B}/></svg>;
+}
+function IconNutrition() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C9 2 7 5 7 8c0 3 2 4 4 5v7a1 1 0 002 0v-7c2-1 4-2 4-5 0-3-2-6-5-6z" fill={G} opacity="0.35"/><path d="M12 4c-2 0-3 2.5-3 4.5S10 12 12 13s3-2 3-4.5S14 4 12 4z" fill={G}/><line x1="12" y1="13" x2="12" y2="21" stroke={B} strokeWidth="2" strokeLinecap="round"/><path d="M8.5 7.5c0-1 .5-2.5 1.5-3" stroke={B} strokeWidth="1.2" strokeLinecap="round"/></svg>;
+}
+function IconMetabolic() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 2L4.5 13h6l-1 9L19 11h-6l1-9z" fill={G} opacity="0.3"/><path d="M13 2L4.5 13h6l-1 9L19 11h-6l1-9z" stroke={B} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/></svg>;
+}
+function IconThermal() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="10" y="2" width="4" height="14" rx="2" fill={G} opacity="0.25"/><circle cx="12" cy="18" r="4" fill={G} opacity="0.3"/><circle cx="12" cy="18" r="3" fill={G}/><rect x="11" y="4" width="2" height="10" rx="1" fill={B}/><rect x="10" y="2" width="4" height="14" rx="2" stroke={B} strokeWidth="1.5"/><circle cx="12" cy="18" r="4" stroke={B} strokeWidth="1.5"/><line x1="16" y1="6" x2="18" y2="6" stroke={B} strokeWidth="1.2" strokeLinecap="round"/><line x1="16" y1="9" x2="18" y2="9" stroke={B} strokeWidth="1.2" strokeLinecap="round"/><line x1="16" y1="12" x2="18" y2="12" stroke={B} strokeWidth="1.2" strokeLinecap="round"/></svg>;
+}
+function IconSleep() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" fill={G} opacity="0.25"/><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" stroke={B} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="17" cy="5" r="1" fill={G}/><circle cx="20" cy="8" r="0.7" fill={G}/><circle cx="15" cy="3" r="0.7" fill={G}/></svg>;
+}
+function IconTracking() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" fill={G} opacity="0.15"/><polyline points="7,17 10,11 13,14 17,7" stroke={G} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/><polyline points="7,17 10,11 13,14 17,7" stroke={B} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="17" cy="7" r="2" fill={G}/></svg>;
+}
+function IconSmoking() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="14" width="15" height="4" rx="1.5" fill={G} opacity="0.25"/><rect x="2" y="14" width="15" height="4" rx="1.5" stroke={B} strokeWidth="1.5"/><rect x="2" y="14" width="5" height="4" rx="1" fill={G}/><line x1="19" y1="14" x2="19" y2="18" stroke={B} strokeWidth="1.5" strokeLinecap="round"/><path d="M19 14c0-3-1-4-3-5s-3-2-3-4" stroke={B} strokeWidth="1.3" strokeLinecap="round"/><line x1="3" y1="21" x2="21" y2="3" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round"/></svg>;
+}
+function IconAlcohol() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M8 2h8l-1 8a4 4 0 01-3 3.8V19h3a1 1 0 010 2H9a1 1 0 010-2h3v-5.2A4 4 0 019 10L8 2z" fill={G} opacity="0.2"/><path d="M8 2h8l-1 8a4 4 0 01-3 3.8V19h3a1 1 0 010 2H9a1 1 0 010-2h3v-5.2A4 4 0 019 10L8 2z" stroke={B} strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 6h7" stroke={B} strokeWidth="1.2" strokeLinecap="round"/><line x1="3" y1="21" x2="21" y2="3" stroke="#DC2626" strokeWidth="2.2" strokeLinecap="round"/></svg>;
+}
+function IconAnemia() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3C12 3 5 11 5 15a7 7 0 0014 0c0-4-7-12-7-12z" fill={G} opacity="0.25"/><path d="M12 3C12 3 5 11 5 15a7 7 0 0014 0c0-4-7-12-7-12z" stroke={B} strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 15a3 3 0 003 3" stroke={G} strokeWidth="1.8" strokeLinecap="round"/></svg>;
+}
+function IconDefault() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" fill={G} opacity="0.15"/><rect x="5" y="2" width="14" height="20" rx="2" stroke={B} strokeWidth="1.5"/><line x1="9" y1="8" x2="15" y2="8" stroke={B} strokeWidth="1.3" strokeLinecap="round"/><line x1="9" y1="12" x2="15" y2="12" stroke={B} strokeWidth="1.3" strokeLinecap="round"/><line x1="9" y1="16" x2="13" y2="16" stroke={B} strokeWidth="1.3" strokeLinecap="round"/></svg>;
+}
+
+const DOMAIN_ICONS = {
+  "Exercise": IconExercise, "Nutrition": IconNutrition, "Metabolic Prep": IconMetabolic,
+  "Thermal": IconThermal, "Stress & Sleep": IconSleep, "Self-Tracking": IconTracking,
+  "Smoking": IconSmoking, "Alcohol": IconAlcohol, "Anemia": IconAnemia,
+};
+const DOMAIN_LABELS = {
+  "Exercise": "Get Moving", "Nutrition": "Fuel Up", "Metabolic Prep": "Metabolic Prep",
+  "Thermal": "Thermal", "Stress & Sleep": "Rest & Recover", "Self-Tracking": "Track Progress",
+  "Smoking": "Quit Smoking", "Alcohol": "Alcohol", "Anemia": "Build Your Blood",
+};
+
+function PatientCard({ rec }) {
+  const [expanded, setExpanded] = useState(false);
+  const DomainIcon = DOMAIN_ICONS[rec.domain] || IconDefault;
+  const domainLabel = DOMAIN_LABELS[rec.domain] || rec.domain;
+  const priorityConfig = {
+    high:   { label: "Important", color: SR.danger, bg: SR.dangerBg, dot: SR.danger },
+    medium: { label: "Recommended", color: SR.warning, bg: SR.warningBg, dot: SR.warning },
+    low:    { label: "Optional", color: SR.teal, bg: SR.tealLight, dot: SR.teal },
+  };
+  const p = priorityConfig[rec.priority];
+
+  const firstDot = rec.detail.indexOf(". ");
+  const summary = firstDot > 0 && firstDot < 120 ? rec.detail.slice(0, firstDot + 1) : rec.detail.slice(0, 120) + (rec.detail.length > 120 ? "…" : "");
+  const hasMore = rec.detail.length > summary.replace("…", "").length + 5;
+
   return (
-    <div style={{ border: `1px solid ${BRAND.border}`, borderLeft: `4px solid ${color}`, borderRadius: "8px", padding: "16px", marginBottom: "12px", background: BRAND.white }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: BRAND.white, background: priorityColors[rec.priority], padding: "2px 8px", borderRadius: "10px", fontFamily: FONT }}>{priorityLabels[rec.priority]}</span>
-          <span style={{ fontSize: "11px", fontWeight: 600, color: BRAND.muted, textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: FONT }}>{rec.domain}</span>
+    <div style={{
+      background: SR.white, borderRadius: "12px", marginBottom: "14px",
+      border: `1px solid ${SR.borderLight}`, overflow: "hidden", boxShadow: SR.cardShadow,
+    }}>
+      <div style={{ padding: "18px 20px 14px", display: "flex", gap: "16px", alignItems: "flex-start" }}>
+        <div style={{
+          width: "48px", height: "48px", borderRadius: "10px", background: SR.navy,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, boxShadow: "0 2px 6px rgba(27,58,92,0.2)",
+        }}>
+          <DomainIcon />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
+            <span style={{
+              fontSize: "10px", fontWeight: 700, color: p.color, background: p.bg,
+              padding: "3px 10px", borderRadius: "6px", fontFamily: SR.font,
+              display: "inline-flex", alignItems: "center", gap: "5px", letterSpacing: "0.3px",
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: p.dot, display: "inline-block" }} />
+              {p.label}
+            </span>
+            <span style={{ fontSize: "11px", color: SR.teal, fontWeight: 600, fontFamily: SR.font }}>{domainLabel}</span>
+          </div>
+          <div style={{ fontSize: "15px", fontWeight: 700, color: SR.text, lineHeight: 1.35, marginBottom: "8px", fontFamily: SR.font }}>{rec.title}</div>
+          <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>{expanded ? rec.detail : summary}</div>
+          {hasMore && (
+            <button onClick={() => setExpanded(!expanded)} style={{
+              background: "none", border: "none", cursor: "pointer", padding: "6px 0 0",
+              fontSize: "12px", fontWeight: 600, color: SR.teal, fontFamily: SR.font,
+              display: "inline-flex", alignItems: "center", gap: "4px",
+            }}>
+              {expanded ? "Show less" : "Read more"}
+            </button>
+          )}
         </div>
       </div>
-      <div style={{ fontSize: "15px", fontWeight: 700, color: BRAND.text, marginBottom: "6px", fontFamily: FONT }}>{rec.title}</div>
-      <div style={{ fontSize: "13px", color: "#4a5568", lineHeight: 1.6, fontFamily: FONT }}>{rec.detail}</div>
+    </div>
+  );
+}
+
+function PlanCard({ rec, color }) {
+  const priorityColors = { high: SR.danger, medium: SR.warning, low: SR.success };
+  const priorityLabels = { high: "HIGH", medium: "MED", low: "LOW" };
+  return (
+    <div style={{ border: `1px solid ${SR.borderLight}`, borderLeft: `4px solid ${color}`, borderRadius: "10px", padding: "16px 18px", marginBottom: "12px", background: SR.white, boxShadow: SR.cardShadow }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "10px", fontWeight: 700, color: SR.white, background: priorityColors[rec.priority], padding: "2px 10px", borderRadius: "10px", fontFamily: SR.font, letterSpacing: "0.3px" }}>{priorityLabels[rec.priority]}</span>
+          <span style={{ fontSize: "11px", fontWeight: 600, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: SR.font }}>{rec.domain}</span>
+        </div>
+      </div>
+      <div style={{ fontSize: "14px", fontWeight: 700, color: SR.text, marginBottom: "6px", fontFamily: SR.font }}>{rec.title}</div>
+      <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>{rec.detail}</div>
     </div>
   );
 }
 
 function AlertBanner({ alert }) {
-  const bg = alert.type === "danger" ? "#FEF2F2" : "#FFFBEB";
-  const borderColor = alert.type === "danger" ? BRAND.danger : BRAND.warning;
-  const icon = alert.type === "danger" ? "!" : "!";
+  const isDanger = alert.type === "danger";
   return (
-    <div style={{ background: bg, border: `1px solid ${borderColor}`, borderRadius: "8px", padding: "14px 16px", marginBottom: "10px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
-      <span style={{ fontSize: "12px", fontWeight: 800, color: borderColor, width: "22px", height: "22px", borderRadius: "50%", border: `2px solid ${borderColor}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: "1px" }}>{icon}</span>
-      <span style={{ fontSize: "13px", fontWeight: 600, color: BRAND.text, lineHeight: 1.5, fontFamily: FONT }}>{alert.text}</span>
+    <div style={{
+      background: isDanger ? SR.dangerBg : SR.warningBg,
+      border: `1px solid ${isDanger ? SR.danger : SR.warning}30`,
+      borderLeft: `4px solid ${isDanger ? SR.danger : SR.warning}`,
+      borderRadius: "10px", padding: "14px 18px", marginBottom: "10px",
+      display: "flex", gap: "12px", alignItems: "flex-start",
+    }}>
+      <div style={{
+        width: 24, height: 24, borderRadius: "50%",
+        background: isDanger ? SR.danger : SR.warning,
+        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+      }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+          <path d="M12 9v4m0 4h.01M12 2L2 20h20L12 2z" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <span style={{ fontSize: "13px", fontWeight: 600, color: SR.text, lineHeight: 1.55, fontFamily: SR.font }}>{alert.text}</span>
     </div>
   );
 }
 
-
 /* ═══════════════════════════════════════════════════════════════
    [PREOP-PAGE] — Pre-Operative Assessment Page
-   This wraps the algorithm in a page with header and context.
+   Wraps the algorithm for the website with nav padding.
    ═══════════════════════════════════════════════════════════════ */
 function PreOpPage() {
   const [step, setStep] = useState(0);
@@ -1038,7 +1345,11 @@ function PreOpPage() {
 
   const goNext = () => { if (step < STEPS.length - 1) setStep(step + 1); };
   const goBack = () => { if (step > 0) setStep(step - 1); };
-  const generate = () => { setPlan(generatePlan(data)); window.scrollTo(0, 0); };
+  const generate = () => {
+    setPlan(generatePlan(data));
+    setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
+    window.scrollTo(0, 0);
+  };
   const reset = () => { setStep(0); setData({}); setPlan(null); };
 
   const stepComponents = [
@@ -1051,79 +1362,108 @@ function PreOpPage() {
   ];
 
   if (plan) {
-    const riskBg = { low: "#ECFDF5", elevated: "#FFFBEB", high: "#FEF2F2" };
-    const riskColor = { low: BRAND.success, elevated: BRAND.warning, high: BRAND.danger };
+    const riskBg = { low: SR.tealLight, elevated: SR.warningBg, high: SR.dangerBg };
+    const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
     const showPatient = viewMode === "both" || viewMode === "patient";
     const showProvider = viewMode === "both" || viewMode === "provider";
 
     return (
-      <div style={{ paddingTop: "100px", minHeight: "100vh", background: BRAND.bg }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 24px 60px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
-            <div>
-              <h1 style={{ fontSize: "22px", fontWeight: 700, color: BRAND.navy, margin: 0, fontFamily: FONT }}>Surgical Readiness Plan</h1>
-              <p style={{ fontSize: "13px", color: BRAND.muted, margin: "4px 0 0", fontFamily: FONT }}>
-                {data.surgeryType || "Surgery"} · {data.weeksUntil || "?"} weeks · Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
-              </p>
+      <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
+        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              <SRLogo size={38} />
+              <div>
+                <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>Your Readiness Plan</h1>
+                <p style={{ fontSize: "12px", color: SR.muted, margin: "3px 0 0" }}>
+                  {data.surgeryType || "Surgery"} • {data.weeksUntil || "?"} weeks out • Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
+                </p>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {["both", "patient", "provider"].map(m => (
                 <button key={m} onClick={() => setViewMode(m)} style={{
-                  padding: "6px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                  border: `1px solid ${viewMode === m ? BRAND.teal : BRAND.border}`,
-                  background: viewMode === m ? BRAND.teal : BRAND.white,
-                  color: viewMode === m ? BRAND.white : BRAND.text, fontFamily: FONT,
+                  padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                  border: `1.5px solid ${viewMode === m ? SR.teal : SR.border}`,
+                  background: viewMode === m ? SR.teal : SR.white,
+                  color: viewMode === m ? SR.white : SR.textSecondary,
+                  fontFamily: SR.font, transition: "all 0.2s",
                 }}>
                   {m === "both" ? "Both Tracks" : m === "patient" ? "Patient View" : "Provider View"}
                 </button>
               ))}
               <button onClick={reset} style={{
-                padding: "6px 14px", borderRadius: "6px", fontSize: "12px", cursor: "pointer",
-                border: `1px solid ${BRAND.border}`, background: BRAND.white, color: BRAND.muted, fontFamily: FONT,
+                padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
+                border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
+                fontFamily: SR.font, transition: "all 0.2s",
               }}>Start Over</button>
             </div>
           </div>
 
           {plan.alerts.length > 0 && (
             <div style={{ marginBottom: "20px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: BRAND.danger, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Critical Alerts</div>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: SR.danger, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.8px" }}>Critical Alerts</div>
               {plan.alerts.map((a, i) => <AlertBanner key={i} alert={a} />)}
             </div>
           )}
 
-          <div style={{ background: riskBg[plan.riskLevel], border: `1px solid ${riskColor[plan.riskLevel]}`, borderRadius: "8px", padding: "14px 18px", marginBottom: "24px" }}>
-            <span style={{ fontSize: "13px", fontWeight: 700, color: riskColor[plan.riskLevel], fontFamily: FONT }}>
-              PERIOPERATIVE RISK LEVEL: {plan.riskLevel.toUpperCase()}
+          <div style={{ background: riskBg[plan.riskLevel], border: `1px solid ${riskColor[plan.riskLevel]}30`, borderRadius: "12px", padding: "16px 20px", marginBottom: "24px" }}>
+            <span style={{ fontSize: "12px", fontWeight: 700, color: riskColor[plan.riskLevel], textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Perioperative Risk: {plan.riskLevel.toUpperCase()}
             </span>
-            <span style={{ fontSize: "12px", color: BRAND.muted, marginLeft: "12px", fontFamily: FONT }}>
-              {plan.riskLevel === "low" ? "Standard preoperative pathway." : plan.riskLevel === "elevated" ? "Enhanced evaluation recommended." : "Comprehensive evaluation required."}
+            <span style={{ fontSize: "12px", color: SR.textSecondary, marginLeft: "12px" }}>
+              {plan.riskLevel === "low" ? "Standard preoperative pathway. Focus on patient preparation." :
+               plan.riskLevel === "elevated" ? "Enhanced evaluation recommended. Consider biomarkers and targeted optimization." :
+               "Comprehensive evaluation required. All provider protocols activated. Consider cardiology/specialty consultation."}
             </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
             {showPatient && (
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", paddingBottom: "10px", borderBottom: `3px solid ${BRAND.patientBlue}` }}>
-                  <span style={{ fontSize: "16px", fontWeight: 700, color: BRAND.patientBlue, fontFamily: FONT }}>Patient Preparation Track</span>
-                  <span style={{ fontSize: "11px", color: BRAND.muted, background: BRAND.lightBlue, padding: "2px 8px", borderRadius: "10px" }}>{plan.patient.length} items</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", paddingBottom: "12px", borderBottom: `3px solid ${SR.teal}` }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "8px", background: SR.teal,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="5" r="3" fill="white"/><path d="M12 10c-3 0-5 2-5 5v4a1 1 0 001 1h8a1 1 0 001-1v-4c0-3-2-5-5-5z" fill="white" opacity="0.7"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: SR.navy }}>Your Preparation Plan</div>
+                    <div style={{ fontSize: "11px", color: SR.muted }}>{plan.patient.length} action items</div>
+                  </div>
                 </div>
-                {plan.patient.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority])).map((r, i) => <PlanCard key={i} rec={r} color={BRAND.patientBlue} />)}
+                {plan.patient.sort((a, b) => {
+                  const p = { high: 0, medium: 1, low: 2 };
+                  return p[a.priority] - p[b.priority];
+                }).map((r, i) => <PatientCard key={i} rec={r} />)}
               </div>
             )}
             {showProvider && (
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", paddingBottom: "10px", borderBottom: `3px solid ${BRAND.providerOrange}` }}>
-                  <span style={{ fontSize: "16px", fontWeight: 700, color: BRAND.providerOrange, fontFamily: FONT }}>Provider Optimization Track</span>
-                  <span style={{ fontSize: "11px", color: BRAND.muted, background: BRAND.lightOrange, padding: "2px 8px", borderRadius: "10px" }}>{plan.provider.length} items</span>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", paddingBottom: "12px", borderBottom: `3px solid ${SR.navy}` }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: "8px", background: SR.navy,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2v6m0 0v6m0-6h6m-6 0H6" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><rect x="3" y="16" width="18" height="5" rx="2" fill="white" opacity="0.7"/></svg>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: SR.navy }}>Provider Optimization Track</div>
+                    <div style={{ fontSize: "11px", color: SR.muted }}>{plan.provider.length} clinical items</div>
+                  </div>
                 </div>
-                {plan.provider.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.priority] - { high: 0, medium: 1, low: 2 }[b.priority])).map((r, i) => <PlanCard key={i} rec={r} color={BRAND.providerOrange} />)}
+                {plan.provider.sort((a, b) => {
+                  const p = { high: 0, medium: 1, low: 2 };
+                  return p[a.priority] - p[b.priority];
+                }).map((r, i) => <PlanCard key={i} rec={r} color={SR.providerNavy} />)}
               </div>
             )}
           </div>
 
-          <div style={{ marginTop: "30px", padding: "16px", background: BRAND.white, borderRadius: "8px", border: `1px solid ${BRAND.border}` }}>
-            <div style={{ fontSize: "11px", color: BRAND.muted, lineHeight: 1.6 }}>
-              <strong>Disclaimer:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment.
+          <div style={{ marginTop: "32px", padding: "18px 20px", background: SR.white, borderRadius: "12px", border: `1px solid ${SR.borderLight}` }}>
+            <div style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.7 }}>
+              <strong style={{ color: SR.textSecondary }}>Disclaimer:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
             </div>
           </div>
         </div>
@@ -1132,54 +1472,66 @@ function PreOpPage() {
   }
 
   return (
-    <div style={{ paddingTop: "100px", minHeight: "100vh", background: BRAND.bg }}>
-      {/* Page Header */}
-      <div style={{ background: `linear-gradient(160deg, ${BRAND.cream} 0%, ${BRAND.white} 100%)`, padding: "40px 0 48px", borderBottom: `1px solid ${BRAND.borderLight}` }}>
-        <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 24px", textAlign: "center" }}>
-          <SectionLabel>Clinical Tool</SectionLabel>
-          <h1 style={{ fontFamily: FONT_DISPLAY, fontSize: "32px", fontWeight: 700, color: BRAND.navy, margin: "0 0 8px" }}>Surgical Readiness Algorithm</h1>
-          <p style={{ fontSize: "15px", color: BRAND.muted, margin: 0, fontFamily: FONT }}>Patient intake for personalized dual-track prehabilitation planning</p>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: "720px", margin: "0 auto", padding: "32px 24px 60px" }}>
-        {/* Progress bar */}
-        <div style={{ display: "flex", gap: "4px", marginBottom: "28px" }}>
-          {STEPS.map((s, i) => (
-            <div key={s} style={{ flex: 1, cursor: i <= step ? "pointer" : "default" }} onClick={() => { if (i <= step) setStep(i); }}>
-              <div style={{ height: "4px", borderRadius: "2px", background: i <= step ? BRAND.teal : BRAND.border, transition: "background 0.3s" }} />
-              <div style={{ fontSize: "10px", color: i === step ? BRAND.teal : BRAND.muted, fontWeight: i === step ? 700 : 400, marginTop: "6px", textAlign: "center", fontFamily: FONT }}>
-                {STEP_LABELS[i]}
+    <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+        {/* Numbered Progress Steps */}
+        <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
+          {STEPS.map((s, i) => {
+            const done = i < step;
+            const active = i === step;
+            const canClick = i <= step;
+            return (
+              <div key={s} style={{ flex: 1, cursor: canClick ? "pointer" : "default" }} onClick={() => { if (canClick) setStep(i); }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: "50%", fontSize: "10px", fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    background: done ? SR.teal : active ? SR.navy : "transparent",
+                    color: done || active ? SR.white : SR.muted,
+                    border: `1.5px solid ${done ? SR.teal : active ? SR.navy : SR.border}`,
+                    transition: "all 0.3s",
+                  }}>{done ? "✓" : STEP_NUMS[i]}</div>
+                  <div style={{ flex: 1, height: "3px", borderRadius: "2px", background: done ? SR.teal : active ? SR.navy : SR.border, transition: "background 0.3s" }} />
+                </div>
+                <div style={{ fontSize: "10px", color: active ? SR.navy : done ? SR.teal : SR.muted, fontWeight: active ? 700 : 500, textAlign: "left", paddingLeft: "2px" }}>
+                  {STEP_LABELS[i]}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
-        {/* Step card */}
-        <div style={{ background: BRAND.white, borderRadius: "12px", padding: "28px", border: `1px solid ${BRAND.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: 700, color: BRAND.navy, margin: "0 0 20px", fontFamily: FONT }}>{STEP_LABELS[step]}</h2>
+        {/* Card */}
+        <div style={{ background: SR.white, borderRadius: "14px", padding: "32px", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow }}>
+          <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: "0 0 24px", display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ color: SR.teal, fontSize: "13px", fontWeight: 700 }}>{STEP_NUMS[step]}</span>
+            {STEP_LABELS[step]}
+          </h2>
           {stepComponents[step]}
         </div>
 
         {/* Navigation */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "20px" }}>
           <button onClick={goBack} disabled={step === 0} style={{
-            padding: "10px 24px", borderRadius: "8px", border: `1px solid ${BRAND.border}`,
-            background: BRAND.white, color: step === 0 ? BRAND.border : BRAND.text,
-            cursor: step === 0 ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 600, fontFamily: FONT,
+            padding: "11px 28px", borderRadius: "10px", border: `1.5px solid ${step === 0 ? SR.borderLight : SR.border}`,
+            background: SR.white, color: step === 0 ? SR.border : SR.textSecondary,
+            cursor: step === 0 ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 600,
+            fontFamily: SR.font, transition: "all 0.2s",
           }}>Back</button>
           {step < STEPS.length - 1 ? (
             <button onClick={goNext} style={{
-              padding: "10px 24px", borderRadius: "8px", border: "none",
-              background: BRAND.teal, color: BRAND.white, cursor: "pointer",
-              fontSize: "14px", fontWeight: 600, fontFamily: FONT,
+              padding: "11px 32px", borderRadius: "10px", border: "none",
+              background: SR.teal, color: SR.white, cursor: "pointer",
+              fontSize: "14px", fontWeight: 600, fontFamily: SR.font,
+              boxShadow: "0 2px 8px rgba(13,124,102,0.25)", transition: "all 0.2s",
             }}>Continue</button>
           ) : (
             <button onClick={generate} style={{
-              padding: "10px 28px", borderRadius: "8px", border: "none",
-              background: BRAND.navy, color: BRAND.white, cursor: "pointer",
-              fontSize: "14px", fontWeight: 700, fontFamily: FONT,
-              boxShadow: "0 2px 8px rgba(27,58,92,0.3)",
+              padding: "11px 32px", borderRadius: "10px", border: "none",
+              background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`,
+              color: SR.white, cursor: "pointer",
+              fontSize: "14px", fontWeight: 700, fontFamily: SR.font,
+              boxShadow: "0 3px 12px rgba(27,58,92,0.3)", transition: "all 0.2s",
             }}>Generate Readiness Plan</button>
           )}
         </div>
@@ -1187,7 +1539,6 @@ function PreOpPage() {
     </div>
   );
 }
-
 
 /* ═══════════════════════════════════════════════════════════════
    [APP] — Main Application with Page Routing
