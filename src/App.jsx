@@ -370,7 +370,7 @@ function Hero({ onNavigate }) {
           textAlign: "center", fontSize: "13px", color: BRAND.muted, fontFamily: FONT,
           marginTop: "32px",
         }}>
-          Built by anesthesiologists and critical care physicians. Evidence-based. Free to use.
+          Built by anesthesiologists and surgeons. Evidence-based. Free to use.
         </p>
       </div>
     </section>
@@ -453,7 +453,7 @@ function Journey() {
         ))}
       </div>
       <p style={{ textAlign: "center", fontSize: "14px", color: BRAND.teal, fontWeight: 600, fontFamily: FONT, marginTop: "40px" }}>
-        Built by clinicians, for clinicians. Designed by anesthesiologists and critical care physicians who live in the OR every day.
+        Built by clinicians, for clinicians. Designed by anesthesiologists and surgeons who live in the OR every day.
       </p>
     </SectionWrapper>
   );
@@ -633,7 +633,7 @@ function About() {
         <SectionLabel>About</SectionLabel>
         <SectionTitle>Built by perioperative clinicians</SectionTitle>
         <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.8, marginBottom: "16px" }}>
-          SurgeryReady was created by anesthesiologists, intensivists, and health systems leaders
+          SurgeryReady was created by anesthesiologists, surgeons, intensivists, and health systems leaders
           who have lived the reality of day-of-surgery cancellations, preventable complications,
           and fragmented communication.
         </p>
