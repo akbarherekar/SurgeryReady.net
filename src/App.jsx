@@ -515,11 +515,29 @@ function About() {
    ═══════════════════════════════════════════════════════════════ */
 function Contact() {
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const inputStyle = {
     width: "100%", padding: "12px 16px", borderRadius: "8px", border: `1px solid ${BRAND.border}`,
     fontSize: "14px", fontFamily: FONT, outline: "none", boxSizing: "border-box",
     background: BRAND.white, transition: "border-color 0.2s",
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const formData = new FormData(e.target);
+    try {
+      await fetch("https://formspree.io/f/mnjoqngr", {
+        method: "POST",
+        body: formData,
+        headers: { "Accept": "application/json" },
+      });
+      setSubmitted(true);
+    } catch (err) {
+      alert("Something went wrong. Please try again.");
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -545,15 +563,15 @@ function Contact() {
               <div style={{ fontSize: "14px", color: BRAND.muted, fontFamily: FONT, marginTop: "8px" }}>We'll be in touch shortly.</div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <input placeholder="Name" style={inputStyle} />
-              <input placeholder="Organization / hospital" style={inputStyle} />
-              <input placeholder="Email" type="email" style={inputStyle} />
-              <input placeholder="Role" style={inputStyle} />
-              <textarea placeholder="What challenges are you trying to solve?" rows={4}
+            <div onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <input name="name" placeholder="Name" required style={inputStyle} />
+              <input name="organization" placeholder="Organization / hospital" style={inputStyle} />
+              <input name="email" placeholder="Email" type="email" required style={inputStyle} />
+              <input name="role" placeholder="Role" style={inputStyle} />
+              <textarea name="challenges" placeholder="What challenges are you trying to solve?" rows={4}
                 style={{ ...inputStyle, resize: "vertical" }} />
-              <Btn onClick={() => setSubmitted(true)} style={{ width: "100%", justifyContent: "center" }}>
-                Submit & request a call
+              <Btn onClick={(e) => { const form = e.target.closest('div'); const inputs = form.querySelectorAll('input[required]'); let valid = true; inputs.forEach(i => { if (!i.value) valid = false; }); if (valid) { const fd = new FormData(); form.querySelectorAll('input,textarea').forEach(el => { if (el.name) fd.append(el.name, el.value); }); setSubmitting(true); fetch('https://formspree.io/f/mnjoqngr', { method: 'POST', body: fd, headers: { Accept: 'application/json' } }).then(() => setSubmitted(true)).catch(() => alert('Something went wrong.')).finally(() => setSubmitting(false)); } }} style={{ width: "100%", justifyContent: "center", opacity: submitting ? 0.6 : 1 }}>
+                {submitting ? "Sending..." : "Submit & request a call"}
               </Btn>
             </div>
           )}
@@ -680,6 +698,9 @@ function MultiChip({ options, selected, onChange }) {
 function StepDemographics({ data, update }) {
   return (
     <>
+      <Field label="First Name">
+        <Input value={data.firstName || ""} onChange={v => update("firstName", v)} placeholder="e.g. Sam" />
+      </Field>
       <Field label="I am a...">
         <div style={{ display: "flex", gap: "12px" }}>
           {[{ value: "patient", label: "Patient", desc: "Preparing for surgery", icon: (
@@ -2357,7 +2378,9 @@ function PreOpPage() {
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               <SRLogo size={38} />
               <div>
-                <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>Your Readiness Plan</h1>
+                <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>
+                  {data.firstName ? `${data.firstName}'s Readiness Plan` : "Your Readiness Plan"}
+                </h1>
                 <p style={{ fontSize: "12px", color: SR.muted, margin: "3px 0 0" }}>
                   {data.surgeryType || "Surgery"} • {data.weeksUntil || "?"} weeks out • Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
                 </p>
@@ -2375,6 +2398,16 @@ function PreOpPage() {
                   {m === "both" ? "Both Tracks" : m === "patient" ? "Patient View" : "Provider View"}
                 </button>
               ))}
+              <button onClick={() => {
+                const el = document.getElementById("readiness-plan-printable");
+                const w = window.open("", "_blank");
+                w.document.write(`<html><head><title>${data.firstName ? data.firstName + "'s" : "Your"} Surgical Readiness Plan - SurgeryReady</title><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"><style>body{font-family:'DM Sans',sans-serif;color:#1A2B3C;padding:40px;max-width:1000px;margin:0 auto}@media print{body{padding:20px}button,.no-print{display:none!important}}</style></head><body>${el.innerHTML}<script>setTimeout(()=>{window.print();},500)<\/script></body></html>`);
+                w.document.close();
+              }} style={{
+                padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
+                fontFamily: SR.font, transition: "all 0.2s",
+              }}>Download PDF</button>
               <button onClick={reset} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
                 border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
@@ -2382,6 +2415,20 @@ function PreOpPage() {
               }}>Start Over</button>
             </div>
           </div>
+
+          {/* Personalized greeting */}
+          {data.firstName && (
+            <div style={{ marginBottom: "20px", padding: "18px 22px", background: SR.white, borderRadius: "12px", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow }}>
+              <div style={{ fontSize: "16px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>
+                Hello {data.firstName}, here is your personalized surgical readiness plan.
+              </div>
+              <div style={{ fontSize: "13px", color: SR.textSecondary, marginTop: "4px", fontFamily: SR.font }}>
+                Based on your profile, we've generated tailored recommendations for both you and your care team.
+              </div>
+            </div>
+          )}
+
+          <div id="readiness-plan-printable">
 
           {plan.alerts.length > 0 && (
             <div style={{ marginBottom: "20px" }}>
@@ -2449,9 +2496,10 @@ function PreOpPage() {
               <strong style={{ color: SR.textSecondary }}>Disclaimer:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
             </div>
           </div>
+          </div>{/* end readiness-plan-printable */}
 
           <div style={{ textAlign: "center", marginTop: "20px", fontSize: "10px", color: SR.muted }}>
-            Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
+            Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare
           </div>
         </div>
       </div>
