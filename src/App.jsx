@@ -52,10 +52,50 @@ const BRAND = {
 const FONT = "'DM Sans', sans-serif";
 const FONT_DISPLAY = "'Playfair Display', serif";
 
+/* ─── Responsive hook ─── */
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
+
+/* ─── Global responsive styles ─── */
+function ResponsiveStyles() {
+  return (
+    <style>{`
+      @media (max-width: 768px) {
+        .sr-grid-2 { grid-template-columns: 1fr !important; }
+        .sr-grid-3 { grid-template-columns: 1fr !important; }
+        .sr-grid-2-1 { grid-template-columns: 1fr !important; }
+        .sr-grid-3-algo { grid-template-columns: 1fr !important; }
+        .sr-plan-grid { grid-template-columns: 1fr !important; }
+        .sr-hero-btns { flex-direction: column; align-items: stretch; }
+        .sr-hero-btns a, .sr-hero-btns button { text-align: center; justify-content: center; }
+        .sr-section { padding-top: 60px !important; padding-bottom: 60px !important; }
+        .sr-hero { padding-top: 120px !important; padding-bottom: 60px !important; }
+        .sr-hero h1 { font-size: 32px !important; }
+        .sr-hero p { font-size: 16px !important; }
+        .sr-plan-header { flex-direction: column; align-items: flex-start !important; }
+        .sr-plan-buttons { width: 100%; }
+        .sr-plan-buttons button { flex: 1; }
+      }
+      @media (max-width: 480px) {
+        .sr-grid-3-algo { grid-template-columns: 1fr !important; }
+        .sr-hero h1 { font-size: 28px !important; }
+      }
+    `}</style>
+  );
+}
+
 /* ─── Shared UI Primitives ─── */
 function SectionWrapper({ children, id, bg = BRAND.white, py = "100px" }) {
   return (
-    <section id={id} style={{ background: bg, padding: `${py} 0` }}>
+    <section className="sr-section" id={id} style={{ background: bg, padding: `${py} 0` }}>
       <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px" }}>
         {children}
       </div>
@@ -105,6 +145,7 @@ function Btn({ children, href, variant = "primary", onClick, style: extraStyle }
 function Nav({ currentPage, onNavigate }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const mobile = useIsMobile();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -142,14 +183,14 @@ function Nav({ currentPage, onNavigate }) {
   return (
     <nav style={{
       position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-      background: scrolled ? "rgba(255,255,255,0.97)" : "transparent",
-      backdropFilter: scrolled ? "blur(12px)" : "none",
+      background: scrolled || mobileOpen ? "rgba(255,255,255,0.97)" : "transparent",
+      backdropFilter: scrolled || mobileOpen ? "blur(12px)" : "none",
       borderBottom: scrolled ? `1px solid ${BRAND.borderLight}` : "none",
       transition: "all 0.3s ease", padding: scrolled ? "12px 0" : "20px 0",
     }}>
       <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         {/* Logo */}
-        <div onClick={(e) => { e.preventDefault(); onNavigate("home"); window.scrollTo(0,0); }}
+        <div onClick={(e) => { e.preventDefault(); onNavigate("home"); setMobileOpen(false); window.scrollTo(0,0); }}
           style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }}>
           <div style={{
             width: "36px", height: "36px", borderRadius: "8px", background: BRAND.teal,
@@ -163,22 +204,55 @@ function Nav({ currentPage, onNavigate }) {
         </div>
 
         {/* Desktop links */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {!mobile && (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            {links.map(link => (
+              <a key={link.label} href={link.href} onClick={(e) => handleClick(link, e)} style={{
+                fontSize: "14px", fontWeight: 500, color: link.highlight ? BRAND.teal : BRAND.text,
+                textDecoration: "none", fontFamily: FONT, padding: "8px 14px", borderRadius: "6px",
+                transition: "all 0.2s",
+                background: link.highlight && currentPage === "preop" ? BRAND.tealLight : "transparent",
+                fontWeight: link.highlight ? 600 : 500,
+              }}>{link.label}</a>
+            ))}
+            <Btn href="#contact" variant="primary" onClick={(e) => { e.preventDefault(); onNavigate("home"); setTimeout(() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" }), 100); }}
+              style={{ padding: "10px 24px", fontSize: "13px", marginLeft: "8px" }}>
+              Book a call
+            </Btn>
+          </div>
+        )}
+
+        {/* Mobile hamburger */}
+        {mobile && (
+          <button onClick={() => setMobileOpen(!mobileOpen)} style={{
+            background: "none", border: "none", cursor: "pointer", padding: "8px",
+            display: "flex", flexDirection: "column", gap: "5px",
+          }}>
+            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", transform: mobileOpen ? "rotate(45deg) translateY(7px)" : "none" }} />
+            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", opacity: mobileOpen ? 0 : 1 }} />
+            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", transform: mobileOpen ? "rotate(-45deg) translateY(-7px)" : "none" }} />
+          </button>
+        )}
+      </div>
+
+      {/* Mobile menu dropdown */}
+      {mobile && mobileOpen && (
+        <div style={{
+          background: BRAND.white, borderTop: `1px solid ${BRAND.borderLight}`,
+          padding: "16px 24px", display: "flex", flexDirection: "column", gap: "4px",
+        }}>
           {links.map(link => (
             <a key={link.label} href={link.href} onClick={(e) => handleClick(link, e)} style={{
-              fontSize: "14px", fontWeight: 500, color: link.highlight ? BRAND.teal : BRAND.text,
-              textDecoration: "none", fontFamily: FONT, padding: "8px 14px", borderRadius: "6px",
-              transition: "all 0.2s",
-              background: link.highlight && currentPage === "preop" ? BRAND.tealLight : "transparent",
-              fontWeight: link.highlight ? 600 : 500,
+              fontSize: "15px", fontWeight: link.highlight ? 600 : 500, color: link.highlight ? BRAND.teal : BRAND.text,
+              textDecoration: "none", fontFamily: FONT, padding: "12px 0", borderBottom: `1px solid ${BRAND.borderLight}`,
             }}>{link.label}</a>
           ))}
-          <Btn href="#contact" variant="primary" onClick={(e) => { e.preventDefault(); onNavigate("home"); setTimeout(() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" }), 100); }}
-            style={{ padding: "10px 24px", fontSize: "13px", marginLeft: "8px" }}>
+          <Btn href="#contact" variant="primary" onClick={(e) => { e.preventDefault(); setMobileOpen(false); onNavigate("home"); setTimeout(() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" }), 100); }}
+            style={{ marginTop: "12px", width: "100%", justifyContent: "center" }}>
             Book a call
           </Btn>
         </div>
-      </div>
+      )}
     </nav>
   );
 }
@@ -189,7 +263,7 @@ function Nav({ currentPage, onNavigate }) {
    ═══════════════════════════════════════════════════════════════ */
 function Hero({ onNavigate }) {
   return (
-    <section style={{
+    <section className="sr-hero" style={{
       background: `linear-gradient(160deg, ${BRAND.cream} 0%, ${BRAND.white} 40%, ${BRAND.tealLight} 100%)`,
       paddingTop: "160px", paddingBottom: "100px", position: "relative", overflow: "hidden",
     }}>
@@ -201,7 +275,7 @@ function Hero({ onNavigate }) {
         <SectionLabel>Hybrid perioperative optimization</SectionLabel>
 
         {/* ── EDIT HEADLINE HERE ── */}
-        <h1 style={{
+        <h1 className="sr-hero" style={{
           fontFamily: FONT_DISPLAY, fontSize: "clamp(36px, 5.5vw, 64px)", fontWeight: 700,
           color: BRAND.navy, lineHeight: 1.1, margin: "0 0 24px", maxWidth: "720px",
         }}>
@@ -218,7 +292,7 @@ function Hero({ onNavigate }) {
           recovery, and put patients back in control of their surgical journey.
         </p>
 
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+        <div className="sr-hero-btns" style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
           <Btn href="#contact">Talk to our team →</Btn>
           <Btn href="#how-it-works" variant="secondary">See how it works</Btn>
           <Btn onClick={() => { onNavigate("preop"); window.scrollTo(0,0); }} variant="ghost">
@@ -255,7 +329,7 @@ function ValueProps() {
 
   return (
     <SectionWrapper bg={BRAND.white} py="80px">
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
         {cards.map(c => (
           <div key={c.audience} style={{
             padding: "32px", borderRadius: "16px", background: c.bg,
@@ -290,7 +364,7 @@ function Journey() {
           From the day surgery is mentioned to the weeks after discharge, SurgeryReady keeps everyone aligned.
         </p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
         {steps.map(s => (
           <div key={s.num} style={{
             background: BRAND.white, borderRadius: "16px", padding: "36px 28px",
@@ -364,7 +438,7 @@ function ForPatients() {
 
   return (
     <SectionWrapper id="for-patients" bg={BRAND.cream}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
         <div>
           <SectionLabel>For patients & families</SectionLabel>
           <SectionTitle>Surgery is stressful. We turn a confusing process into a guided journey.</SectionTitle>
@@ -430,7 +504,7 @@ function ForHospitals() {
       <SectionLabel>For hospitals, health systems & surgical centers</SectionLabel>
       <SectionTitle>A turnkey perioperative optimization service that extends your care team, not your payroll.</SectionTitle>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px", marginTop: "48px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px", marginTop: "48px" }}>
         {columns.map(col => (
           <div key={col.title} style={{
             padding: "32px", borderRadius: "14px", border: `1px solid ${BRAND.borderLight}`,
@@ -542,7 +616,7 @@ function Contact() {
 
   return (
     <SectionWrapper id="contact" bg={BRAND.white}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
         <div>
           <SectionLabel>Get started</SectionLabel>
           <SectionTitle>Let's get your patients SurgeryReady</SectionTitle>
@@ -724,7 +798,7 @@ function StepDemographics({ data, update }) {
           })}
         </div>
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Age"><Input type="number" value={data.age || ""} onChange={v => update("age", v)} placeholder="Years" min="1" max="120" /></Field>
         <Field label="Sex">
           <Select value={data.sex || ""} onChange={v => update("sex", v)} options={[
@@ -732,7 +806,7 @@ function StepDemographics({ data, update }) {
           ]} />
         </Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-3-algo" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
         <Field label="Height (inches)"><Input type="number" value={data.height || ""} onChange={v => update("height", v)} placeholder="e.g. 68" /></Field>
         <Field label="Weight (lbs)"><Input type="number" value={data.weight || ""} onChange={v => update("weight", v)} placeholder="e.g. 180" /></Field>
         <Field label="BMI" hint="Auto-calculated">
@@ -749,7 +823,7 @@ function StepSurgery({ data, update }) {
   return (
     <>
       <Field label="Type of Surgery"><Input value={data.surgeryType || ""} onChange={v => update("surgeryType", v)} placeholder="e.g., Total knee replacement, Colectomy" /></Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Surgical Risk Category">
           <Select value={data.riskCategory || ""} onChange={v => update("riskCategory", v)} options={[
             { value: "", label: "Select..." }, { value: "low", label: "Low Risk" }, { value: "elevated", label: "Elevated Risk" }, { value: "high", label: "High Risk (Vascular/Cardiac)" },
@@ -757,7 +831,7 @@ function StepSurgery({ data, update }) {
         </Field>
         <Field label="Weeks Until Surgery"><Input type="number" value={data.weeksUntil || ""} onChange={v => update("weeksUntil", v)} placeholder="e.g. 6" min="0" /></Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Expected Duration">
           <Select value={data.duration || ""} onChange={v => update("duration", v)} options={[
             { value: "", label: "Select..." }, { value: "short", label: "< 2 hours" }, { value: "medium", label: "2–6 hours" }, { value: "long", label: "> 6 hours" },
@@ -803,7 +877,7 @@ function StepMedical({ data, update }) {
       <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: `2px solid ${SR.borderLight}` }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: SR.navy, marginBottom: "16px", fontFamily: SR.font }}>Smoking, Alcohol & Anemia Assessment</div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Smoking Status">
             <Select value={data.smokingStatus || ""} onChange={v => update("smokingStatus", v)} options={[
               { value: "", label: "Select..." }, { value: "never", label: "Never smoker" },
@@ -819,7 +893,7 @@ function StepMedical({ data, update }) {
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Alcohol Use">
             <Select value={data.alcoholUse || ""} onChange={v => update("alcoholUse", v)} options={[
               { value: "", label: "Select..." }, { value: "none", label: "None / Rare" },
@@ -844,7 +918,7 @@ function StepMedical({ data, update }) {
           </Field>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Hemoglobin (g/dL)" hint="Enables severity-graded anemia protocol">
             <Input type="number" value={data.hemoglobin || ""} onChange={v => update("hemoglobin", v)} placeholder="e.g. 11.5" min="3" max="22" step="0.1" />
           </Field>
@@ -875,7 +949,7 @@ function StepMedications({ data, update }) {
         </Field>
       ))}
       <Field label="GLP-1 RA Details (if applicable)">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <Select value={data.glp1Phase || ""} onChange={v => update("glp1Phase", v)} options={[
             { value: "", label: "Escalation phase?" }, { value: "yes", label: "Yes — still titrating up" }, { value: "no", label: "No — stable dose" },
           ]} />
@@ -1242,7 +1316,7 @@ function GripStrengthModal({ onClose }) {
           {/* Reference ranges */}
           <div style={{ padding: "16px 18px", borderRadius: "14px", border: `1.5px solid ${SR.borderLight}`, background: SR.bg, marginBottom: "14px" }}>
             <div style={{ fontSize: "11px", fontWeight: 700, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "10px", fontFamily: SR.font }}>Reference Ranges (dominant hand, kg)</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               {[
                 { label: "Men", ranges: [{ r: "< 26 kg", d: "Low — concern for frailty", c: SR.danger }, { r: "26–38 kg", d: "Average", c: SR.textSecondary }, { r: "> 38 kg", d: "Strong", c: SR.teal }] },
                 { label: "Women", ranges: [{ r: "< 16 kg", d: "Low — concern for frailty", c: SR.danger }, { r: "16–24 kg", d: "Average", c: SR.textSecondary }, { r: "> 24 kg", d: "Strong", c: SR.teal }] },
@@ -1431,7 +1505,7 @@ function StepFitness({ data, update }) {
         ]} />
       </Field>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="DASI Score (if available)" hint="Duke Activity Status Index (0–58.2). Score < 34 = < 4 METs">
           <Input type="number" value={data.dasiScore || ""} onChange={v => update("dasiScore", v)} placeholder="0–58.2" min="0" max="58.2" step="0.1" />
           <InfoButton label="Take the DASI survey →" onClick={() => setShowDASI(true)} />
@@ -1449,7 +1523,7 @@ function StepFitness({ data, update }) {
         </Field>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="VO₂max (if known, mL/kg/min)">
           <Input type="number" value={data.vo2max || ""} onChange={v => update("vo2max", v)} placeholder="e.g., 28" />
           <InfoButton label="How do I find my VO₂max? →" onClick={() => setShowVO2(true)} />
@@ -1484,7 +1558,7 @@ function StepNutrition({ data, update }) {
           { value: "moderate", label: "Moderate — some protein each meal" }, { value: "high", label: "High — actively tracking 1.2+ g/kg/day" },
         ]} />
       </Field>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Albumin (if available, g/dL)"><Input type="number" value={data.albumin || ""} onChange={v => update("albumin", v)} placeholder="e.g. 3.8" step="0.1" /></Field>
         <Field label="Recent Unintentional Weight Loss?">
           <Select value={data.weightLoss || ""} onChange={v => update("weightLoss", v)} options={[
@@ -2374,7 +2448,7 @@ function PreOpPage() {
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           {/* SR Plan Header */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+          <div className="sr-plan-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               <SRLogo size={38} />
               <div>
@@ -2386,7 +2460,7 @@ function PreOpPage() {
                 </p>
               </div>
             </div>
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <div className="sr-plan-buttons" style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {["both", "patient", "provider"].map(m => (
                 <button key={m} onClick={() => setViewMode(m)} style={{
                   padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
@@ -2448,7 +2522,7 @@ function PreOpPage() {
             </span>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
+          <div className="sr-plan-grid" style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
             {showPatient && (
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", paddingBottom: "12px", borderBottom: `3px solid ${SR.teal}` }}>
@@ -2621,6 +2695,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: FONT, color: BRAND.text, minHeight: "100vh" }}>
+      <ResponsiveStyles />
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
       <Nav currentPage={page} onNavigate={setPage} />
       {pages[page]}
