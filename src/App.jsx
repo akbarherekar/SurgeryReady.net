@@ -272,33 +272,106 @@ function Hero({ onNavigate }) {
       <div style={{ position: "absolute", bottom: "-60px", left: "-40px", width: "250px", height: "250px", borderRadius: "50%", background: BRAND.sand, opacity: 0.5 }} />
 
       <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px", position: "relative" }}>
-        <SectionLabel>Hybrid perioperative optimization</SectionLabel>
+        <div style={{ textAlign: "center", marginBottom: "12px" }}>
+          <SectionLabel>Hybrid perioperative optimization</SectionLabel>
+        </div>
 
-        {/* ── EDIT HEADLINE HERE ── */}
         <h1 className="sr-hero" style={{
-          fontFamily: FONT_DISPLAY, fontSize: "clamp(36px, 5.5vw, 64px)", fontWeight: 700,
-          color: BRAND.navy, lineHeight: 1.1, margin: "0 0 24px", maxWidth: "720px",
+          fontFamily: FONT_DISPLAY, fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700,
+          color: BRAND.navy, lineHeight: 1.15, margin: "0 0 16px", textAlign: "center",
         }}>
-          Get surgery-ready,<br />the right way.
+          Get surgery-ready, the right way.
         </h1>
 
-        {/* ── EDIT DESCRIPTION HERE ── */}
         <p style={{
-          fontSize: "18px", lineHeight: 1.7, color: BRAND.textLight, maxWidth: "600px",
-          margin: "0 0 36px", fontFamily: FONT,
+          fontSize: "17px", lineHeight: 1.7, color: BRAND.textLight, maxWidth: "600px",
+          margin: "0 auto 48px", fontFamily: FONT, textAlign: "center",
         }}>
-          SurgeryReady combines remote physician coaches, metabolic health guidance,
-          and smart digital checklists to reduce last-minute cancellations, shorten
-          recovery, and put patients back in control of their surgical journey.
+          Remote physician coaches, metabolic health guidance, and smart digital
+          checklists — for patients and the teams that care for them.
         </p>
 
-        <div className="sr-hero-btns" style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-          <Btn href="#contact">Talk to our team →</Btn>
-          <Btn href="#how-it-works" variant="secondary">See how it works</Btn>
-          <Btn onClick={() => { onNavigate("preop"); window.scrollTo(0,0); }} variant="ghost">
-            Try the Pre-Op Assessment →
-          </Btn>
+        {/* ── SPLIT PATH CARDS ── */}
+        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", maxWidth: "780px", margin: "0 auto" }}>
+
+          {/* Left: Patient or Provider → Assessment */}
+          <div onClick={() => { onNavigate("preop"); window.scrollTo(0, 0); }} style={{
+            background: BRAND.white, borderRadius: "16px", border: `2px solid ${BRAND.teal}`,
+            padding: "36px 28px", textAlign: "center", cursor: "pointer",
+            transition: "transform 0.2s, box-shadow 0.2s",
+            boxShadow: "0 2px 12px rgba(13,124,102,0.08)",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(13,124,102,0.15)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(13,124,102,0.08)"; }}
+          >
+            <div style={{
+              width: "52px", height: "52px", borderRadius: "50%", background: BRAND.tealLight,
+              margin: "0 auto 18px", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="5" r="3.5" stroke={BRAND.teal} strokeWidth="2"/>
+                <path d="M7 21v-4a5 5 0 0110 0v4" stroke={BRAND.teal} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
+              I'm a patient or provider
+            </div>
+            <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
+              Get a personalized surgical readiness plan with evidence-based recommendations in minutes.
+            </p>
+            <div style={{
+              background: BRAND.teal, color: BRAND.white, padding: "13px 28px", borderRadius: "8px",
+              fontSize: "15px", fontWeight: 600, fontFamily: FONT, display: "inline-block",
+            }}>
+              Start the assessment →
+            </div>
+          </div>
+
+          {/* Right: Health System → Learn More */}
+          <div onClick={() => {
+            const el = document.querySelector("#how-it-works");
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+          }} style={{
+            background: BRAND.white, borderRadius: "16px", border: `1.5px solid ${BRAND.border}`,
+            padding: "36px 28px", textAlign: "center", cursor: "pointer",
+            transition: "transform 0.2s, box-shadow 0.2s",
+            boxShadow: "0 2px 12px rgba(27,58,92,0.04)",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(27,58,92,0.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(27,58,92,0.04)"; }}
+          >
+            <div style={{
+              width: "52px", height: "52px", borderRadius: "50%", background: BRAND.lightBlue,
+              margin: "0 auto 18px", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="3" width="18" height="18" rx="3" stroke={BRAND.navy} strokeWidth="1.8"/>
+                <path d="M8 12h8M12 8v8" stroke={BRAND.navy} strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
+              I'm a health system
+            </div>
+            <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
+              Reduce cancellations, optimize perioperative care, and improve surgical outcomes at scale.
+            </p>
+            <div style={{
+              background: "transparent", color: BRAND.navy, padding: "13px 28px", borderRadius: "8px",
+              fontSize: "15px", fontWeight: 600, fontFamily: FONT, display: "inline-block",
+              border: `1.5px solid ${BRAND.navy}`,
+            }}>
+              Learn more →
+            </div>
+          </div>
+
         </div>
+
+        <p style={{
+          textAlign: "center", fontSize: "13px", color: BRAND.muted, fontFamily: FONT,
+          marginTop: "32px",
+        }}>
+          Built by anesthesiologists and critical care physicians. Evidence-based. Free to use.
+        </p>
       </div>
     </section>
   );
