@@ -1,760 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "./supabaseClient";
-
-/* ═══════════════════════════════════════════════════════════════
-   SURGERYREADY.NET — Full Website
-   
-   TABLE OF CONTENTS (search these labels to jump to sections):
-   
-   [CONFIG]        — Colors, fonts, brand settings
-   [NAV]           — Navigation bar component
-   [HERO]          — Hero / landing section
-   [VALUE-PROPS]   — For patients / hospitals / payers cards
-   [JOURNEY]       — "One connected journey" steps
-   [HOW-IT-WORKS]  — How SurgeryReady works section
-   [FOR-PATIENTS]  — Patient-facing features section
-   [FOR-HOSPITALS] — Hospital-facing features section
-   [ABOUT]         — About / differentiators section
-   [CONTACT]       — Contact form section
-   [FOOTER]        — Footer
-   [PREOP-PAGE]    — Pre-operative Assessment page
-   [ALGORITHM]     — Surgical Readiness Algorithm (full tool)
-   [APP]           — Main app with routing
-   
-   TO EDIT CONTENT: Search for the section label above, then
-   modify the text directly. All content is plain text in JSX.
-   ═══════════════════════════════════════════════════════════════ */
-
-/* ─── [CONFIG] Brand colors, fonts, spacing ─── */
-const BRAND = {
-  navy: "#1B3A5C",
-  teal: "#0D7C66",
-  tealLight: "#E6F5F0",
-  tealDark: "#0A6652",
-  patientBlue: "#2E75B6",
-  providerOrange: "#C65911",
-  lightBlue: "#E8F0FE",
-  lightOrange: "#FFF3E8",
-  bg: "#F7F8FA",
-  bgWarm: "#FDFBF7",
-  white: "#FFFFFF",
-  border: "#E2E8F0",
-  borderLight: "#F1F5F9",
-  text: "#1E293B",
-  textLight: "#475569",
-  muted: "#64748b",
-  success: "#059669",
-  danger: "#DC2626",
-  warning: "#D97706",
-  cream: "#FBF9F4",
-  sand: "#F5F0E8",
-};
-
-const FONT = "'DM Sans', sans-serif";
-const FONT_DISPLAY = "'Playfair Display', serif";
-
-/* ─── Responsive hook ─── */
-function useIsMobile(breakpoint = 768) {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < breakpoint);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, [breakpoint]);
-  return isMobile;
-}
-
-/* ─── Global responsive styles ─── */
-function ResponsiveStyles() {
-  return (
-    <style>{`
-      @media (max-width: 768px) {
-        .sr-grid-2 { grid-template-columns: 1fr !important; }
-        .sr-grid-3 { grid-template-columns: 1fr !important; }
-        .sr-grid-2-1 { grid-template-columns: 1fr !important; }
-        .sr-grid-3-algo { grid-template-columns: 1fr !important; }
-        .sr-plan-grid { grid-template-columns: 1fr !important; }
-        .sr-hero-btns { flex-direction: column; align-items: stretch; }
-        .sr-hero-btns a, .sr-hero-btns button { text-align: center; justify-content: center; }
-        .sr-section { padding-top: 60px !important; padding-bottom: 60px !important; }
-        .sr-hero { padding-top: 120px !important; padding-bottom: 60px !important; }
-        .sr-hero h1 { font-size: 32px !important; }
-        .sr-hero p { font-size: 16px !important; }
-        .sr-plan-header { flex-direction: column; align-items: flex-start !important; }
-        .sr-plan-buttons { width: 100%; }
-        .sr-plan-buttons button { flex: 1; }
-      }
-      @media (max-width: 480px) {
-        .sr-grid-3-algo { grid-template-columns: 1fr !important; }
-        .sr-hero h1 { font-size: 28px !important; }
-      }
-    `}</style>
-  );
-}
-
-/* ─── Shared UI Primitives ─── */
-function SectionWrapper({ children, id, bg = BRAND.white, py = "100px" }) {
-  return (
-    <section className="sr-section" id={id} style={{ background: bg, padding: `${py} 0` }}>
-      <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px" }}>
-        {children}
-      </div>
-    </section>
-  );
-}
-
-function SectionLabel({ children }) {
-  return (
-    <div style={{
-      fontSize: "12px", fontWeight: 700, letterSpacing: "2px", textTransform: "uppercase",
-      color: BRAND.teal, fontFamily: FONT, marginBottom: "12px",
-    }}>{children}</div>
-  );
-}
-
-function SectionTitle({ children, align = "left" }) {
-  return (
-    <h2 style={{
-      fontFamily: FONT_DISPLAY, fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700,
-      color: BRAND.navy, lineHeight: 1.2, margin: "0 0 20px", textAlign: align,
-    }}>{children}</h2>
-  );
-}
-
-function Btn({ children, href, variant = "primary", onClick, style: extraStyle }) {
-  const base = {
-    display: "inline-flex", alignItems: "center", gap: "8px",
-    padding: "14px 32px", borderRadius: "8px", fontSize: "15px", fontWeight: 600,
-    fontFamily: FONT, cursor: "pointer", textDecoration: "none",
-    transition: "all 0.25s ease", border: "none",
-  };
-  const variants = {
-    primary: { background: BRAND.teal, color: BRAND.white },
-    secondary: { background: "transparent", color: BRAND.navy, border: `1.5px solid ${BRAND.navy}` },
-    ghost: { background: "transparent", color: BRAND.teal, padding: "14px 0" },
-  };
-  const merged = { ...base, ...variants[variant], ...extraStyle };
-  if (href) return <a href={href} style={merged}>{children}</a>;
-  return <button onClick={onClick} style={merged}>{children}</button>;
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [NAV] — Top Navigation Bar
-   Edit menu items in the `links` array below.
-   ═══════════════════════════════════════════════════════════════ */
-function Nav({ currentPage, onNavigate }) {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const mobile = useIsMobile();
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  /* ── EDIT MENU ITEMS HERE ── */
-  const links = [
-    { label: "How it works", href: "#how-it-works", page: "home" },
-    { label: "For patients", href: "#for-patients", page: "home" },
-    { label: "For hospitals", href: "#for-hospitals", page: "home" },
-    { label: "Pre-Op Assessment", href: "#", page: "preop", highlight: true },
-    { label: "About", href: "#about", page: "home" },
-  ];
-
-  const handleClick = (link, e) => {
-    e.preventDefault();
-    setMobileOpen(false);
-    if (link.page === "preop") {
-      onNavigate("preop");
-      window.scrollTo(0, 0);
-    } else if (currentPage !== "home") {
-      onNavigate("home");
-      setTimeout(() => {
-        const el = document.querySelector(link.href);
-        if (el) el.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    } else {
-      const el = document.querySelector(link.href);
-      if (el) el.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  return (
-    <nav style={{
-      position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000,
-      background: scrolled || mobileOpen ? "rgba(255,255,255,0.97)" : "transparent",
-      backdropFilter: scrolled || mobileOpen ? "blur(12px)" : "none",
-      borderBottom: scrolled ? `1px solid ${BRAND.borderLight}` : "none",
-      transition: "all 0.3s ease", padding: scrolled ? "12px 0" : "20px 0",
-    }}>
-      <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        {/* Logo */}
-        <div onClick={(e) => { e.preventDefault(); onNavigate("home"); setMobileOpen(false); window.scrollTo(0,0); }}
-          style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "36px", height: "36px", borderRadius: "8px", background: BRAND.teal,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "16px", fontWeight: 800, color: BRAND.white, fontFamily: FONT,
-          }}>SR</div>
-          <div>
-            <div style={{ fontSize: "18px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, lineHeight: 1.1 }}>SurgeryReady</div>
-            <div style={{ fontSize: "10px", color: BRAND.muted, fontFamily: FONT, letterSpacing: "0.5px" }}>Health before healthcare</div>
-          </div>
-        </div>
-
-        {/* Desktop links */}
-        {!mobile && (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {links.map(link => (
-              <a key={link.label} href={link.href} onClick={(e) => handleClick(link, e)} style={{
-                fontSize: "14px", fontWeight: 500, color: link.highlight ? BRAND.teal : BRAND.text,
-                textDecoration: "none", fontFamily: FONT, padding: "8px 14px", borderRadius: "6px",
-                transition: "all 0.2s",
-                background: link.highlight && currentPage === "preop" ? BRAND.tealLight : "transparent",
-                fontWeight: link.highlight ? 600 : 500,
-              }}>{link.label}</a>
-            ))}
-            <Btn href="#contact" variant="primary" onClick={(e) => { e.preventDefault(); onNavigate("home"); setTimeout(() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" }), 100); }}
-              style={{ padding: "10px 24px", fontSize: "13px", marginLeft: "8px" }}>
-              Book a call
-            </Btn>
-          </div>
-        )}
-
-        {/* Mobile hamburger */}
-        {mobile && (
-          <button onClick={() => setMobileOpen(!mobileOpen)} style={{
-            background: "none", border: "none", cursor: "pointer", padding: "8px",
-            display: "flex", flexDirection: "column", gap: "5px",
-          }}>
-            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", transform: mobileOpen ? "rotate(45deg) translateY(7px)" : "none" }} />
-            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", opacity: mobileOpen ? 0 : 1 }} />
-            <span style={{ display: "block", width: "22px", height: "2px", background: BRAND.navy, borderRadius: "1px", transition: "all 0.3s", transform: mobileOpen ? "rotate(-45deg) translateY(-7px)" : "none" }} />
-          </button>
-        )}
-      </div>
-
-      {/* Mobile menu dropdown */}
-      {mobile && mobileOpen && (
-        <div style={{
-          background: BRAND.white, borderTop: `1px solid ${BRAND.borderLight}`,
-          padding: "16px 24px", display: "flex", flexDirection: "column", gap: "4px",
-        }}>
-          {links.map(link => (
-            <a key={link.label} href={link.href} onClick={(e) => handleClick(link, e)} style={{
-              fontSize: "15px", fontWeight: link.highlight ? 600 : 500, color: link.highlight ? BRAND.teal : BRAND.text,
-              textDecoration: "none", fontFamily: FONT, padding: "12px 0", borderBottom: `1px solid ${BRAND.borderLight}`,
-            }}>{link.label}</a>
-          ))}
-          <Btn href="#contact" variant="primary" onClick={(e) => { e.preventDefault(); setMobileOpen(false); onNavigate("home"); setTimeout(() => document.querySelector("#contact")?.scrollIntoView({ behavior: "smooth" }), 100); }}
-            style={{ marginTop: "12px", width: "100%", justifyContent: "center" }}>
-            Book a call
-          </Btn>
-        </div>
-      )}
-    </nav>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [HERO] — Main Hero Section
-   Edit the headline, subheadline, and description below.
-   ═══════════════════════════════════════════════════════════════ */
-function Hero({ onNavigate }) {
-  return (
-    <section className="sr-hero" style={{
-      background: `linear-gradient(160deg, ${BRAND.cream} 0%, ${BRAND.white} 40%, ${BRAND.tealLight} 100%)`,
-      paddingTop: "160px", paddingBottom: "100px", position: "relative", overflow: "hidden",
-    }}>
-      {/* Decorative circles */}
-      <div style={{ position: "absolute", top: "-120px", right: "-80px", width: "400px", height: "400px", borderRadius: "50%", background: BRAND.tealLight, opacity: 0.4 }} />
-      <div style={{ position: "absolute", bottom: "-60px", left: "-40px", width: "250px", height: "250px", borderRadius: "50%", background: BRAND.sand, opacity: 0.5 }} />
-
-      <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px", position: "relative" }}>
-        <div style={{ textAlign: "center", marginBottom: "12px" }}>
-          <SectionLabel>Hybrid perioperative optimization</SectionLabel>
-        </div>
-
-        <h1 className="sr-hero" style={{
-          fontFamily: FONT_DISPLAY, fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700,
-          color: BRAND.navy, lineHeight: 1.15, margin: "0 0 16px", textAlign: "center",
-        }}>
-          Get surgery-ready, the right way.
-        </h1>
-
-        <p style={{
-          fontSize: "17px", lineHeight: 1.7, color: BRAND.textLight, maxWidth: "600px",
-          margin: "0 auto 48px", fontFamily: FONT, textAlign: "center",
-        }}>
-          Remote physician coaches, metabolic health guidance, and smart digital
-          checklists — for patients and the teams that care for them.
-        </p>
-
-        {/* ── SPLIT PATH CARDS ── */}
-        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", maxWidth: "780px", margin: "0 auto" }}>
-
-          {/* Left: Patient or Provider → Assessment */}
-          <div onClick={() => { onNavigate("preop"); window.scrollTo(0, 0); }} style={{
-            background: BRAND.white, borderRadius: "16px", border: `2px solid ${BRAND.teal}`,
-            padding: "36px 28px", textAlign: "center", cursor: "pointer",
-            transition: "transform 0.2s, box-shadow 0.2s",
-            boxShadow: "0 2px 12px rgba(13,124,102,0.08)",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(13,124,102,0.15)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(13,124,102,0.08)"; }}
-          >
-            <div style={{
-              width: "52px", height: "52px", borderRadius: "50%", background: BRAND.tealLight,
-              margin: "0 auto 18px", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="5" r="3.5" stroke={BRAND.teal} strokeWidth="2"/>
-                <path d="M7 21v-4a5 5 0 0110 0v4" stroke={BRAND.teal} strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
-              I'm a patient or provider
-            </div>
-            <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
-              Get a personalized surgical readiness plan with evidence-based recommendations in minutes.
-            </p>
-            <div style={{
-              background: BRAND.teal, color: BRAND.white, padding: "13px 28px", borderRadius: "8px",
-              fontSize: "15px", fontWeight: 600, fontFamily: FONT, display: "inline-block",
-            }}>
-              Start the assessment →
-            </div>
-          </div>
-
-          {/* Right: Health System → Learn More */}
-          <div onClick={() => {
-            const el = document.querySelector("#how-it-works");
-            if (el) el.scrollIntoView({ behavior: "smooth" });
-          }} style={{
-            background: BRAND.white, borderRadius: "16px", border: `1.5px solid ${BRAND.border}`,
-            padding: "36px 28px", textAlign: "center", cursor: "pointer",
-            transition: "transform 0.2s, box-shadow 0.2s",
-            boxShadow: "0 2px 12px rgba(27,58,92,0.04)",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(27,58,92,0.1)"; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 12px rgba(27,58,92,0.04)"; }}
-          >
-            <div style={{
-              width: "52px", height: "52px", borderRadius: "50%", background: BRAND.lightBlue,
-              margin: "0 auto 18px", display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="3" stroke={BRAND.navy} strokeWidth="1.8"/>
-                <path d="M8 12h8M12 8v8" stroke={BRAND.navy} strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
-              I'm a health system
-            </div>
-            <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
-              Reduce cancellations, optimize perioperative care, and improve surgical outcomes at scale.
-            </p>
-            <div style={{
-              background: "transparent", color: BRAND.navy, padding: "13px 28px", borderRadius: "8px",
-              fontSize: "15px", fontWeight: 600, fontFamily: FONT, display: "inline-block",
-              border: `1.5px solid ${BRAND.navy}`,
-            }}>
-              Learn more →
-            </div>
-          </div>
-
-        </div>
-
-        <p style={{
-          textAlign: "center", fontSize: "13px", color: BRAND.muted, fontFamily: FONT,
-          marginTop: "32px",
-        }}>
-          Built by anesthesiologists and surgeons. Evidence-based. Free to use.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [VALUE-PROPS] — Three audience cards
-   Edit the title and description for each audience.
-   ═══════════════════════════════════════════════════════════════ */
-function ValueProps() {
-  const cards = [
-    {
-      audience: "For patients",
-      text: "Clear, step-by-step prep, coaching, and recovery support — from symptoms to surgery and back home.",
-      color: BRAND.patientBlue, bg: BRAND.lightBlue,
-    },
-    {
-      audience: "For hospitals",
-      text: "Fewer day-of-surgery cancellations, smoother OR flow, and better perioperative metrics.",
-      color: BRAND.teal, bg: BRAND.tealLight,
-    },
-    {
-      audience: "For payers & employers",
-      text: "Lower complication and readmission rates with a scalable, tech-enabled model.",
-      color: BRAND.providerOrange, bg: BRAND.lightOrange,
-    },
-  ];
-
-  return (
-    <SectionWrapper bg={BRAND.white} py="80px">
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
-        {cards.map(c => (
-          <div key={c.audience} style={{
-            padding: "32px", borderRadius: "16px", background: c.bg,
-            border: `1px solid ${BRAND.borderLight}`, transition: "transform 0.2s",
-          }}>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: c.color, fontFamily: FONT, letterSpacing: "1px", textTransform: "uppercase", marginBottom: "8px" }}>{c.audience}</div>
-            <p style={{ fontSize: "15px", color: BRAND.text, lineHeight: 1.6, fontFamily: FONT, margin: 0 }}>{c.text}</p>
-          </div>
-        ))}
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [JOURNEY] — "One connected journey" — 3-step overview
-   Edit the step titles and descriptions below.
-   ═══════════════════════════════════════════════════════════════ */
-function Journey() {
-  const steps = [
-    { num: "01", title: "Pre-op intake & risk scan", desc: "Structured history, red-flag screening, and metabolic risk snapshot in minutes." },
-    { num: "02", title: "Personal surgery coach", desc: "Remote physician coaches guide patients through meds, testing, nutrition, sleep, and movement." },
-    { num: "03", title: "Day-of-surgery ready", desc: "Fewer surprises on the day of surgery and a clearer, calmer path back to normal life." },
-  ];
-
-  return (
-    <SectionWrapper id="journey" bg={BRAND.cream} py="100px">
-      <div style={{ textAlign: "center", marginBottom: "60px" }}>
-        <SectionLabel>The SurgeryReady journey</SectionLabel>
-        <SectionTitle align="center">One connected journey</SectionTitle>
-        <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, maxWidth: "560px", margin: "0 auto", lineHeight: 1.7 }}>
-          From the day surgery is mentioned to the weeks after discharge, SurgeryReady keeps everyone aligned.
-        </p>
-      </div>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
-        {steps.map(s => (
-          <div key={s.num} style={{
-            background: BRAND.white, borderRadius: "16px", padding: "36px 28px",
-            border: `1px solid ${BRAND.borderLight}`, position: "relative",
-          }}>
-            <div style={{
-              fontSize: "48px", fontWeight: 800, color: BRAND.tealLight, fontFamily: FONT_DISPLAY,
-              position: "absolute", top: "20px", right: "24px", lineHeight: 1,
-            }}>{s.num}</div>
-            <h3 style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, margin: "0 0 12px", position: "relative" }}>{s.title}</h3>
-            <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.7, fontFamily: FONT, margin: 0, position: "relative" }}>{s.desc}</p>
-          </div>
-        ))}
-      </div>
-      <p style={{ textAlign: "center", fontSize: "14px", color: BRAND.teal, fontWeight: 600, fontFamily: FONT, marginTop: "40px" }}>
-        Built by clinicians, for clinicians. Designed by anesthesiologists and surgeons who live in the OR every day.
-      </p>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [HOW-IT-WORKS] — Detailed 3-step process
-   Edit each step's title, number, and description.
-   ═══════════════════════════════════════════════════════════════ */
-function HowItWorks() {
-  const steps = [
-    { num: "01", title: "Enroll", desc: "Patients are onboarded via referral from surgeons, pre-anesthesia testing, or employer programs." },
-    { num: "02", title: "Optimize", desc: "Remote coaches work through evidence-informed protocols for chronic disease, nutrition, sleep, and movement." },
-    { num: "03", title: "Monitor & report", desc: "Progress dashboards, risk flags, and readiness summaries feed back to the surgical and anesthesia teams." },
-  ];
-
-  return (
-    <SectionWrapper id="how-it-works" bg={BRAND.white}>
-      <SectionLabel>Process</SectionLabel>
-      <SectionTitle>How SurgeryReady works</SectionTitle>
-      <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, maxWidth: "640px", lineHeight: 1.7, marginBottom: "48px" }}>
-        A simple, tech-enabled workflow that plugs into your existing perioperative processes
-        without adding work to your over-stretched teams.
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
-        {steps.map((s, i) => (
-          <div key={s.num} style={{
-            display: "grid", gridTemplateColumns: "80px 1fr", gap: "24px",
-            padding: "40px 0", borderTop: i === 0 ? `2px solid ${BRAND.teal}` : `1px solid ${BRAND.borderLight}`,
-          }}>
-            <div style={{
-              fontSize: "36px", fontWeight: 800, color: BRAND.tealLight, fontFamily: FONT_DISPLAY, lineHeight: 1,
-            }}>{s.num}</div>
-            <div>
-              <h3 style={{ fontSize: "22px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, margin: "0 0 8px" }}>Step {parseInt(s.num)}: {s.title}</h3>
-              <p style={{ fontSize: "15px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.7, margin: 0, maxWidth: "520px" }}>{s.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [FOR-PATIENTS] — Patient-facing features
-   Edit feature titles, descriptions, and the testimonial quote.
-   ═══════════════════════════════════════════════════════════════ */
-function ForPatients() {
-  const features = [
-    { title: "Plain-language prep checklists", desc: "Exactly what to do (and avoid) in the days and weeks before surgery." },
-    { title: "Real clinicians, not chatbots", desc: "Virtual visits and messaging with physicians and nurses trained in perioperative care." },
-    { title: "Support after surgery", desc: "Help with pain plans, mobility, nutrition, and when to call your surgical team." },
-  ];
-
-  return (
-    <SectionWrapper id="for-patients" bg={BRAND.cream}>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
-        <div>
-          <SectionLabel>For patients & families</SectionLabel>
-          <SectionTitle>Surgery is stressful. We turn a confusing process into a guided journey.</SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: "28px", marginTop: "32px" }}>
-            {features.map(f => (
-              <div key={f.title} style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
-                <div style={{
-                  width: "4px", minHeight: "100%", borderRadius: "2px", background: BRAND.teal, flexShrink: 0, marginTop: "4px",
-                }} />
-                <div>
-                  <div style={{ fontSize: "16px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "4px" }}>{f.title}</div>
-                  <div style={{ fontSize: "14px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.6 }}>{f.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── EDIT TESTIMONIAL HERE ── */}
-        <div style={{ background: BRAND.white, borderRadius: "16px", padding: "36px", border: `1px solid ${BRAND.borderLight}` }}>
-          <div style={{ fontSize: "32px", color: BRAND.teal, fontFamily: FONT_DISPLAY, lineHeight: 1, marginBottom: "16px" }}>"</div>
-          <p style={{ fontSize: "16px", color: BRAND.text, fontFamily: FONT, lineHeight: 1.8, fontStyle: "italic", margin: "0 0 20px" }}>
-            SurgeryReady was the first time someone explained the whole process in a way my family understood.
-            I knew what to eat, which meds to hold, and what to expect when I woke up.
-          </p>
-          <div style={{ fontSize: "13px", color: BRAND.muted, fontFamily: FONT }}>— Patient, elective joint replacement</div>
-          <div style={{ display: "flex", gap: "8px", marginTop: "24px" }}>
-            {["Pre-op education", "Metabolic prep", "Recovery check-ins"].map(tag => (
-              <span key={tag} style={{
-                padding: "6px 12px", borderRadius: "20px", background: BRAND.tealLight,
-                fontSize: "12px", fontWeight: 600, color: BRAND.teal, fontFamily: FONT,
-              }}>{tag}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [FOR-HOSPITALS] — Hospital / health-system features
-   Edit each column's bullet points below.
-   ═══════════════════════════════════════════════════════════════ */
-function ForHospitals() {
-  const columns = [
-    {
-      title: "Operational",
-      items: ["Fewer day-of-surgery cancellations", "Improved OR utilization & throughput", "Smoother PAT and pre-op workflows"],
-    },
-    {
-      title: "Clinical quality",
-      items: ["Better control of diabetes, OSA, and HTN pre-op", "Alignment with ERAS and SSI bundles", "Support for PSIs, readmissions, and NSQIP metrics"],
-    },
-    {
-      title: "Financial",
-      items: ["Fewer costly complications and readmissions", "Hybrid onshore/offshore coaching model", "Management services organization (MSO) friendly"],
-    },
-  ];
-
-  return (
-    <SectionWrapper id="for-hospitals" bg={BRAND.white}>
-      <SectionLabel>For hospitals, health systems & surgical centers</SectionLabel>
-      <SectionTitle>A turnkey perioperative optimization service that extends your care team, not your payroll.</SectionTitle>
-
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px", marginTop: "48px" }}>
-        {columns.map(col => (
-          <div key={col.title} style={{
-            padding: "32px", borderRadius: "14px", border: `1px solid ${BRAND.borderLight}`,
-            background: BRAND.bg,
-          }}>
-            <h3 style={{ fontSize: "18px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, margin: "0 0 16px" }}>{col.title}</h3>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {col.items.map(item => (
-                <li key={item} style={{
-                  fontSize: "14px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.6,
-                  padding: "8px 0", borderBottom: `1px solid ${BRAND.borderLight}`,
-                  display: "flex", alignItems: "center", gap: "10px",
-                }}>
-                  <span style={{ color: BRAND.teal, fontSize: "14px" }}>✓</span> {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-
-      <div style={{
-        marginTop: "60px", padding: "40px", borderRadius: "16px",
-        background: `linear-gradient(135deg, ${BRAND.navy} 0%, ${BRAND.tealDark} 100%)`,
-        textAlign: "center",
-      }}>
-        <h3 style={{ fontSize: "22px", fontWeight: 700, color: BRAND.white, fontFamily: FONT_DISPLAY, margin: "0 0 8px" }}>
-          Ready to explore a pilot?
-        </h3>
-        <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", fontFamily: FONT, margin: "0 0 24px" }}>
-          We partner with hospitals, health systems, and large surgical groups to run 3–6 month pilots focused on cancellations, LOS, and readmissions.
-        </p>
-        <Btn href="#contact" style={{ background: BRAND.white, color: BRAND.navy }}>Schedule a strategy call →</Btn>
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [ABOUT] — About section & differentiators
-   Edit the about description and bullet points.
-   ═══════════════════════════════════════════════════════════════ */
-function About() {
-  const diffs = [
-    "Focused on the entire surgical journey — not just a single app or visit.",
-    "Designed to plug into MSO / PLLC structures and existing perioperative pathways.",
-    "Human-centered coaching supported by, not replaced by, AI.",
-  ];
-
-  return (
-    <SectionWrapper id="about" bg={BRAND.cream}>
-      <div style={{ maxWidth: "720px" }}>
-        <SectionLabel>About</SectionLabel>
-        <SectionTitle>Built by perioperative clinicians</SectionTitle>
-        <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.8, marginBottom: "16px" }}>
-          SurgeryReady was created by anesthesiologists, surgeons, intensivists, and health systems leaders
-          who have lived the reality of day-of-surgery cancellations, preventable complications,
-          and fragmented communication.
-        </p>
-        <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.8, marginBottom: "32px" }}>
-          We combine that frontline experience with digital health technology and a global coaching
-          model to deliver something simple: patients who arrive in the OR truly ready for surgery.
-        </p>
-
-        <h3 style={{ fontSize: "18px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, margin: "0 0 16px" }}>
-          What makes SurgeryReady different?
-        </h3>
-        {diffs.map(d => (
-          <div key={d} style={{ display: "flex", gap: "12px", alignItems: "flex-start", marginBottom: "14px" }}>
-            <span style={{ color: BRAND.teal, fontSize: "16px", marginTop: "2px" }}>◆</span>
-            <span style={{ fontSize: "15px", color: BRAND.text, fontFamily: FONT, lineHeight: 1.6 }}>{d}</span>
-          </div>
-        ))}
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [CONTACT] — Contact / CTA Form
-   Edit the form title, description, and field labels.
-   ═══════════════════════════════════════════════════════════════ */
-function Contact() {
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const inputStyle = {
-    width: "100%", padding: "12px 16px", borderRadius: "8px", border: `1px solid ${BRAND.border}`,
-    fontSize: "14px", fontFamily: FONT, outline: "none", boxSizing: "border-box",
-    background: BRAND.white, transition: "border-color 0.2s",
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const formData = new FormData(e.target);
-    try {
-      await fetch("https://formspree.io/f/mnjoqngr", {
-        method: "POST",
-        body: formData,
-        headers: { "Accept": "application/json" },
-      });
-      setSubmitted(true);
-    } catch (err) {
-      alert("Something went wrong. Please try again.");
-    }
-    setSubmitting(false);
-  };
-
-  return (
-    <SectionWrapper id="contact" bg={BRAND.white}>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
-        <div>
-          <SectionLabel>Get started</SectionLabel>
-          <SectionTitle>Let's get your patients SurgeryReady</SectionTitle>
-          <p style={{ fontSize: "15px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.7 }}>
-            Share a few details and we'll follow up with a short discovery call to understand your
-            current perioperative challenges and explore a pilot that fits your organization.
-          </p>
-          <p style={{ fontSize: "13px", color: BRAND.muted, fontFamily: FONT, marginTop: "24px" }}>
-            We'll never spam you or share your information. One of our clinical founders will reach out personally.
-          </p>
-        </div>
-
-        <div style={{ background: BRAND.bg, borderRadius: "16px", padding: "32px", border: `1px solid ${BRAND.borderLight}` }}>
-          {submitted ? (
-            <div style={{ textAlign: "center", padding: "40px 0" }}>
-              <div style={{ fontSize: "36px", marginBottom: "16px" }}>✓</div>
-              <div style={{ fontSize: "18px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT }}>Thank you!</div>
-              <div style={{ fontSize: "14px", color: BRAND.muted, fontFamily: FONT, marginTop: "8px" }}>We'll be in touch shortly.</div>
-            </div>
-          ) : (
-            <div onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              <input name="name" placeholder="Name" required style={inputStyle} />
-              <input name="organization" placeholder="Organization / hospital" style={inputStyle} />
-              <input name="email" placeholder="Email" type="email" required style={inputStyle} />
-              <input name="role" placeholder="Role" style={inputStyle} />
-              <textarea name="challenges" placeholder="What challenges are you trying to solve?" rows={4}
-                style={{ ...inputStyle, resize: "vertical" }} />
-              <Btn onClick={(e) => { const form = e.target.closest('div'); const inputs = form.querySelectorAll('input[required]'); let valid = true; inputs.forEach(i => { if (!i.value) valid = false; }); if (valid) { const fd = new FormData(); form.querySelectorAll('input,textarea').forEach(el => { if (el.name) fd.append(el.name, el.value); }); setSubmitting(true); fetch('https://formspree.io/f/mnjoqngr', { method: 'POST', body: fd, headers: { Accept: 'application/json' } }).then(() => setSubmitted(true)).catch(() => alert('Something went wrong.')).finally(() => setSubmitting(false)); } }} style={{ width: "100%", justifyContent: "center", opacity: submitting ? 0.6 : 1 }}>
-                {submitting ? "Sending..." : "Submit & request a call"}
-              </Btn>
-            </div>
-          )}
-        </div>
-      </div>
-    </SectionWrapper>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   [FOOTER]
-   ═══════════════════════════════════════════════════════════════ */
-function Footer() {
-  return (
-    <footer style={{
-      background: BRAND.navy, padding: "40px 0", textAlign: "center",
-    }}>
-      <div style={{ fontSize: "14px", color: "rgba(255,255,255,0.6)", fontFamily: FONT }}>
-        © {new Date().getFullYear()} SurgeryReady. All rights reserved.
-      </div>
-      <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: FONT, marginTop: "8px" }}>
-        Health before healthcare
-      </div>
-    </footer>
-  );
-}
-
-
-
-/* ═══════════════════════════════════════════════════════════════
-   [ALGORITHM] — Surgical Readiness Algorithm (v4)
-   Includes: DASI questionnaire, VO2max modal, smoking/alcohol/
-   anemia assessment, severity-graded protocols, expandable cards.
-   ═══════════════════════════════════════════════════════════════ */
-
+import { useState, useEffect, useCallback } from "react";
 
 const STEPS = ["demographics", "surgery", "medical", "medications", "fitness", "nutrition"];
 const STEP_LABELS = ["Patient Info", "Surgery Details", "Medical History", "Medications", "Fitness Baseline", "Nutrition"];
@@ -772,237 +16,6 @@ const SR = {
   cardShadow: "0 1px 3px rgba(27,58,92,0.06), 0 1px 2px rgba(27,58,92,0.04)",
   font: "'DM Sans', 'Segoe UI', sans-serif",
 };
-
-// ─── PROGRESS TRACKING DATA LAYER ───
-const PLAN_HASH_KEYS = [
-  "age", "sex", "height", "weight", "weeksUntil", "surgeryType", "surgeryTags",
-  "riskCategory", "cardiac", "respiratory", "endocrine", "other",
-  "anticoag", "diabetesMeds", "painMeds", "cardioMeds",
-  "hemoglobin", "albumin", "dasiScore", "mets", "vo2Max",
-  "exerciseLevel", "smokingStatus", "alcoholUse", "tracksHRV",
-  "glp1GI", "proteinLevel", "userRole",
-];
-
-function planHash(data) {
-  const subset = {};
-  PLAN_HASH_KEYS.forEach(k => { if (data[k] !== undefined) subset[k] = data[k]; });
-  return btoa(JSON.stringify(subset)).slice(0, 40);
-}
-
-function recKey(rec) { return `${rec.domain}::${rec.title}`; }
-
-const VALUE_LOG_CONFIG = {
-  "Exercise": { label: "Minutes of activity", unit: "min", placeholder: "e.g., 30" },
-  "Nutrition": { label: "Grams of protein", unit: "g", placeholder: "e.g., 90" },
-  "Self-Tracking": { label: "HRV reading", unit: "ms", placeholder: "e.g., 45" },
-  "Anemia": { label: "Hemoglobin", unit: "g/dL", placeholder: "e.g., 12.5" },
-  "Stress & Sleep": { label: "Hours of sleep", unit: "hrs", placeholder: "e.g., 7.5" },
-};
-
-function initProgress(plan) {
-  const items = {};
-  (plan.patient || []).forEach(rec => {
-    const key = recKey(rec);
-    const stepStates = {};
-    if (rec.steps) {
-      rec.steps.forEach((_, i) => { stepStates[i] = { done: false, doneAt: null }; });
-    }
-    items[key] = { completed: false, steps: stepStates, loggedValues: [] };
-  });
-  return { items, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-}
-
-function computeProgress(progress, plan) {
-  if (!progress || !plan) return { done: 0, total: 0, pct: 0 };
-  let done = 0, total = 0;
-  (plan.patient || []).forEach(rec => {
-    const key = recKey(rec);
-    const item = progress.items[key];
-    if (rec.steps && rec.steps.length > 0) {
-      rec.steps.forEach((_, i) => {
-        total++;
-        if (item?.steps?.[i]?.done) done++;
-      });
-    } else {
-      total++;
-      if (item?.completed) done++;
-    }
-  });
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  return { done, total, pct };
-}
-
-function getMotivationalMessage(pct) {
-  if (pct === 0) return "Every journey starts with a single step. You have got this.";
-  if (pct <= 25) return "Great start. You are building momentum.";
-  if (pct <= 50) return "You are making real progress. Your body is getting ready.";
-  if (pct <= 75) return "More than halfway there. Your preparation is paying off.";
-  if (pct < 100) return "Almost there. You are going to be so ready for this.";
-  return "You have completed your preparation plan. Well done.";
-}
-
-// ─── SUPABASE PERSISTENCE HELPERS ───
-async function savePlanToSupabase(userId, data, planOutput) {
-  if (!supabase) return null;
-  const hash = planHash(data);
-  // Check for existing plan with same hash
-  const { data: existing } = await supabase
-    .from("plans")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("plan_hash", hash)
-    .maybeSingle();
-  if (existing) return existing.id;
-  const { data: row, error } = await supabase
-    .from("plans")
-    .insert({ user_id: userId, plan_hash: hash, plan_data: data, plan_output: planOutput })
-    .select("id")
-    .single();
-  if (error) { console.error("savePlan:", error); return null; }
-  return row.id;
-}
-
-async function saveProgressToSupabase(planId, progress) {
-  if (!supabase || !planId) return;
-  const entries = Object.entries(progress.items).map(([key, item]) => ({
-    plan_id: planId,
-    item_key: key,
-    completed: item.completed || false,
-    step_states: item.steps || {},
-    logged_values: item.loggedValues || [],
-  }));
-  for (const entry of entries) {
-    await supabase.from("progress").upsert(entry, { onConflict: "plan_id,item_key" });
-  }
-}
-
-async function loadLatestPlan(userId) {
-  if (!supabase) return null;
-  const { data: row, error } = await supabase
-    .from("plans")
-    .select("id, plan_data, plan_output, plan_hash")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !row) return null;
-  // Load progress
-  const { data: progressRows } = await supabase
-    .from("progress")
-    .select("item_key, completed, step_states, logged_values")
-    .eq("plan_id", row.id);
-  const items = {};
-  (progressRows || []).forEach(p => {
-    items[p.item_key] = {
-      completed: p.completed,
-      steps: p.step_states || {},
-      loggedValues: p.logged_values || [],
-      completedAt: p.completed ? new Date().toISOString() : null,
-    };
-  });
-  return {
-    planId: row.id,
-    data: row.plan_data,
-    plan: row.plan_output,
-    hash: row.plan_hash,
-    progress: { items, createdAt: null, updatedAt: null },
-  };
-}
-
-// ─── AUTH MODAL ───
-function AuthModal({ open, onClose, onAuthenticated }) {
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState(null);
-
-  if (!open) return null;
-
-  const handleSend = async () => {
-    if (!email || !email.includes("@")) { setError("Please enter a valid email address."); return; }
-    if (!supabase) { setError("Authentication is not configured yet."); return; }
-    setSending(true);
-    setError(null);
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + "/preop" },
-    });
-    setSending(false);
-    if (authError) { setError(authError.message); return; }
-    setSent(true);
-  };
-
-  return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 10000,
-      background: "rgba(27,58,92,0.5)", backdropFilter: "blur(4px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "16px",
-    }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{
-        background: SR.white, borderRadius: "16px", padding: "36px 32px",
-        maxWidth: "420px", width: "100%", boxShadow: "0 8px 32px rgba(27,58,92,0.15)",
-        fontFamily: SR.font,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
-          <SRLogo size={32} />
-          <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>
-            {sent ? "Check your email" : "Save your progress"}
-          </h2>
-        </div>
-
-        {sent ? (
-          <div>
-            <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, marginBottom: "20px" }}>
-              We sent a login link to <strong style={{ color: SR.navy }}>{email}</strong>. Click the link in your email to sign in and save your plan.
-            </p>
-            <button onClick={onClose} style={{
-              width: "100%", padding: "12px", borderRadius: "10px",
-              background: SR.navy, color: SR.white, border: "none",
-              fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Got it</button>
-          </div>
-        ) : (
-          <div>
-            <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, marginBottom: "20px" }}>
-              Enter your email to save your plan and track progress across visits. No password needed.
-            </p>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSend()}
-              placeholder="you@email.com"
-              style={{
-                width: "100%", padding: "12px 14px", borderRadius: "10px",
-                border: `1.5px solid ${SR.border}`, fontSize: "14px", fontFamily: SR.font,
-                outline: "none", boxSizing: "border-box", marginBottom: "12px",
-              }}
-              onFocus={e => { e.target.style.borderColor = SR.teal; }}
-              onBlur={e => { e.target.style.borderColor = SR.border; }}
-            />
-            {error && (
-              <p style={{ fontSize: "12px", color: SR.danger, margin: "0 0 10px", fontFamily: SR.font }}>{error}</p>
-            )}
-            <button onClick={handleSend} disabled={sending} style={{
-              width: "100%", padding: "12px", borderRadius: "10px",
-              background: SR.teal, color: SR.white, border: "none",
-              fontSize: "14px", fontWeight: 600, cursor: sending ? "not-allowed" : "pointer",
-              fontFamily: SR.font, opacity: sending ? 0.7 : 1,
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={e => { if (!sending) e.target.style.background = SR.tealDark; }}
-            onMouseLeave={e => { e.target.style.background = SR.teal; }}
-            >
-              {sending ? "Sending..." : "Send login link"}
-            </button>
-            <p style={{ fontSize: "11px", color: SR.muted, textAlign: "center", marginTop: "14px", lineHeight: 1.5 }}>
-              We will email you a secure link. No passwords, no spam.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function SRLogo({ size = 36 }) {
   return (
@@ -1077,9 +90,6 @@ function MultiChip({ options, selected, onChange }) {
 function StepDemographics({ data, update }) {
   return (
     <>
-      <Field label="First Name">
-        <Input value={data.firstName || ""} onChange={v => update("firstName", v)} placeholder="e.g. Sam" />
-      </Field>
       <Field label="I am a...">
         <div style={{ display: "flex", gap: "12px" }}>
           {[{ value: "patient", label: "Patient", desc: "Preparing for surgery", icon: (
@@ -1103,7 +113,7 @@ function StepDemographics({ data, update }) {
           })}
         </div>
       </Field>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Age"><Input type="number" value={data.age || ""} onChange={v => update("age", v)} placeholder="Years" min="1" max="120" /></Field>
         <Field label="Sex">
           <Select value={data.sex || ""} onChange={v => update("sex", v)} options={[
@@ -1111,7 +121,7 @@ function StepDemographics({ data, update }) {
           ]} />
         </Field>
       </div>
-      <div className="sr-grid-3-algo" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
         <Field label="Height (inches)"><Input type="number" value={data.height || ""} onChange={v => update("height", v)} placeholder="e.g. 68" /></Field>
         <Field label="Weight (lbs)"><Input type="number" value={data.weight || ""} onChange={v => update("weight", v)} placeholder="e.g. 180" /></Field>
         <Field label="BMI" hint="Auto-calculated">
@@ -1128,7 +138,7 @@ function StepSurgery({ data, update }) {
   return (
     <>
       <Field label="Type of Surgery"><Input value={data.surgeryType || ""} onChange={v => update("surgeryType", v)} placeholder="e.g., Total knee replacement, Colectomy" /></Field>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Surgical Risk Category">
           <Select value={data.riskCategory || ""} onChange={v => update("riskCategory", v)} options={[
             { value: "", label: "Select..." }, { value: "low", label: "Low Risk" }, { value: "elevated", label: "Elevated Risk" }, { value: "high", label: "High Risk (Vascular/Cardiac)" },
@@ -1136,7 +146,7 @@ function StepSurgery({ data, update }) {
         </Field>
         <Field label="Weeks Until Surgery"><Input type="number" value={data.weeksUntil || ""} onChange={v => update("weeksUntil", v)} placeholder="e.g. 6" min="0" /></Field>
       </div>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Expected Duration">
           <Select value={data.duration || ""} onChange={v => update("duration", v)} options={[
             { value: "", label: "Select..." }, { value: "short", label: "< 2 hours" }, { value: "medium", label: "2–6 hours" }, { value: "long", label: "> 6 hours" },
@@ -1182,7 +192,7 @@ function StepMedical({ data, update }) {
       <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: `2px solid ${SR.borderLight}` }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: SR.navy, marginBottom: "16px", fontFamily: SR.font }}>Smoking, Alcohol & Anemia Assessment</div>
 
-        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Smoking Status">
             <Select value={data.smokingStatus || ""} onChange={v => update("smokingStatus", v)} options={[
               { value: "", label: "Select..." }, { value: "never", label: "Never smoker" },
@@ -1198,7 +208,7 @@ function StepMedical({ data, update }) {
           )}
         </div>
 
-        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Alcohol Use">
             <Select value={data.alcoholUse || ""} onChange={v => update("alcoholUse", v)} options={[
               { value: "", label: "Select..." }, { value: "none", label: "None / Rare" },
@@ -1223,7 +233,7 @@ function StepMedical({ data, update }) {
           </Field>
         )}
 
-        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
           <Field label="Hemoglobin (g/dL)" hint="Enables severity-graded anemia protocol">
             <Input type="number" value={data.hemoglobin || ""} onChange={v => update("hemoglobin", v)} placeholder="e.g. 11.5" min="3" max="22" step="0.1" />
           </Field>
@@ -1254,7 +264,7 @@ function StepMedications({ data, update }) {
         </Field>
       ))}
       <Field label="GLP-1 RA Details (if applicable)">
-        <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
           <Select value={data.glp1Phase || ""} onChange={v => update("glp1Phase", v)} options={[
             { value: "", label: "Escalation phase?" }, { value: "yes", label: "Yes — still titrating up" }, { value: "no", label: "No — stable dose" },
           ]} />
@@ -1621,7 +631,7 @@ function GripStrengthModal({ onClose }) {
           {/* Reference ranges */}
           <div style={{ padding: "16px 18px", borderRadius: "14px", border: `1.5px solid ${SR.borderLight}`, background: SR.bg, marginBottom: "14px" }}>
             <div style={{ fontSize: "11px", fontWeight: 700, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "10px", fontFamily: SR.font }}>Reference Ranges (dominant hand, kg)</div>
-            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               {[
                 { label: "Men", ranges: [{ r: "< 26 kg", d: "Low — concern for frailty", c: SR.danger }, { r: "26–38 kg", d: "Average", c: SR.textSecondary }, { r: "> 38 kg", d: "Strong", c: SR.teal }] },
                 { label: "Women", ranges: [{ r: "< 16 kg", d: "Low — concern for frailty", c: SR.danger }, { r: "16–24 kg", d: "Average", c: SR.textSecondary }, { r: "> 24 kg", d: "Strong", c: SR.teal }] },
@@ -1810,7 +820,7 @@ function StepFitness({ data, update }) {
         ]} />
       </Field>
 
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="DASI Score (if available)" hint="Duke Activity Status Index (0–58.2). Score < 34 = < 4 METs">
           <Input type="number" value={data.dasiScore || ""} onChange={v => update("dasiScore", v)} placeholder="0–58.2" min="0" max="58.2" step="0.1" />
           <InfoButton label="Take the DASI survey →" onClick={() => setShowDASI(true)} />
@@ -1828,7 +838,7 @@ function StepFitness({ data, update }) {
         </Field>
       </div>
 
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="VO₂max (if known, mL/kg/min)">
           <Input type="number" value={data.vo2max || ""} onChange={v => update("vo2max", v)} placeholder="e.g., 28" />
           <InfoButton label="How do I find my VO₂max? →" onClick={() => setShowVO2(true)} />
@@ -1872,7 +882,7 @@ function StepNutrition({ data, update }) {
           { value: "moderate", label: "Moderate — some protein each meal" }, { value: "high", label: "High — actively tracking 1.2+ g/kg/day" },
         ]} />
       </Field>
-      <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Albumin (if available, g/dL)"><Input type="number" value={data.albumin || ""} onChange={v => update("albumin", v)} placeholder="e.g. 3.8" step="0.1" /></Field>
         <Field label="Recent Unintentional Weight Loss?">
           <Select value={data.weightLoss || ""} onChange={v => update("weightLoss", v)} options={[
@@ -2733,495 +1743,12 @@ function AlertBanner({ alert }) {
   );
 }
 
-
-/* ═══════════════════════════════════════════════════════════════
-   [TRACKING] — Progress Tracking Components
-   ═══════════════════════════════════════════════════════════════ */
-
-function CheckableItem({ title, desc, timing, done, doneAt, onToggle }) {
-  return (
-    <div onClick={onToggle} style={{
-      display: "flex", alignItems: "flex-start", gap: "12px", padding: "12px 0",
-      borderBottom: `1px solid ${SR.borderLight}`, cursor: "pointer", minHeight: "44px",
-    }}
-    onMouseEnter={e => { e.currentTarget.style.background = SR.tealLight; }}
-    onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
-    >
-      <div style={{
-        width: 22, height: 22, borderRadius: "6px", flexShrink: 0, marginTop: "1px",
-        border: `2px solid ${done ? SR.teal : SR.border}`,
-        background: done ? SR.teal : SR.white,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all 0.2s",
-      }}>
-        {done && (
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        )}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: "14px", fontWeight: 600, color: done ? SR.muted : SR.text,
-          textDecoration: done ? "line-through" : "none", fontFamily: SR.font,
-          lineHeight: 1.4,
-        }}>
-          {title}
-        </div>
-        {desc && (
-          <div style={{ fontSize: "12px", color: SR.textSecondary, marginTop: "3px", lineHeight: 1.5, fontFamily: SR.font }}>
-            {desc}
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "4px", flexWrap: "wrap" }}>
-          {timing && (
-            <span style={{
-              fontSize: "10px", fontWeight: 600, color: SR.teal, background: SR.tealLight,
-              padding: "2px 8px", borderRadius: "4px", fontFamily: SR.font,
-            }}>{timing}</span>
-          )}
-          {done && doneAt && (
-            <span style={{ fontSize: "10px", color: SR.muted, fontFamily: SR.font }}>
-              Completed {new Date(doneAt).toLocaleDateString()}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ValueLogger({ config, values, onLog }) {
-  const [val, setVal] = useState("");
-  const handleLog = () => {
-    const num = parseFloat(val);
-    if (isNaN(num) || num <= 0) return;
-    onLog({ date: new Date().toISOString().split("T")[0], value: num, unit: config.unit });
-    setVal("");
-  };
-  const recent = (values || []).slice(-5).reverse();
-  return (
-    <div style={{ padding: "8px 0 4px 34px" }}>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "11px", color: SR.textSecondary, fontFamily: SR.font, whiteSpace: "nowrap" }}>
-          {config.label}:
-        </span>
-        <input type="number" value={val} onChange={e => setVal(e.target.value)}
-          placeholder={config.placeholder}
-          onKeyDown={e => { if (e.key === "Enter") handleLog(); }}
-          style={{
-            width: "90px", padding: "5px 8px", borderRadius: "6px", fontSize: "13px",
-            border: `1.5px solid ${SR.border}`, fontFamily: SR.font, outline: "none",
-          }}
-          onFocus={e => { e.target.style.borderColor = SR.teal; }}
-          onBlur={e => { e.target.style.borderColor = SR.border; }}
-        />
-        <span style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>{config.unit}</span>
-        <button onClick={handleLog} style={{
-          padding: "5px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600,
-          background: SR.teal, color: SR.white, border: "none", cursor: "pointer",
-          fontFamily: SR.font,
-        }}>Log</button>
-      </div>
-      {recent.length > 0 && (
-        <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
-          {recent.map((entry, i) => (
-            <span key={i} style={{
-              fontSize: "10px", color: SR.textSecondary, background: SR.offWhite,
-              padding: "2px 8px", borderRadius: "4px", fontFamily: SR.font,
-            }}>
-              {entry.date}: {entry.value} {entry.unit}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ProgressSummaryBar({ progress, plan }) {
-  const { done, total, pct } = computeProgress(progress, plan);
-  return (
-    <div style={{
-      background: SR.white, borderRadius: "12px", padding: "24px",
-      border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
-      marginBottom: "24px",
-    }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: "12px", marginBottom: "12px" }}>
-        <span style={{ fontSize: "36px", fontWeight: 700, color: SR.navy, fontFamily: SR.font }}>{pct}%</span>
-        <span style={{ fontSize: "13px", color: SR.textSecondary, fontFamily: SR.font }}>{done} of {total} steps complete</span>
-      </div>
-      <div style={{
-        height: "8px", borderRadius: "4px", background: SR.tealLight,
-        overflow: "hidden", marginBottom: "12px",
-      }}>
-        <div style={{
-          height: "100%", borderRadius: "4px", background: SR.teal,
-          width: `${pct}%`, transition: "width 0.4s ease",
-        }} />
-      </div>
-      <div style={{ fontSize: "13px", color: SR.textSecondary, fontFamily: SR.font, fontStyle: "italic" }}>
-        {getMotivationalMessage(pct)}
-      </div>
-    </div>
-  );
-}
-
-function ProgressDomainCard({ domain, recs, progress, onToggleStep, onToggleRec, onLogValue }) {
-  const DomainIcon = DOMAIN_ICONS[domain] || IconDefault;
-  const domainLabel = DOMAIN_LABELS[domain] || domain;
-  const logConfig = VALUE_LOG_CONFIG[domain];
-
-  let domainDone = 0, domainTotal = 0;
-  recs.forEach(rec => {
-    const key = recKey(rec);
-    const item = progress.items[key];
-    if (rec.steps && rec.steps.length > 0) {
-      rec.steps.forEach((_, i) => { domainTotal++; if (item?.steps?.[i]?.done) domainDone++; });
-    } else {
-      domainTotal++; if (item?.completed) domainDone++;
-    }
-  });
-  const domainPct = domainTotal > 0 ? Math.round((domainDone / domainTotal) * 100) : 0;
-
-  return (
-    <div style={{
-      background: SR.white, borderRadius: "12px", marginBottom: "16px",
-      border: `1px solid ${SR.borderLight}`, overflow: "hidden", boxShadow: SR.cardShadow,
-    }}>
-      {/* Header */}
-      <div style={{
-        background: SR.navy, padding: "14px 18px",
-        display: "flex", alignItems: "center", gap: "12px",
-      }}>
-        <DomainIcon />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: "14px", fontWeight: 700, color: SR.white, fontFamily: SR.font }}>{domainLabel}</div>
-        </div>
-        <span style={{
-          fontSize: "12px", fontWeight: 700, color: SR.teal, background: "rgba(13,124,102,0.2)",
-          padding: "3px 10px", borderRadius: "6px", fontFamily: SR.font,
-        }}>{domainDone}/{domainTotal}</span>
-      </div>
-      {/* Progress bar */}
-      <div style={{ height: "4px", background: SR.tealLight }}>
-        <div style={{ height: "100%", background: SR.teal, width: `${domainPct}%`, transition: "width 0.3s ease" }} />
-      </div>
-      {/* Items */}
-      <div style={{ padding: "6px 18px 14px" }}>
-        {recs.map((rec, ri) => {
-          const key = recKey(rec);
-          const item = progress.items[key];
-          if (rec.steps && rec.steps.length > 0) {
-            return (
-              <div key={ri}>
-                <div style={{
-                  fontSize: "13px", fontWeight: 700, color: SR.navy, padding: "10px 0 4px",
-                  fontFamily: SR.font, borderBottom: `1px solid ${SR.borderLight}`,
-                }}>{rec.title}</div>
-                {rec.steps.map((s, si) => (
-                  <div key={si}>
-                    <CheckableItem
-                      title={s.title}
-                      desc={s.desc}
-                      timing={s.timing}
-                      done={item?.steps?.[si]?.done || false}
-                      doneAt={item?.steps?.[si]?.doneAt}
-                      onToggle={() => onToggleStep(key, si)}
-                    />
-                    {si === 0 && logConfig && (
-                      <ValueLogger
-                        config={logConfig}
-                        values={item?.loggedValues}
-                        onLog={(entry) => onLogValue(key, entry)}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          }
-          return (
-            <div key={ri}>
-              <CheckableItem
-                title={rec.title}
-                desc={rec.detail.length > 100 ? rec.detail.slice(0, 100) + "..." : rec.detail}
-                done={item?.completed || false}
-                doneAt={item?.completedAt}
-                onToggle={() => onToggleRec(key)}
-              />
-              {logConfig && (
-                <ValueLogger
-                  config={logConfig}
-                  values={item?.loggedValues}
-                  onLog={(entry) => onLogValue(key, entry)}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLogValue, onViewPlan, onReset, session, onSignIn, onSignOut }) {
-  const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
-
-  // Group recs by domain
-  const domains = {};
-  (plan.patient || []).forEach(rec => {
-    if (!domains[rec.domain]) domains[rec.domain] = [];
-    domains[rec.domain].push(rec);
-  });
-
-  return (
-    <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <SRLogo size={38} />
-            <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>
-                {data.firstName ? `${data.firstName}'s Progress` : "Your Progress"}
-              </h1>
-              <p style={{ fontSize: "12px", color: SR.muted, margin: "3px 0 0" }}>
-                {data.surgeryType || "Surgery"} • {data.weeksUntil || "?"} weeks out • Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
-              </p>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <button onClick={onViewPlan} style={{
-              padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-              border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
-              fontFamily: SR.font, transition: "all 0.2s",
-            }}>View Plan</button>
-            <button onClick={onReset} style={{
-              padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
-              border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
-              fontFamily: SR.font, transition: "all 0.2s",
-            }}>Start Over</button>
-          </div>
-        </div>
-
-        <ProgressSummaryBar progress={progress} plan={plan} />
-
-        {Object.keys(domains).map(domain => (
-          <ProgressDomainCard
-            key={domain}
-            domain={domain}
-            recs={domains[domain]}
-            progress={progress}
-            onToggleStep={onToggleStep}
-            onToggleRec={onToggleRec}
-            onLogValue={onLogValue}
-          />
-        ))}
-
-        {/* Auth status */}
-        {!session ? (
-          <div style={{
-            background: SR.white, borderRadius: "12px", padding: "16px 20px",
-            border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
-            display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
-            marginTop: "20px",
-          }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke={SR.teal} strokeWidth="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
-            <div style={{ flex: 1, minWidth: "160px" }}>
-              <div style={{ fontSize: "12px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Your progress is session-only</div>
-              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Sign in to save it across visits.</div>
-            </div>
-            <button onClick={onSignIn} style={{
-              padding: "7px 16px", borderRadius: "8px", background: SR.teal, color: SR.white,
-              border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Sign in</button>
-          </div>
-        ) : (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            gap: "8px", marginTop: "20px", fontSize: "12px", color: SR.muted, fontFamily: SR.font,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Progress saved • {session.user.email}
-            <button onClick={onSignOut} style={{
-              background: "none", border: "none", color: SR.muted, fontSize: "11px",
-              cursor: "pointer", fontFamily: SR.font, textDecoration: "underline", padding: 0,
-            }}>Sign out</button>
-          </div>
-        )}
-
-        <div style={{ textAlign: "center", marginTop: "16px", fontSize: "10px", color: SR.muted }}>
-          Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, session, onSignIn, onSignOut }) {
-  const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
-  const stats = progress ? computeProgress(progress, plan) : null;
-  const hasProgress = stats && stats.done > 0;
-
-  const CardOption = ({ icon, title, subtitle, onClick, accent }) => (
-    <div onClick={onClick} style={{
-      background: SR.white, borderRadius: "14px", padding: "32px 28px",
-      border: `2px solid ${SR.borderLight}`, cursor: "pointer",
-      boxShadow: SR.cardShadow, transition: "all 0.25s", textAlign: "center",
-      flex: "1 1 280px", minWidth: "240px",
-    }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = accent || SR.teal; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(27,58,92,0.1)"; }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = SR.borderLight; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = SR.cardShadow; }}
-    >
-      <div style={{
-        width: 56, height: 56, borderRadius: "14px", background: accent || SR.teal,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        margin: "0 auto 18px",
-      }}>{icon}</div>
-      <div style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "8px" }}>{title}</div>
-      <div style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.6, fontFamily: SR.font }}>{subtitle}</div>
-    </div>
-  );
-
-  return (
-    <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "32px" }}>
-          <SRLogo size={38} />
-          <div>
-            <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>
-              {data.firstName ? `${data.firstName}, your plan is ready` : "Your plan is ready"}
-            </h1>
-            <p style={{ fontSize: "12px", color: SR.muted, margin: "3px 0 0" }}>
-              {data.surgeryType || "Surgery"} • {data.weeksUntil || "?"} weeks out • Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Choice cards */}
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", marginBottom: "32px" }}>
-          <CardOption
-            icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><rect x="5" y="2" width="14" height="20" rx="2" stroke="white" strokeWidth="2"/><path d="M9 8h6M9 12h6M9 16h4" stroke="white" strokeWidth="1.8" strokeLinecap="round"/></svg>}
-            title="View My Plan"
-            subtitle="See your full preparation plan with everything you need to do before surgery."
-            onClick={onViewPlan}
-            accent={SR.navy}
-          />
-          <CardOption
-            icon={<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3 8-8" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="10" stroke="white" strokeWidth="2"/></svg>}
-            title={hasProgress ? "Resume Tracking" : "Track My Progress"}
-            subtitle={hasProgress
-              ? `You are ${stats.pct}% complete. Pick up where you left off.`
-              : "Check off each step as you go. Log your numbers. See how far you have come."
-            }
-            onClick={onTrackProgress}
-            accent={SR.teal}
-          />
-        </div>
-
-        {/* Auth prompt */}
-        {!session ? (
-          <div style={{
-            background: SR.white, borderRadius: "12px", padding: "18px 22px",
-            border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
-            display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap",
-            marginBottom: "20px",
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke={SR.teal} strokeWidth="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
-            <div style={{ flex: 1, minWidth: "180px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Sign in to save your progress</div>
-              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Track your plan across visits. No password needed.</div>
-            </div>
-            <button onClick={onSignIn} style={{
-              padding: "8px 18px", borderRadius: "8px", background: SR.teal, color: SR.white,
-              border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Sign in</button>
-          </div>
-        ) : (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            gap: "8px", marginBottom: "20px", fontSize: "12px", color: SR.muted, fontFamily: SR.font,
-          }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Signed in as {session.user.email}
-            <button onClick={onSignOut} style={{
-              background: "none", border: "none", color: SR.muted, fontSize: "11px",
-              cursor: "pointer", fontFamily: SR.font, textDecoration: "underline", padding: 0,
-            }}>Sign out</button>
-          </div>
-        )}
-
-        <div style={{ textAlign: "center", fontSize: "10px", color: SR.muted }}>
-          Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   [PREOP-PAGE] — Pre-Operative Assessment Page
-   ═══════════════════════════════════════════════════════════════ */
-function PreOpPage() {
+// ───────── MAIN APP ─────────
+export default function SurgicalReadinessAlgorithm() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState({});
   const [plan, setPlan] = useState(null);
   const [viewMode, setViewMode] = useState("both");
-  const [mode, setMode] = useState(null); // null = choice screen, "view" = plan, "track" = tracking
-  const [progress, setProgress] = useState(null);
-
-  // Auth + persistence state
-  const [session, setSession] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [planId, setPlanId] = useState(null);
-  const [resumeData, setResumeData] = useState(null); // { data, plan, progress, planId }
-  const [loadingSession, setLoadingSession] = useState(!!supabase);
-  const saveTimerRef = useRef(null);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    if (!supabase) { setLoadingSession(false); return; }
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoadingSession(false);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      // If user just signed in and we have a plan, save it
-      if (s && plan && !planId) {
-        savePlanToSupabase(s.user.id, data, plan).then(id => {
-          if (id) {
-            setPlanId(id);
-            if (progress) saveProgressToSupabase(id, progress);
-          }
-        });
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Load existing plan for authenticated user
-  useEffect(() => {
-    if (!session || plan || resumeData) return;
-    loadLatestPlan(session.user.id).then(result => {
-      if (result) setResumeData(result);
-    });
-  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-save progress to Supabase (debounced)
-  useEffect(() => {
-    if (!session || !planId || !progress) return;
-    clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      saveProgressToSupabase(planId, progress);
-    }, 1500);
-    return () => clearTimeout(saveTimerRef.current);
-  }, [progress, planId, session]);
 
   const update = useCallback((key, value) => {
     setData(prev => ({ ...prev, [key]: value }));
@@ -3230,78 +1757,10 @@ function PreOpPage() {
   const goNext = () => { if (step < STEPS.length - 1) setStep(step + 1); };
   const goBack = () => { if (step > 0) setStep(step - 1); };
   const generate = () => {
-    const newPlan = generatePlan(data);
-    setPlan(newPlan);
-    setProgress(initProgress(newPlan));
-    setMode(null); // show choice screen
-    window.scrollTo(0, 0);
+    setPlan(generatePlan(data));
     setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
-    // Save to Supabase if authenticated
-    if (session) {
-      savePlanToSupabase(session.user.id, data, newPlan).then(id => {
-        if (id) setPlanId(id);
-      });
-    }
   };
-  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setProgress(null); setPlanId(null); setResumeData(null); };
-  const handleResume = () => {
-    if (!resumeData) return;
-    setData(resumeData.data);
-    setPlan(resumeData.plan);
-    setProgress(resumeData.progress.items && Object.keys(resumeData.progress.items).length > 0 ? resumeData.progress : initProgress(resumeData.plan));
-    setPlanId(resumeData.planId);
-    setMode(null); // show choice screen
-    setResumeData(null);
-    setViewMode(resumeData.data.userRole === "patient" ? "patient" : resumeData.data.userRole === "provider" ? "provider" : "both");
-  };
-  const handleSignOut = async () => {
-    if (supabase) await supabase.auth.signOut();
-    setSession(null);
-    setPlanId(null);
-    setResumeData(null);
-  };
-
-  // Progress tracking handlers
-  const handleToggleStep = useCallback((itemKey, stepIndex) => {
-    setProgress(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, items: { ...prev.items }, updatedAt: new Date().toISOString() };
-      const item = { ...(next.items[itemKey] || { completed: false, steps: {}, loggedValues: [] }) };
-      const steps = { ...item.steps };
-      const wasDone = steps[stepIndex]?.done;
-      steps[stepIndex] = { done: !wasDone, doneAt: !wasDone ? new Date().toISOString() : null };
-      item.steps = steps;
-      // Auto-complete if all steps done
-      const allDone = Object.values(steps).every(s => s.done);
-      item.completed = allDone;
-      item.completedAt = allDone ? new Date().toISOString() : null;
-      next.items[itemKey] = item;
-      return next;
-    });
-  }, []);
-
-  const handleToggleRec = useCallback((itemKey) => {
-    setProgress(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, items: { ...prev.items }, updatedAt: new Date().toISOString() };
-      const item = { ...(next.items[itemKey] || { completed: false, steps: {}, loggedValues: [] }) };
-      item.completed = !item.completed;
-      item.completedAt = item.completed ? new Date().toISOString() : null;
-      next.items[itemKey] = item;
-      return next;
-    });
-  }, []);
-
-  const handleLogValue = useCallback((itemKey, entry) => {
-    setProgress(prev => {
-      if (!prev) return prev;
-      const next = { ...prev, items: { ...prev.items }, updatedAt: new Date().toISOString() };
-      const item = { ...(next.items[itemKey] || { completed: false, steps: {}, loggedValues: [] }) };
-      item.loggedValues = [...(item.loggedValues || []), entry];
-      next.items[itemKey] = item;
-      return next;
-    });
-  }, []);
+  const reset = () => { setStep(0); setData({}); setPlan(null); };
 
   const stepComponents = [
     <StepDemographics data={data} update={update} />,
@@ -3312,121 +1771,28 @@ function PreOpPage() {
     <StepNutrition data={data} update={update} />,
   ];
 
-  // ── WELCOME BACK / RESUME ──
-  if (!plan && resumeData && !loadingSession) {
-    return (
-      <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <div style={{ maxWidth: "560px", margin: "0 auto" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "28px" }}>
-            <SRLogo size={38} />
-            <div>
-              <h1 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: 0 }}>Welcome back{resumeData.data.firstName ? `, ${resumeData.data.firstName}` : ""}</h1>
-              <p style={{ fontSize: "13px", color: SR.muted, margin: "4px 0 0" }}>
-                {session?.user?.email}
-              </p>
-            </div>
-          </div>
-          <div style={{
-            background: SR.white, borderRadius: "14px", padding: "28px 24px",
-            border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, marginBottom: "16px",
-          }}>
-            <div style={{ fontSize: "15px", fontWeight: 600, color: SR.navy, marginBottom: "6px" }}>
-              You have a saved plan
-            </div>
-            <p style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.6, margin: "0 0 8px" }}>
-              {resumeData.data.surgeryType || "Surgery"} preparation plan
-              {(() => { const s = computeProgress(resumeData.progress, resumeData.plan); return s.total > 0 ? ` - ${s.pct}% complete (${s.done} of ${s.total} steps)` : ""; })()}
-            </p>
-            <button onClick={handleResume} style={{
-              width: "100%", padding: "13px", borderRadius: "10px",
-              background: SR.teal, color: SR.white, border: "none",
-              fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-              marginTop: "8px",
-            }}>Resume my plan</button>
-          </div>
-          <button onClick={() => { setResumeData(null); }} style={{
-            width: "100%", padding: "13px", borderRadius: "10px",
-            background: SR.white, color: SR.textSecondary, border: `1.5px solid ${SR.border}`,
-            fontSize: "14px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font,
-          }}>Start a new assessment</button>
-          <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <button onClick={handleSignOut} style={{
-              background: "none", border: "none", color: SR.muted, fontSize: "12px",
-              cursor: "pointer", fontFamily: SR.font, textDecoration: "underline",
-            }}>Sign out</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── PLAN CHOICE SCREEN ──
-  if (plan && mode === null) {
-    const isPatient = data.userRole === "patient" || !data.userRole;
-    if (isPatient && plan.patient.length > 0) {
-      return (
-        <>
-          <PlanChoiceScreen
-            plan={plan} data={data} progress={progress}
-            onViewPlan={() => setMode("view")}
-            onTrackProgress={() => setMode("track")}
-            session={session}
-            onSignIn={() => setShowAuth(true)}
-            onSignOut={handleSignOut}
-          />
-          <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
-        </>
-      );
-    }
-    // Provider-only or no patient recs — go straight to plan view
-    setMode("view");
-  }
-
-  // ── PROGRESS TRACKING ──
-  if (plan && mode === "track") {
-    return (
-      <>
-        <ProgressTracker
-          plan={plan} data={data} progress={progress}
-          onToggleStep={handleToggleStep}
-          onToggleRec={handleToggleRec}
-          onLogValue={handleLogValue}
-          onViewPlan={() => setMode("view")}
-          onReset={reset}
-          session={session}
-          onSignIn={() => setShowAuth(true)}
-          onSignOut={handleSignOut}
-        />
-        <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
-      </>
-    );
-  }
-
-  if (plan && mode === "view") {
+  if (plan) {
     const riskBg = { low: SR.tealLight, elevated: SR.warningBg, high: SR.dangerBg };
     const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
     const showPatient = viewMode === "both" || viewMode === "patient";
     const showProvider = viewMode === "both" || viewMode === "provider";
 
     return (
-      <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
+      <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", padding: "24px 16px" }}>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           {/* SR Plan Header */}
-          <div className="sr-plan-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
               <SRLogo size={38} />
               <div>
-                <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>
-                  {data.firstName ? `${data.firstName}'s Readiness Plan` : "Your Readiness Plan"}
-                </h1>
+                <h1 style={{ fontSize: "20px", fontWeight: 700, color: SR.navy, margin: 0 }}>Your Readiness Plan</h1>
                 <p style={{ fontSize: "12px", color: SR.muted, margin: "3px 0 0" }}>
                   {data.surgeryType || "Surgery"} • {data.weeksUntil || "?"} weeks out • Risk: <span style={{ fontWeight: 700, color: riskColor[plan.riskLevel] }}>{plan.riskLevel.toUpperCase()}</span>
                 </p>
               </div>
             </div>
-            <div className="sr-plan-buttons" style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
               {["both", "patient", "provider"].map(m => (
                 <button key={m} onClick={() => setViewMode(m)} style={{
                   padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
@@ -3438,25 +1804,6 @@ function PreOpPage() {
                   {m === "both" ? "Both Tracks" : m === "patient" ? "Patient View" : "Provider View"}
                 </button>
               ))}
-              <button onClick={() => {
-                const el = document.getElementById("readiness-plan-printable");
-                const title = (data.firstName ? data.firstName + "s" : "Your") + " Surgical Readiness Plan - SurgeryReady";
-                const w = window.open("", "_blank");
-                w.document.write("<html><head><title>" + title + "</title><link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' rel='stylesheet'><style>body{font-family:'DM Sans',sans-serif;color:#1A2B3C;padding:40px;max-width:1000px;margin:0 auto}@media print{body{padding:20px}button,.no-print{display:none!important}}</style></head><body>" + el.innerHTML + "</body></html>");
-                w.document.close();
-                setTimeout(() => { w.print(); }, 600);
-              }} style={{
-                padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
-                fontFamily: SR.font, transition: "all 0.2s",
-              }}>Download PDF</button>
-              {(data.userRole === "patient" || !data.userRole) && plan.patient.length > 0 && (
-                <button onClick={() => setMode("track")} style={{
-                  padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                  border: `1.5px solid ${SR.teal}`, background: SR.teal, color: SR.white,
-                  fontFamily: SR.font, transition: "all 0.2s",
-                }}>Track Progress</button>
-              )}
               <button onClick={reset} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
                 border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
@@ -3464,20 +1811,6 @@ function PreOpPage() {
               }}>Start Over</button>
             </div>
           </div>
-
-          {/* Personalized greeting */}
-          {data.firstName && (
-            <div style={{ marginBottom: "20px", padding: "18px 22px", background: SR.white, borderRadius: "12px", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow }}>
-              <div style={{ fontSize: "16px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>
-                Hello {data.firstName}, here is your personalized surgical readiness plan.
-              </div>
-              <div style={{ fontSize: "13px", color: SR.textSecondary, marginTop: "4px", fontFamily: SR.font }}>
-                Based on your profile, we've generated tailored recommendations for both you and your care team.
-              </div>
-            </div>
-          )}
-
-          <div id="readiness-plan-printable">
 
           {plan.alerts.length > 0 && (
             <div style={{ marginBottom: "20px" }}>
@@ -3497,7 +1830,7 @@ function PreOpPage() {
             </span>
           </div>
 
-          <div className="sr-plan-grid" style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
             {showPatient && (
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", paddingBottom: "12px", borderBottom: `3px solid ${SR.teal}` }}>
@@ -3545,10 +1878,9 @@ function PreOpPage() {
               <strong style={{ color: SR.textSecondary }}>Disclaimer:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
             </div>
           </div>
-          </div>{/* end readiness-plan-printable */}
 
           <div style={{ textAlign: "center", marginTop: "20px", fontSize: "10px", color: SR.muted }}>
-            Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare
+            Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
           </div>
         </div>
       </div>
@@ -3556,7 +1888,7 @@ function PreOpPage() {
   }
 
   return (
-    <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
+    <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", padding: "24px 16px" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <div style={{ maxWidth: "720px", margin: "0 auto" }}>
         {/* SR Header */}
@@ -3634,47 +1966,6 @@ function PreOpPage() {
           Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
         </div>
       </div>
-    </div>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════
-   [APP] — Main Application with Page Routing
-   
-   Pages: "home" and "preop"
-   To add a new page:
-   1. Create a component (like PreOpPage above)
-   2. Add it to the pages object below
-   3. Add a nav link in the Nav component's `links` array
-   ═══════════════════════════════════════════════════════════════ */
-export default function App() {
-  const [page, setPage] = useState("home");
-
-  /* ── ADD NEW PAGES HERE ── */
-  const pages = {
-    home: (
-      <>
-        <Hero onNavigate={setPage} />
-        <ValueProps />
-        <Journey />
-        <HowItWorks />
-        <ForPatients />
-        <ForHospitals />
-        <About />
-        <Contact />
-      </>
-    ),
-    preop: <PreOpPage />,
-  };
-
-  return (
-    <div style={{ fontFamily: FONT, color: BRAND.text, minHeight: "100vh" }}>
-      <ResponsiveStyles />
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
-      <Nav currentPage={page} onNavigate={setPage} />
-      {pages[page]}
-      <Footer />
     </div>
   );
 }
