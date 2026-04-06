@@ -1078,6 +1078,9 @@ function MultiChip({ options, selected, onChange }) {
 }
 
 function StepDemographics({ data, update }) {
+  const providerAck = !!data.providerAck;
+  const isProvider = data.userRole === "provider";
+
   return (
     <>
       <Field label="First Name">
@@ -1106,6 +1109,53 @@ function StepDemographics({ data, update }) {
           })}
         </div>
       </Field>
+
+      {/* Provider-specific clinical disclaimer */}
+      {isProvider && !providerAck && (
+        <div style={{
+          background: SR.lightBlue, borderRadius: "12px", padding: "18px 20px",
+          border: `1px solid ${SR.navy}22`, marginTop: "4px",
+        }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: SR.navy, marginBottom: "8px", fontFamily: SR.font }}>
+            Clinical Decision Support Notice
+          </div>
+          <p style={{ fontSize: "12px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 0 14px", fontFamily: SR.font }}>
+            SurgeryReady is a <strong>clinical decision support tool</strong> intended to assist — not replace — your professional clinical judgment. By proceeding, you acknowledge that:
+          </p>
+          <ul style={{ fontSize: "12px", color: SR.textSecondary, lineHeight: 1.8, margin: "0 0 14px", paddingLeft: "18px", fontFamily: SR.font }}>
+            <li>You retain <strong>full clinical and legal responsibility</strong> for all decisions, orders, and patient outcomes.</li>
+            <li>Use of this tool does not establish or imply a <strong>standard of care</strong>.</li>
+            <li>Recommendations are based on population-level evidence and may not apply to individual patients.</li>
+            <li>SurgeryReady does not practice medicine and assumes <strong>no liability</strong> for clinical outcomes resulting from use of this tool.</li>
+            <li>This tool does not create a physician-patient relationship between SurgeryReady and any patient.</li>
+          </ul>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={providerAck}
+              onChange={e => {
+                update("providerAck", e.target.checked || undefined);
+                if (e.target.checked) sessionStorage.setItem("sr_provider_ack", "1");
+                else sessionStorage.removeItem("sr_provider_ack");
+              }}
+              style={{ marginTop: "2px", accentColor: SR.navy, width: "15px", height: "15px", flexShrink: 0, cursor: "pointer" }}
+            />
+            <span style={{ fontSize: "12px", color: SR.text, lineHeight: 1.6, fontFamily: SR.font }}>
+              I understand that SurgeryReady is a clinical decision support tool. I retain full responsibility for all clinical decisions and patient care.
+            </span>
+          </label>
+        </div>
+      )}
+      {isProvider && providerAck && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          fontSize: "11px", color: SR.teal, fontFamily: SR.font, marginTop: "4px",
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Clinical decision support notice acknowledged
+        </div>
+      )}
+
       <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <Field label="Age"><Input type="number" value={data.age || ""} onChange={v => update("age", v)} placeholder="Years" min="1" max="120" /></Field>
         <Field label="Sex">
@@ -3172,7 +3222,9 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, s
    ═══════════════════════════════════════════════════════════════ */
 function PreOpPage() {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState({});
+  const [data, setData] = useState(() => ({
+    providerAck: sessionStorage.getItem("sr_provider_ack") === "1" || undefined,
+  }));
   const [plan, setPlan] = useState(null);
   const [viewMode, setViewMode] = useState("both");
   const [mode, setMode] = useState(null); // null = choice screen, "view" = plan, "track" = tracking
@@ -3554,7 +3606,7 @@ function PreOpPage() {
               <strong style={{ color: SR.textSecondary }}>Important:</strong> This plan is for informational purposes only and does not constitute medical advice. Always consult your physician, surgeon, and anesthesiologist before making changes to your medications, diet, exercise routine, or other health behaviors. Individual circumstances vary — your care team has information about your health that this tool does not.
             </div>
             <div style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.7, borderTop: `1px solid ${SR.borderLight}`, paddingTop: "10px" }}>
-              <strong style={{ color: SR.textSecondary }}>Clinical note:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
+              <strong style={{ color: SR.textSecondary }}>Clinical note:</strong> This tool generates recommendations based on population-level evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support tool and does not replace physician judgment or establish a standard of care. The treating physician, surgeon, and anesthesiologist retain full clinical and legal responsibility for all decisions and patient outcomes. All recommendations must be reviewed, verified, and individualized by the responsible clinician. SurgeryReady assumes no liability for clinical outcomes resulting from use of this tool.
             </div>
           </div>
           </div>{/* end readiness-plan-printable */}
@@ -3667,12 +3719,19 @@ function PreOpPage() {
             fontFamily: SR.font, transition: "all 0.2s",
           }}>Back</button>
           {step < STEPS.length - 1 ? (
-            <button onClick={goNext} style={{
-              padding: "11px 32px", borderRadius: "10px", border: "none",
-              background: SR.teal, color: SR.white, cursor: "pointer",
-              fontSize: "14px", fontWeight: 600, fontFamily: SR.font,
-              boxShadow: "0 2px 8px rgba(13,124,102,0.25)", transition: "all 0.2s",
-            }}>Continue</button>
+            <button
+              onClick={goNext}
+              disabled={step === 0 && data.userRole === "provider" && !data.providerAck}
+              style={{
+                padding: "11px 32px", borderRadius: "10px", border: "none",
+                background: (step === 0 && data.userRole === "provider" && !data.providerAck) ? SR.borderLight : SR.teal,
+                color: (step === 0 && data.userRole === "provider" && !data.providerAck) ? SR.muted : SR.white,
+                cursor: (step === 0 && data.userRole === "provider" && !data.providerAck) ? "not-allowed" : "pointer",
+                fontSize: "14px", fontWeight: 600, fontFamily: SR.font,
+                boxShadow: (step === 0 && data.userRole === "provider" && !data.providerAck) ? "none" : "0 2px 8px rgba(13,124,102,0.25)",
+                transition: "all 0.2s",
+              }}
+            >Continue</button>
           ) : (
             <button onClick={generate} style={{
               padding: "11px 32px", borderRadius: "10px", border: "none",
