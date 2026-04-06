@@ -743,6 +743,9 @@ function Footer() {
       <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: FONT, marginTop: "8px" }}>
         Health before healthcare
       </div>
+      <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", fontFamily: FONT, marginTop: "10px", maxWidth: "560px", margin: "10px auto 0", lineHeight: 1.5 }}>
+        SurgeryReady provides general health information only. It is not a substitute for professional medical advice, diagnosis, or treatment.
+      </div>
     </footer>
   );
 }
@@ -3175,6 +3178,12 @@ function PreOpPage() {
   const [mode, setMode] = useState(null); // null = choice screen, "view" = plan, "track" = tracking
   const [progress, setProgress] = useState(null);
 
+  // Disclaimer acknowledgment (once per session)
+  const [disclaimerAck, setDisclaimerAck] = useState(
+    () => sessionStorage.getItem("sr_disclaimer_ack") === "1"
+  );
+  const [disclaimerChecked, setDisclaimerChecked] = useState(false);
+
   // Auth + persistence state
   const [session, setSession] = useState(null);
   const [showAuth, setShowAuth] = useState(false);
@@ -3541,8 +3550,11 @@ function PreOpPage() {
           </div>
 
           <div style={{ marginTop: "32px", padding: "18px 20px", background: SR.white, borderRadius: "12px", border: `1px solid ${SR.borderLight}` }}>
-            <div style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.7 }}>
-              <strong style={{ color: SR.textSecondary }}>Disclaimer:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
+            <div style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.7, marginBottom: "10px" }}>
+              <strong style={{ color: SR.textSecondary }}>Important:</strong> This plan is for informational purposes only and does not constitute medical advice. Always consult your physician, surgeon, and anesthesiologist before making changes to your medications, diet, exercise routine, or other health behaviors. Individual circumstances vary — your care team has information about your health that this tool does not.
+            </div>
+            <div style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.7, borderTop: `1px solid ${SR.borderLight}`, paddingTop: "10px" }}>
+              <strong style={{ color: SR.textSecondary }}>Clinical note:</strong> This tool generates recommendations based on current evidence and guidelines (2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support prototype and does not replace physician judgment. All recommendations should be reviewed and individualized by the treating physician and anesthesiologist.
             </div>
           </div>
           </div>{/* end readiness-plan-printable */}
@@ -3568,7 +3580,49 @@ function PreOpPage() {
           </div>
         </div>
 
-        {/* Numbered Progress Steps */}
+        {/* Disclaimer acknowledgment banner */}
+        {!disclaimerAck && (
+          <div style={{
+            background: SR.white, borderRadius: "12px", padding: "22px 24px",
+            border: `1px solid ${SR.border}`, boxShadow: SR.cardShadow, marginBottom: "24px",
+          }}>
+            <div style={{ fontSize: "15px", fontWeight: 700, color: SR.navy, marginBottom: "10px", fontFamily: SR.font }}>
+              Before you begin
+            </div>
+            <p style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 0 18px", fontFamily: SR.font }}>
+              SurgeryReady is a health information tool. The content it provides is for general informational purposes only and does not constitute medical advice, diagnosis, or treatment. Always consult your physician, surgeon, and anesthesiologist before making any changes to your health behaviors, medications, or preparation routine.
+            </p>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: "12px", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={disclaimerChecked}
+                onChange={e => setDisclaimerChecked(e.target.checked)}
+                style={{ marginTop: "2px", accentColor: SR.teal, width: "16px", height: "16px", flexShrink: 0, cursor: "pointer" }}
+              />
+              <span style={{ fontSize: "13px", color: SR.text, lineHeight: 1.6, fontFamily: SR.font }}>
+                I understand that SurgeryReady provides general health information only and is not a substitute for professional medical advice. I will consult my physician and care team before making any changes.
+              </span>
+            </label>
+            <button
+              disabled={!disclaimerChecked}
+              onClick={() => { sessionStorage.setItem("sr_disclaimer_ack", "1"); setDisclaimerAck(true); }}
+              style={{
+                marginTop: "18px", width: "100%", padding: "12px",
+                borderRadius: "10px", border: "none", fontFamily: SR.font,
+                fontSize: "14px", fontWeight: 600,
+                background: disclaimerChecked ? SR.teal : SR.borderLight,
+                color: disclaimerChecked ? SR.white : SR.muted,
+                cursor: disclaimerChecked ? "pointer" : "not-allowed",
+                transition: "background 0.2s, color 0.2s",
+              }}
+            >
+              Continue to assessment
+            </button>
+          </div>
+        )}
+
+        {/* Numbered Progress Steps + Card + Navigation (only after disclaimer ack) */}
+        {disclaimerAck && <>
         <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
           {STEPS.map((s, i) => {
             const done = i < step;
@@ -3633,6 +3687,7 @@ function PreOpPage() {
         <div style={{ textAlign: "center", marginTop: "24px", fontSize: "10px", color: SR.muted }}>
           Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
         </div>
+        </>}
       </div>
     </div>
   );
