@@ -2013,6 +2013,16 @@ function generatePlan(d) {
           { title: "Add HIIT 2×/week (if tolerated)", desc: "After 2 weeks of base building: alternate 1 min brisk walking with 1 min easy pace, repeated 10–15 times. HIIT has the strongest evidence for improving surgical fitness rapidly. Stop if dizzy or chest pain.", icon: "hiit", timing: "Week 3 onward · 2 sessions/week" },
         ],
         target: { label: "500+ total minutes before surgery", desc: "Track every session — the minutes add up and the evidence is clear: more prehab = faster recovery." },
+        learnMore: {
+          why: "Exercise triggers hormesis — a controlled biological stress that forces your body to adapt, rebuild, and grow more resilient. Prehabilitation increases cardiorespiratory reserve (VO2max), builds muscle mass, activates heat shock proteins that protect tissues under surgical stress, and stimulates mitochondrial biogenesis. Each session creates measurable adaptations that directly improve your tolerance of the surgical insult.",
+          evidence: "A 2023 JAMA Network Open systematic review of prehabilitation across orthopedic surgical populations found significant improvements in preoperative function, muscle strength, and quality of life, with postoperative benefits extending to 6 weeks (knee replacement) and 6 months (lumbar surgery). Critically, prehabilitation doses exceeding 500 total minutes significantly reduced the need for postoperative rehabilitation — lower doses did not reach this threshold. HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity continuous training. A separate meta-analysis of 10 RCTs confirmed protective benefits against all-cause complications in upper abdominal surgery.",
+          citations: [
+            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
+            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
+            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
+            { text: "Calabrese EJ. Preconditioning is hormesis. Pharmacol Res. 2016;110:218–225.", url: "https://www.sciencedirect.com/science/article/abs/pii/S1043661815301924" },
+          ],
+        },
       });
       else if (level === "light") patient.push({
         domain: "Exercise", priority: "high", title: "Increase Exercise Intensity",
@@ -2023,6 +2033,15 @@ function generatePlan(d) {
           { title: "Introduce interval training 2×/week", desc: "Alternate brisk walking (2 min) with moderate pace (1 min) for 20–30 minute sessions. This boosts VO2max more efficiently than steady-state walking alone.", icon: "hiit", timing: "2 sessions/week" },
         ],
         target: { label: "500+ total prehabilitation minutes", desc: "You're already moving — now let's make those sessions count more." },
+        learnMore: {
+          why: "Exercise is the single most evidence-backed intervention in surgical preparation. Your cardiorespiratory fitness (VO2max) is one of the strongest predictors of postoperative outcomes — and it is modifiable even in weeks. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Resistance training builds the muscle reserves that buffer the inevitable catabolism of surgical recovery.",
+          evidence: "A 2023 JAMA Network Open systematic review confirmed prehabilitation improved function, strength, and quality of life across orthopedic surgical populations. Prehabilitation exceeding 500 total minutes significantly reduced postoperative rehabilitation needs — lower doses did not reach this threshold. A meta-analysis of abdominal cancer surgery patients showed prehabilitation improved walking distance by 33 meters and reduced hospital length of stay by 3.68 days.",
+          citations: [
+            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
+            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
+            { text: "Assessing cardiorespiratory fitness in clinical settings. Prog Cardiovasc Dis. 2024.", url: "https://www.sciencedirect.com/science/article/abs/pii/S0033062024000306" },
+          ],
+        },
       });
       else if (level === "moderate") patient.push({
         domain: "Exercise", priority: "medium", title: "Optimize Training for Surgery",
@@ -2034,6 +2053,15 @@ function generatePlan(d) {
           { title: "Weekly grip strength tracking", desc: "Track grip strength weekly with a dynamometer or by squeezing a firm object for maximum effort 3 times each hand. Rising grip strength = improving readiness. A sudden drop may signal overtraining.", icon: "track", timing: "Every Monday" },
         ],
         target: { label: "Arrive at peak readiness", desc: "Taper volume by 30% in the final week — like an athlete preparing for competition." },
+        learnMore: {
+          why: "At a moderate fitness level, your foundation is solid — the opportunity is to sharpen it. HIIT (high-intensity interval training) creates a greater cardiovascular stimulus per unit time than steady-state exercise, driving VO2max improvements more efficiently. Grip strength is a validated biomarker of overall physiological reserve, consistently predicting postoperative complications, hospital length of stay, and discharge disposition. Tapering before surgery — like an athlete before competition — ensures you arrive rested and primed, not fatigued.",
+          evidence: "Evidence consistently shows HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity continuous training. Grip strength is associated with postoperative complications across surgical specialties and has been validated as a frailty surrogate. The AHA advocates cardiorespiratory fitness as a clinical vital sign: each 1.0 mL/kg/min increase in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events.",
+          citations: [
+            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
+            { text: "Grip strength: an indispensable biomarker for older adults. PMC. 2019.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
+            { text: "Assessing cardiorespiratory fitness in clinical settings. Prog Cardiovasc Dis. 2024.", url: "https://www.sciencedirect.com/science/article/abs/pii/S0033062024000306" },
+          ],
+        },
       });
       else patient.push({
         domain: "Exercise", priority: "low", title: "Maintain Fitness, Taper Before Surgery",
@@ -2044,6 +2072,14 @@ function generatePlan(d) {
           { title: "Prioritize rest in final 3 days", desc: "Light walking and mobility work only. Protect your sleep — aim for 8+ hours. Your body uses sleep to repair and stockpile energy. Arrive at surgery rested.", icon: "sleep", timing: "Final 3 days" },
         ],
         target: { label: "Arrive rested and at peak readiness", desc: "Your fitness is your advantage — protect it with smart tapering." },
+        learnMore: {
+          why: "High fitness is one of the strongest predictors of surgical outcome — your cardiovascular reserve is a direct buffer against the physiological insult of surgery. The risk at this level is over-preparation: pushing too hard in the final weeks can arrive at surgery with accumulated fatigue, muscle damage markers, or overtraining syndrome. Strategic tapering preserves your peak capacity while ensuring full recovery before the day of surgery.",
+          evidence: "Athletic periodization principles translate directly to surgical preparation. Marathon runners and competitive athletes reduce training volume by 20–30% in the final 1–2 weeks before a race, arriving with elevated glycogen stores, reduced inflammation, and peak neuromuscular readiness. The same principle applies to surgery. Prehabilitation literature consistently identifies that more total prehab minutes improve outcomes — but quality of fitness on the day of surgery matters most.",
+          citations: [
+            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
+            { text: "Gardner E. 10 Ways to Recover From a Marathon. Yale Medicine.", url: "https://www.yalemedicine.org/news/10-ways-recover-from-marathon" },
+          ],
+        },
       });
     } else {
       patient.push({
@@ -2055,10 +2091,27 @@ function generatePlan(d) {
           { title: "Track every session", desc: "Log every walk and every resistance session. Total as many minutes as you can. Research shows even 2–4 weeks of consistent prehab significantly reduces recovery time and complication rates.", icon: "track", timing: "Log daily" },
         ],
         target: { label: "Maximize every minute before surgery", desc: `You have ${weeks} weeks — make each one count. Every session has measurable benefit.` },
+        learnMore: {
+          why: "Even short windows of structured exercise create meaningful physiological adaptation. The body responds to aerobic stress within days by improving mitochondrial efficiency, increasing capillary density in muscle, and reducing resting inflammatory markers. Resistance training preserves lean mass and builds the functional reserves that buffer the catabolic insult of surgery. Every session — even with limited time — contributes measurable biological benefit.",
+          evidence: "Prehabilitation research consistently demonstrates that even 2–4 week programs significantly improve preoperative function and reduce postoperative recovery time. A meta-analysis of abdominal cancer surgery found prehabilitation improved 6-minute walk distance by 33 meters and reduced hospital length of stay by 3.68 days — with benefit even from shorter programs. The total prehab dose (minutes) is the strongest predictor of outcome benefit.",
+          citations: [
+            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
+            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
+          ],
+        },
       });
     }
   } else {
-    patient.push({ domain: "Exercise", priority: "high", title: "Exercise — Physician Clearance Required", detail: "Active cardiac conditions detected (recent MI or uncontrolled HTN). Do NOT begin exercise program without explicit physician clearance. Gentle ambulation may be acceptable — discuss with your care team." });
+    patient.push({ domain: "Exercise", priority: "high", title: "Exercise — Physician Clearance Required", detail: "Active cardiac conditions detected (recent MI or uncontrolled HTN). Do NOT begin exercise program without explicit physician clearance. Gentle ambulation may be acceptable — discuss with your care team.",
+      learnMore: {
+        why: "Exercise is one of the most powerful preparation tools — but in the setting of recent MI or uncontrolled hypertension, unguided exercise increases the risk of a cardiac event before surgery. Your physician needs to evaluate your current cardiac stability and determine a safe starting point. Even gentle, supervised activity during this window can preserve function and reduce deconditioning.",
+        evidence: "The 2024 AHA/ACC perioperative guidelines identify active cardiac conditions (unstable angina, recent MI, severe valvular disease, decompensated heart failure) as major risk factors requiring evaluation and stabilization before elective surgery. Exercise testing and supervised cardiac rehabilitation can be initiated safely once your care team has cleared you.",
+        citations: [
+          { text: "2024 AHA/ACC Perioperative Cardiovascular Management Guidelines. Circulation. 2024.", url: "" },
+          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+        ],
+      },
+    });
   }
 
   // ── PATIENT TRACK: NUTRITION ──
@@ -2072,20 +2125,70 @@ function generatePlan(d) {
       { title: "Supplement if food alone isn't enough", desc: `If hitting ${proteinTarget}g from food is difficult, add a whey or plant-based protein shake. Take post-exercise or between meals. This is one of the most evidence-backed interventions for surgical preparation.`, icon: "protein", timing: "Post-exercise or between meals" },
     ],
     target: { label: `${proteinTarget}g protein every day`, desc: `~${Math.round(parseFloat(proteinTarget) / 4)}g per meal · start immediately and maintain through the morning before surgery` },
+    learnMore: {
+      why: "Surgery triggers accelerated protein catabolism — without adequate protein reserves before surgery, your body breaks down muscle to fuel the stress response, the inflammatory cascade, and wound repair. Preloading protein means your body has the raw material to maintain immune function, support tissue healing, and preserve the muscle you will need during recovery. Protein synthesis occurs in 25–40g per-meal doses; spreading intake across 3–4 meals is more effective than front- or back-loading.",
+      evidence: "ESPEN (European Society for Clinical Nutrition and Metabolism) guidelines establish 1.2–2.0 g/kg/day as the perioperative protein target. Higher preoperative protein intake is associated with reduced complications and better functional recovery, particularly in older adults undergoing major surgery. Between 30–50% of surgical patients have some degree of nutritional risk, frequently unrecognized — sarcopenia can exist even in apparently well-nourished patients and is a powerful independent predictor of postoperative complications.",
+      citations: [
+        { text: "Weimann A, et al. ESPEN guideline: Clinical nutrition in surgery. Clin Nutr. 2017;36(3):623–650.", url: "" },
+        { text: "Cruz-Jentoft AJ, et al. Sarcopenia: revised European consensus on definition and diagnosis. Age Ageing. 2019;48(1):16–31.", url: "" },
+        { text: "Deutz NE, et al. Protein intake and exercise for optimal muscle function with aging. Clin Nutr. 2014;33(6):929–936.", url: "" },
+        { text: "Correia & Waitzberg. Impact of malnutrition on morbidity, mortality, LOS, and costs. Curr Opin Clin Nutr Metab Care. 2003;6(5):519–523.", url: "" },
+      ],
+    },
   });
 
   if (surgeryTags.includes("Cancer resection") || other.includes("Active cancer/chemo")) {
-    patient.push({ domain: "Nutrition", priority: "high", title: "Immunonutrition Recommended", detail: "Cancer surgery patients benefit from preoperative immunonutrition (arginine, omega-3, nucleotides) for minimum 5–7 days before surgery. Evidence: 54% reduction in infectious complications (OR 0.46). Discuss with your surgical team about starting Impact Advanced Recovery or equivalent formula." });
+    patient.push({ domain: "Nutrition", priority: "high", title: "Immunonutrition Recommended", detail: "Cancer surgery patients benefit from preoperative immunonutrition (arginine, omega-3, nucleotides) for minimum 5–7 days before surgery. Evidence: 54% reduction in infectious complications (OR 0.46). Discuss with your surgical team about starting Impact Advanced Recovery or equivalent formula.",
+      learnMore: {
+        why: "Immunonutrition formulas enriched with arginine, omega-3 fatty acids, and nucleotides actively modulate the immune response to surgical stress. Arginine supports T-cell function and collagen synthesis for wound healing. Omega-3 fatty acids shift the inflammatory cascade toward resolution rather than excess. Nucleotides support the rapid proliferation of immune cells needed to defend against perioperative infection.",
+        evidence: "A 2019 systematic review and meta-analysis of 16 RCTs (1,387 GI cancer patients) found that preoperative immunonutrition for a minimum of 3 days significantly reduced infectious complications (OR 0.46, 95% CI 0.30–0.69) — roughly half the infection rate compared to standard nutrition. A 2024 retrospective cohort study (SUPREMO, 620 patients) confirmed reduced infectious complications (OR 0.54), lower ICU admission rates, and reduced need for mechanical ventilation with complete preoperative immunonutrition.",
+        citations: [
+          { text: "Wong CS, et al. Impact of preoperative immune modulating nutrition on outcomes in GI cancer surgery. Ann Surg. 2019;270(2):229–236.", url: "" },
+          { text: "SUPREMO retrospective cohort: complete preoperative immunonutrition. 2024.", url: "https://www.sciencedirect.com/science/article/pii/S2405457724015559" },
+          { text: "Probst P, et al. Meta-analysis of immunonutrition in major abdominal surgery. Br J Surg. 2017;104:1594–1608.", url: "" },
+        ],
+      },
+    });
   }
 
-  patient.push({ domain: "Nutrition", priority: "medium", title: "Preoperative Carbohydrate Loading", detail: "Day before surgery: 800 mL carbohydrate-rich clear drink in the evening. Morning of surgery: 400 mL carbohydrate drink 2–3 hours before (confirm with anesthesia team). This reduces insulin resistance, anxiety, and hunger. Do NOT fast from midnight — modern evidence supports carb loading per ERAS protocols." });
+  patient.push({ domain: "Nutrition", priority: "medium", title: "Preoperative Carbohydrate Loading", detail: "Day before surgery: 800 mL carbohydrate-rich clear drink in the evening. Morning of surgery: 400 mL carbohydrate drink 2–3 hours before (confirm with anesthesia team). This reduces insulin resistance, anxiety, and hunger. Do NOT fast from midnight — modern evidence supports carb loading per ERAS protocols.",
+    learnMore: {
+      why: "Overnight fasting from midnight depletes glycogen stores and worsens insulin resistance — putting your body in a catabolic state before surgery even begins. Carbohydrate loading reverses this by stimulating endogenous insulin release, switching the body from catabolism toward an anabolic-ready state. It also reduces preoperative anxiety, thirst, and hunger — making the morning of surgery substantially more comfortable.",
+      evidence: "A systematic review of 17 RCTs (1,445 patients) found that preoperative carbohydrate drinks significantly improved insulin resistance and patient comfort — including hunger, thirst, malaise, anxiety, and nausea — with no aspiration events reported. A 2022 Bayesian network meta-analysis of 23 RCTs identified low-dose carbohydrate loading given 3 hours before surgery as most strongly associated with reduced insulin resistance (WMD: −4.04, 95% CrI: −5.67 to −2.40). A 2024 RCT in colorectal surgery confirmed reduced insulin resistance, lower inflammatory markers, and shorter hospital stays.",
+      citations: [
+        { text: "Bilku DK, et al. Role of preoperative carbohydrate loading: systematic review. Ann R Coll Surg Engl. 2014;96(1):15–22.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5137663/" },
+        { text: "Tong X, et al. Effects of preoperative carbohydrate loading: Bayesian network meta-analysis. Front Nutr. 2022;9:951676.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9726728/" },
+        { text: "Kumar SM, et al. Effect of preoperative oral carbohydrate loading on postoperative insulin resistance. J Gastrointest Surg. 2024;28(10):1654–1660.", url: "" },
+      ],
+    },
+  });
 
   // ── PATIENT TRACK: FASTING / METABOLIC ──
   const isDiabetic = endocrine.some(e => e.includes("Diabetes") || e.includes("HbA1c"));
   if (!isDiabetic && weeks >= 3) {
-    patient.push({ domain: "Metabolic Prep", priority: "medium", title: "Consider Strategic Intermittent Fasting", detail: "If not already practicing: consider 14:10 or 16:8 time-restricted eating starting 3+ weeks before surgery. This activates AMPK/SIRT1/autophagy pathways that precondition cells against surgical stress. STOP fasting 3 days before surgery and switch to carbohydrate loading. NOTE: This is a directional recommendation based on strong preclinical evidence; human surgical RCTs are still emerging." });
+    patient.push({ domain: "Metabolic Prep", priority: "medium", title: "Consider Strategic Intermittent Fasting", detail: "If not already practicing: consider 14:10 or 16:8 time-restricted eating starting 3+ weeks before surgery. This activates AMPK/SIRT1/autophagy pathways that precondition cells against surgical stress. STOP fasting 3 days before surgery and switch to carbohydrate loading. NOTE: This is a directional recommendation based on strong preclinical evidence; human surgical RCTs are still emerging.",
+      learnMore: {
+        why: "When you fast, the AMP/ATP ratio in cells rises, activating AMPK (AMP-activated protein kinase). AMPK triggers autophagy — your body's cellular housekeeping system, which degrades damaged organelles and misfolded proteins. Each cell enters surgery in a 'cleaner,' more stress-resistant state. Simultaneously, SIRT1 (a cellular longevity enzyme) is activated, stimulating mitochondrial biogenesis. The resulting ketone beta-hydroxybutyrate directly inhibits the NLRP3 inflammasome, reducing the inflammatory cytokine surge that accompanies surgical injury.",
+        evidence: "Mitchell et al. (2010) demonstrated that 2–4 weeks of 30% dietary restriction or brief water-only fasting protected kidneys and liver against ischemia-reperfusion injury, with protection emerging within 1 day and extending across organs. Rickenbacher et al. (2014) showed 1-day fasting protected the liver through SIRT1-mediated downregulation of HMGB1 — a potent inflammatory cytokine — via autophagy. Godar et al. (2015) found intermittent fasting over 6 weeks markedly reduced myocardial infarct size through repetitive autophagy stimulation. A key distinction: strategic intermittent fasting activates protective pathways; prolonged starvation worsens catabolism — the two are biologically different.",
+        citations: [
+          { text: "Mitchell JR, et al. Short-term dietary restriction and fasting precondition against ischemia reperfusion injury in mice. Aging Cell. 2010;9(1):40–53.", url: "https://pubmed.ncbi.nlm.nih.gov/19878145/" },
+          { text: "Rickenbacher A, et al. Fasting protects liver from ischemic injury through Sirt1-mediated downregulation of HMGB1. J Hepatol. 2014;61(2):301–308.", url: "" },
+          { text: "Godar RJ, et al. Repetitive stimulation of autophagy-lysosome machinery by intermittent fasting preconditions the myocardium. Autophagy. 2015;11(9):1537–1560.", url: "" },
+          { text: "Robertson LT, Mitchell JR. Is overnight fasting before surgery too much or not enough? GeroScience. 2017;39(5-6):543–556.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5722208/" },
+        ],
+      },
+    });
   } else if (isDiabetic) {
-    patient.push({ domain: "Metabolic Prep", priority: "low", title: "Fasting Protocol — Not Recommended", detail: "Given diabetes/metabolic conditions, strategic fasting is NOT recommended without close endocrine supervision. Focus instead on blood glucose optimization and carbohydrate loading per ERAS protocol." });
+    patient.push({ domain: "Metabolic Prep", priority: "low", title: "Fasting Protocol — Not Recommended", detail: "Given diabetes/metabolic conditions, strategic fasting is NOT recommended without close endocrine supervision. Focus instead on blood glucose optimization and carbohydrate loading per ERAS protocol.",
+      learnMore: {
+        why: "In diabetes, fasting without close monitoring can precipitate hypoglycemia or, in patients on certain medications, euglycemic diabetic ketoacidosis (DKA). The metabolic benefits of fasting — AMPK activation, autophagy, ketogenesis — are achievable through other means: exercise, glycemic optimization, and carbohydrate loading per ERAS protocol provide meaningful metabolic preparation without the risks of unmonitored fasting.",
+        evidence: "ERAS protocols specifically recommend against prolonged fasting in favor of carbohydrate loading, which improves insulin sensitivity and reduces the stress response in diabetic surgical patients. Perioperative glucose targets of 140–180 mg/dL (intraoperative) are supported by the Society of Thoracic Surgeons and ERAS guidelines. SGLT2 inhibitors must be held 3–4 days before surgery due to euglycemic DKA risk — fasting would compound this risk.",
+        citations: [
+          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+          { text: "Robertson LT, Mitchell JR. Is overnight fasting before surgery too much or not enough? GeroScience. 2017;39(5-6):543–556.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5722208/" },
+        ],
+      },
+    });
   }
 
   // ── PATIENT TRACK: THERMAL ──
@@ -2093,12 +2196,42 @@ function generatePlan(d) {
   if (!thermalContraindicated && weeks >= 4) {
     const currentThermal = d.thermalHabits || [];
     if (currentThermal.includes("None") || currentThermal.length === 0) {
-      patient.push({ domain: "Thermal", priority: "low", title: "Consider Gradual Thermal Conditioning", detail: "If accessible and cleared by physician: begin with short sauna sessions (10 min at moderate temperature) or cool (not ice cold) water exposure. Build gradually over weeks. Heat exposure upregulates HSPs and Nrf2 pathways; cold trains autonomic flexibility. This is an emerging area — no surgical outcome RCTs exist yet." });
+      patient.push({ domain: "Thermal", priority: "low", title: "Consider Gradual Thermal Conditioning", detail: "If accessible and cleared by physician: begin with short sauna sessions (10 min at moderate temperature) or cool (not ice cold) water exposure. Build gradually over weeks. Aim for 4+ sauna sessions per week >19 minutes for maximum benefit. Heat exposure upregulates HSPs and Nrf2 pathways; cold trains autonomic flexibility. This is an emerging area — no surgical outcome RCTs exist yet.",
+        learnMore: {
+          why: "Heat exposure dramatically increases expression of heat shock proteins (HSP70, HSP90) — molecular chaperones that stabilize proteins under stress, protect against ischemia-reperfusion injury, and slow muscle atrophy. Cold water immersion (≤15°C) triggers a surge in norepinephrine (up to 530% above baseline) and trains the autonomic nervous system to rapidly toggle between sympathetic and parasympathetic activation — precisely the flexibility that determines how well you tolerate surgical stress and anesthesia induction. Contrast therapy (alternating heat and cold) maximally exercises the vasomotor system.",
+          evidence: "The KIHD cohort study of 2,315 Finnish men followed for 20.7 years found sauna use 4–7 times per week was associated with 40% reduced all-cause mortality, 50% reduced fatal cardiovascular disease, and 63% reduced sudden cardiac death — with dose-response for both frequency (4–7x/week vs. once/week) and session duration (>19 min provided substantially greater protection than <11 min). A 2025 systematic review and meta-analysis of 11 RCTs (3,177 participants) confirmed cold water immersion produces significant acute inflammatory signaling followed by significant stress reduction at 12 hours (SMD: −1.00), improved quality of life, and 29% reduced sickness absence. Important caveat: no RCT has directly tested thermal conditioning as a preoperative intervention.",
+          citations: [
+            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
+            { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
+            { text: "Effects of cold-water immersion on health and wellbeing: systematic review and meta-analysis. PLOS ONE. 2025;20(1):e0317615.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11778651/" },
+            { text: "Cold-water immersion: neurohormesis and implications for clinical neurosciences. J Neuropsych Clin Neurosci. 2024.", url: "https://psychiatryonline.org/doi/full/10.1176/appi.neuropsych.20240053" },
+          ],
+        },
+      });
     } else {
-      patient.push({ domain: "Thermal", priority: "low", title: "Continue Thermal Conditioning", detail: "Continue your current sauna/cold exposure practice through preparation. Reduce intensity in the final 3 days before surgery. Evidence supports HSP upregulation (heat) and autonomic flexibility training (cold) as relevant to surgical stress tolerance." });
+      patient.push({ domain: "Thermal", priority: "low", title: "Continue Thermal Conditioning", detail: "Continue your current sauna/cold exposure practice through preparation. Aim for sauna 4+ times per week at >19 minutes per session for maximum benefit. Reduce intensity in the final 3 days before surgery. Evidence supports HSP upregulation (heat) and autonomic flexibility training (cold) as relevant to surgical stress tolerance.",
+        learnMore: {
+          why: "Your existing thermal practice is already building the biological foundation for surgical resilience. Heat shock proteins (HSPs) generated through sauna act as molecular chaperones — stabilizing proteins under the extreme stress of surgery, protecting against ischemia-reperfusion injury, and slowing muscle atrophy. Cold exposure trains your autonomic nervous system's ability to rapidly toggle between activation states, building the flexibility that anesthesia and surgical stress demand. Reducing intensity in the final 3 days prevents cumulative fatigue from affecting your arrival state.",
+          evidence: "The KIHD cohort study found a clear dose-response: 4–7 sauna sessions per week of >19 minutes each provided substantially greater protection than shorter or less frequent sessions (40% reduction in all-cause mortality). Heat exposure additionally produces cardiovascular conditioning that mimics moderate exercise — raising heart rate to 100–150 bpm, increasing cardiac output, and expanding plasma volume. Trained individuals show lower inflammatory responses to subsequent heat exposure, meaning your body is mounting more efficient stress responses.",
+          citations: [
+            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
+            { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
+            { text: "Lee E, et al. Effects of regular sauna bathing with exercise on cardiovascular function: RCT. Am J Physiol. 2022.", url: "https://journals.physiology.org/doi/full/10.1152/ajpregu.00076.2022" },
+          ],
+        },
+      });
     }
   } else if (thermalContraindicated) {
-    patient.push({ domain: "Thermal", priority: "medium", title: "Thermal Conditioning — Contraindicated", detail: "Active cardiac conditions detected. Sauna and cold exposure are NOT recommended given risk of hemodynamic instability. Focus preparation on gentle exercise, nutrition, and stress reduction." });
+    patient.push({ domain: "Thermal", priority: "medium", title: "Thermal Conditioning — Contraindicated", detail: "Active cardiac conditions detected. Sauna and cold exposure are NOT recommended given risk of hemodynamic instability. Focus preparation on gentle exercise, nutrition, and stress reduction.",
+      learnMore: {
+        why: "Heat and cold exposure produce significant acute cardiovascular demands — sauna raises heart rate to 100–150 bpm and dramatically alters peripheral vascular resistance. Cold immersion triggers sudden sympathetic activation with sharp rises in blood pressure and heart rate. In the setting of active cardiac disease, these acute hemodynamic changes can precipitate ischemia, arrhythmia, or other serious events. The preparation benefit does not outweigh the risk.",
+        evidence: "Contraindications to sauna and thermal stress exposure include unstable angina, recent MI, decompensated heart failure, severe aortic stenosis, and uncontrolled hypertension. The 2024 AHA/ACC perioperative guidelines identify these as conditions requiring stabilization before elective procedures. Other preparation modalities — structured gentle exercise, protein nutrition, carbohydrate loading, and sleep optimization — provide substantial benefit without cardiovascular risk.",
+        citations: [
+          { text: "2024 AHA/ACC Perioperative Cardiovascular Management Guidelines. Circulation. 2024.", url: "" },
+          { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan (contraindications). Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
+        ],
+      },
+    });
   }
 
   // ── PATIENT TRACK: STRESS / SLEEP ──
@@ -2111,6 +2244,15 @@ function generatePlan(d) {
       { title: "Screen-free wind-down 1 hour before bed", desc: "Blue light suppresses melatonin for 2–3 hours. Dim your environment and stop screens 60 minutes before your target sleep time. Replace with reading, stretching, or breathwork.", icon: "sleep", timing: "Every night" },
     ],
     target: { label: "7–9 hours per night", desc: "Quality sleep is biological preparation — it works in parallel with every other intervention in this plan" },
+    learnMore: {
+      why: "Preoperative psychological stress is not just emotional — it directly alters immune function before a single incision is made. Anxious patients show measurably altered white blood cell counts and pro-inflammatory cytokine profiles before surgery begins. This matters because the surgical insult is already arriving into a compromised immune environment. Separately, sleep is the mechanism through which your body integrates every other preparation intervention: protein synthesis, muscle adaptation from exercise, and hormonal recovery all occur primarily during sleep.",
+      evidence: "A 2025 Scientific Reports study demonstrated that preoperative psychological preparation significantly improved immunity and surgical outcomes — confirming that the stress response begins before the OR. Preoperative HRV — the biomarker most directly improved by breathing practice and sleep — is validated in a systematic review of 63 studies as predicting intraoperative hypotension, postoperative pneumonia, and arrhythmia. The surgical stress response mirrors marathon running physiology: the same IL-6, CRP, troponin elevation, and immune suppression ('open window') patterns appear — and in both cases, the prepared, rested body tolerates the insult significantly better.",
+      citations: [
+        { text: "Impact of stress and preoperative psychological preparation on immunity and surgical outcomes. Sci Rep. 2025;15:26253.", url: "https://www.nature.com/articles/s41598-025-01869-4" },
+        { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review (63 studies). J Clin Monit Comput. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
+        { text: "Cristescu T, et al. The Surgical Stress Response and Anesthesia: Narrative Review. J Clin Med. 2024;13(10):3017.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11121777/" },
+      ],
+    },
   });
 
   // ── PATIENT TRACK: SELF-TRACKING ──
@@ -2128,30 +2270,112 @@ function generatePlan(d) {
         hrvDetail = `Your current HRV of ${hrv} ms reflects strong autonomic flexibility. Maintain your current fitness routine and track weekly. Your goal during prehabilitation is to preserve this level or improve it further. Watch for a sustained drop in the week before surgery, which may indicate overtraining or acute stress.`;
       }
     }
-    patient.push({ domain: "Self-Tracking", priority: "medium", title: "Track HRV Trend", detail: hrvDetail });
+    patient.push({ domain: "Self-Tracking", priority: "medium", title: "Track HRV Trend", detail: hrvDetail,
+      learnMore: {
+        why: "HRV (heart rate variability) measures the variation in milliseconds between consecutive heartbeats and reflects how well your autonomic nervous system adapts to demands. Higher HRV means your nervous system can shift efficiently between sympathetic (stress response) and parasympathetic (recovery) activation — exactly the adaptability that determines how well you tolerate anesthesia induction, hemodynamic shifts during surgery, and the recovery period.",
+        evidence: "A 2022 systematic review of 63 studies established preoperative HRV as clinically relevant for predicting perioperative outcomes. Lower RMSSD and HF power independently predicted postoperative pneumonia in lung cancer surgery patients. DFA α1 predicted postoperative atrial fibrillation. Lower total power predicted intraoperative hypotension under general anesthesia. HRV remains depressed for up to 28 days after cardiac surgery (CABG) — making preoperative autonomic reserve a critical buffer. HRV is modifiable through aerobic exercise, sleep optimization, and breathing practice.",
+        citations: [
+          { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review. J Clin Monit Comput. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
+          { text: "Preoperative HRV predicts postoperative pneumonia in lung cancer surgery. PMC. 2025.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11883988/" },
+          { text: "Perioperative HRV in major urologic surgery. Sci Rep. 2024.", url: "https://www.nature.com/articles/s41598-024-62930-2" },
+        ],
+      },
+    });
   }
-  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength (if dynamometer available), walking endurance (timed walk), energy level (1–10), sleep quality (1–10), protein intake adherence. These create accountability and show measurable progress." });
+  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength (if dynamometer available), walking endurance (timed walk), energy level (1–10), sleep quality (1–10), protein intake adherence. These create accountability and show measurable progress.",
+    learnMore: {
+      why: "Grip strength is one of the most validated biomarkers in surgical medicine — consistently associated with postoperative complications, hospital length of stay, discharge disposition, and overall mortality. Cardiorespiratory fitness (estimated from walking endurance) is among the strongest single predictors of surgical outcomes. Tracking these weekly gives you objective evidence that your preparation is working — and early warning if something isn't.",
+      evidence: "The AHA advocates cardiorespiratory fitness as a clinical vital sign. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Grip strength is validated across surgical specialties as predicting complications and LOS. A 2024 study confirmed VO2max negatively correlates with frailty scores (r = −0.40, p = 0.03). Wearable device data integrated into frailty indices improved predictive accuracy to 81%.",
+      citations: [
+        { text: "VO2max, 6-minute walk, and muscle strength correlate with frailty in US veterans. Front Physiol. 2024.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11427282/" },
+        { text: "Grip strength: an indispensable biomarker for older adults. PMC. 2019.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
+        { text: "Wearable-derived frailty prediction model. PMC. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9798526/" },
+      ],
+    },
+  });
 
   // ── PATIENT TRACK: SMOKING CESSATION ──
   if (d.smokingStatus === "current") {
     if (weeks >= 8) {
-      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking Now — Ideal Window", detail: "You have the ideal time window for cessation. Quitting now significantly reduces pulmonary complications. Ciliary recovery begins in 2–4 weeks, immune and wound healing improvement in 6–8 weeks. Carbon monoxide clears in just 24–48 hours. Ask your physician about nicotine replacement therapy (NRT) or prescription support (varenicline). This is the single most impactful change you can make for your surgical outcome." });
+      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking Now — Ideal Window", detail: "You have the ideal time window for cessation. Quitting now significantly reduces pulmonary complications. Ciliary recovery begins in 2–4 weeks, immune and wound healing improvement in 6–8 weeks. Carbon monoxide clears in just 24–48 hours. Ask your physician about nicotine replacement therapy (NRT) or prescription support (varenicline). This is the single most impactful change you can make for your surgical outcome.",
+        learnMore: {
+          why: "Smoking impairs oxygen delivery at every level of the respiratory chain. Carboxyhemoglobin — formed when carbon monoxide binds hemoglobin — renders up to 5–15% of your blood's oxygen-carrying capacity non-functional. Nicotine causes sustained vasoconstriction, reducing perfusion to healing wound edges. Smoking suppresses the immune surveillance needed to fight perioperative infection and delays every phase of wound healing.",
+          evidence: "The good news: many effects begin reversing within hours. Carbon monoxide clears within 24–48 hours of stopping — directly improving tissue oxygenation. Airway reactivity begins improving within 1–2 weeks. Ciliary function recovers in 2–4 weeks. Immune and wound healing improvement requires 6–8 weeks — making your current window ideal. The perioperative period is one of the highest-motivation moments for permanent cessation: studies consistently show higher long-term quit rates when cessation is tied to surgery.",
+          citations: [
+            { text: "ERAS protocols: smoking cessation as high-quality evidence element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          ],
+        },
+      });
     } else if (weeks >= 4) {
-      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking — Meaningful Benefit Still Achievable", detail: `With ${weeks} weeks until surgery, 4 weeks of cessation still significantly reduces complications vs. continued smoking. Carbon monoxide clears immediately (24–48h), airway reactivity improves in 1–2 weeks. Ask about nicotine replacement therapy. If you cannot quit entirely, even reduction helps — but complete cessation is strongly preferred.` });
+      patient.push({ domain: "Smoking", priority: "high", title: "Quit Smoking — Meaningful Benefit Still Achievable", detail: `With ${weeks} weeks until surgery, 4 weeks of cessation still significantly reduces complications vs. continued smoking. Carbon monoxide clears immediately (24–48h), airway reactivity improves in 1–2 weeks. Ask about nicotine replacement therapy. If you cannot quit entirely, even reduction helps — but complete cessation is strongly preferred.`,
+        learnMore: {
+          why: "Every day of cessation creates measurable biological improvement. Within 24–48 hours, carbon monoxide clears and functional hemoglobin increases — your blood can carry more oxygen immediately. Within 1–2 weeks, airway reactivity begins normalizing and cilia in the airways resume their mucociliary clearance function, reducing pulmonary complication risk. Each additional smoke-free week compounds the benefit.",
+          evidence: "Even 4 weeks of preoperative cessation significantly reduces wound infection, pulmonary complications, and impaired healing compared to continued smoking. Carbon monoxide normalization within 24–48 hours has direct, measurable effects on tissue oxygenation during surgery and anesthetic drug metabolism. Nicotine replacement therapy (NRT) maintains compliance without the CO and combustion toxin burden.",
+          citations: [
+            { text: "ERAS protocols: smoking cessation as high-quality evidence element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          ],
+        },
+      });
     } else {
-      patient.push({ domain: "Smoking", priority: "high", title: "Stop Smoking — Even 24–48 Hours Helps", detail: "Even stopping 24–48 hours before surgery is beneficial: carboxyhemoglobin normalizes (from 5–15% down to normal), directly improving tissue oxygenation during surgery. Do NOT smoke the day of surgery. Discuss nicotine replacement therapy with your anesthesiologist. Every smoke-free hour before surgery improves your oxygen delivery." });
+      patient.push({ domain: "Smoking", priority: "high", title: "Stop Smoking — Even 24–48 Hours Helps", detail: "Even stopping 24–48 hours before surgery is beneficial: carboxyhemoglobin normalizes (from 5–15% down to normal), directly improving tissue oxygenation during surgery. Do NOT smoke the day of surgery. Discuss nicotine replacement therapy with your anesthesiologist. Every smoke-free hour before surgery improves your oxygen delivery.",
+        learnMore: {
+          why: "Carbon monoxide — the key toxic gas in cigarette smoke — binds hemoglobin with 240 times the affinity of oxygen. In heavy smokers, 5–15% of circulating hemoglobin is bound to CO and rendered non-functional for oxygen delivery. Stopping smoking allows CO to clear and oxyhemoglobin to return to normal within 24–48 hours, directly improving the oxygenation of every tissue — including surgical wound edges — during your operation.",
+          evidence: "The immediate, measurable benefit of even brief cessation before surgery is well-established. Carboxyhemoglobin normalization within 24–48 hours provides direct benefit to tissue oxygenation and anesthetic drug metabolism. Nicotine replacement therapy can maintain abstinence without the CO and combustion toxin burden. The ERAS evidence base identifies smoking cessation as one of the highest-quality, most strongly recommended preoperative interventions.",
+          citations: [
+            { text: "ERAS protocols: smoking cessation — strong recommendation with high-quality evidence. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          ],
+        },
+      });
     }
   } else if (d.smokingStatus === "former_lt8") {
-    patient.push({ domain: "Smoking", priority: "medium", title: "Stay Smoke-Free — You're in the Recovery Window", detail: "Great job quitting! You're still in the early recovery window. Continue any NRT you're using. Your airways are healing — ciliary function is recovering and airway reactivity is decreasing. Staying smoke-free through surgery gives you the best possible outcome." });
+    patient.push({ domain: "Smoking", priority: "medium", title: "Stay Smoke-Free — You're in the Recovery Window", detail: "Great job quitting! You're still in the early recovery window. Continue any NRT you're using. Your airways are healing — ciliary function is recovering and airway reactivity is decreasing. Staying smoke-free through surgery gives you the best possible outcome.",
+      learnMore: {
+        why: "You have already completed the hardest step. In the first 8 weeks after cessation, your airway is actively remodeling: cilia that were paralyzed by cigarette toxins are resuming mucociliary clearance, airway inflammation is decreasing, and bronchial reactivity is normalizing. Each additional week smoke-free builds more biological resilience before surgery.",
+        evidence: "Ciliary function and mucociliary clearance begin recovering within 2–4 weeks of cessation. Airway hyperreactivity decreases progressively over the first 8 weeks. Immune function and wound healing mechanisms continue to improve with extended cessation. Note: in the first 8 weeks after cessation, airway reactivity may remain slightly elevated compared to never-smokers — standard airway management precautions apply and should be communicated to your anesthesiologist.",
+        citations: [
+          { text: "ERAS protocols: smoking cessation evidence base. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+        ],
+      },
+    });
   }
 
   // ── PATIENT TRACK: ALCOHOL ──
   if (d.alcoholUse === "heavy") {
-    patient.push({ domain: "Alcohol", priority: "high", title: "Alcohol Cessation — Critical for Safety", detail: "Heavy alcohol use significantly increases surgical risk: 2–5x higher infection rates, impaired blood clotting, liver function changes, and risk of withdrawal after surgery. Stop drinking at least 4 weeks before surgery. IMPORTANT: If you have a history of withdrawal symptoms (shaking, seizures, DTs), do NOT stop abruptly — you need physician-supervised tapering. Contact your doctor immediately to plan safe cessation." });
+    patient.push({ domain: "Alcohol", priority: "high", title: "Alcohol Cessation — Critical for Safety", detail: "Heavy alcohol use significantly increases surgical risk: 2–5x higher infection rates, impaired blood clotting, liver function changes, and risk of withdrawal after surgery. Stop drinking at least 4 weeks before surgery. IMPORTANT: If you have a history of withdrawal symptoms (shaking, seizures, DTs), do NOT stop abruptly — you need physician-supervised tapering. Contact your doctor immediately to plan safe cessation.",
+      learnMore: {
+        why: "Heavy alcohol use disrupts virtually every system involved in surgical recovery. It suppresses immune function (2–5x higher infection rates), impairs platelet function and coagulation (increasing bleeding risk), stresses the liver (affecting how anesthetic drugs are metabolized), and depletes key nutrients: thiamine, folate, and magnesium — all critical for recovery. If alcohol is suddenly unavailable after surgery (while in the hospital or ICU), withdrawal can emerge 6–24 hours after the last drink — becoming life-threatening at the most vulnerable moment.",
+        evidence: "Heavy alcohol use is associated with 2–5x higher perioperative infection rates, significantly increased wound complications, immune suppression, hepatic dysfunction altering drug metabolism, and coagulopathy increasing bleeding risk. At least 4 weeks of cessation is needed to meaningfully reduce these risks. The surgical stress mirrors marathon physiology — the same cytokine and immune pathways — and alcohol compromises the body's ability to mount an appropriate response to either.",
+        citations: [
+          { text: "Systemic response to surgery. Anaesthesia & Intensive Care Medicine. 2023;24(1).", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
+          { text: "ERAS protocols: alcohol cessation element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+        ],
+      },
+    });
   } else if (d.alcoholUse === "moderate") {
-    patient.push({ domain: "Alcohol", priority: "medium", title: "Reduce and Stop Alcohol Before Surgery", detail: "Moderate alcohol use affects immune function, wound healing, and liver metabolism of anesthetic drugs. Begin reducing intake now and stop completely at least 48 hours before surgery (ideally 2+ weeks). If you find it difficult to cut back, discuss this honestly with your physician — they can help." });
+    patient.push({ domain: "Alcohol", priority: "medium", title: "Reduce and Stop Alcohol Before Surgery", detail: "Moderate alcohol use affects immune function, wound healing, and liver metabolism of anesthetic drugs. Begin reducing intake now and stop completely at least 48 hours before surgery (ideally 2+ weeks). If you find it difficult to cut back, discuss this honestly with your physician — they can help.",
+      learnMore: {
+        why: "Even moderate alcohol use alters the hepatic cytochrome P450 enzymes responsible for metabolizing many anesthetic agents and medications, potentially causing unpredictable drug responses during and after surgery. Alcohol affects platelet function (reducing the ability to form clots) and modestly impairs immune surveillance in the wound healing window. Stopping 2+ weeks before surgery allows these effects to normalize.",
+        evidence: "Alcohol interacts with hepatic enzyme systems that metabolize propofol, fentanyl, benzodiazepines, and other perioperative drugs — potentially requiring anesthesiologists to adjust dosing. Even moderate use is documented in anesthesia notes as affecting drug metabolism. Stopping at least 48 hours before surgery allows platelet function to normalize and reduces acute effects.",
+        citations: [
+          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+        ],
+      },
+    });
   } else if (d.alcoholUse === "light") {
-    patient.push({ domain: "Alcohol", priority: "low", title: "Stop Alcohol ≥48 Hours Before Surgery", detail: "Stop all alcohol at least 48 hours before surgery. Even light alcohol use interacts with anesthetic medications and affects platelet function. This is a straightforward step that helps ensure the safest possible anesthetic." });
+    patient.push({ domain: "Alcohol", priority: "low", title: "Stop Alcohol ≥48 Hours Before Surgery", detail: "Stop all alcohol at least 48 hours before surgery. Even light alcohol use interacts with anesthetic medications and affects platelet function. This is a straightforward step that helps ensure the safest possible anesthetic.",
+      learnMore: {
+        why: "Even light alcohol interacts with the hepatic enzyme systems that metabolize anesthetic drugs and affects platelet aggregation (the blood's ability to clot at wound sites). Stopping 48 hours before surgery allows these effects to clear and ensures the most predictable anesthetic response.",
+        evidence: "Alcohol is metabolized by cytochrome P450 2E1 (CYP2E1) and other hepatic enzymes — the same pathways used by many anesthetic agents. Even moderate use is documented in anesthesia records as potentially affecting drug metabolism. 48 hours provides sufficient clearance for light use.",
+        citations: [
+          { text: "Systemic response to surgery. Anaesthesia & Intensive Care Medicine. 2023;24(1).", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
+        ],
+      },
+    });
   }
 
   // ── PATIENT TRACK: ANEMIA — NUTRITIONAL SUPPORT ──
@@ -2159,7 +2383,17 @@ function generatePlan(d) {
   const hasAnemiaHgb = hgb !== null && hgb < 13;
   if (hasAnemiaCondition || hasAnemiaHgb) {
     const hgbDisplay = hgb !== null ? ` Your hemoglobin is ${hgb} g/dL.` : "";
-    patient.push({ domain: "Anemia", priority: "high", title: "Iron-Rich Diet for Anemia Correction", detail: `Anemia increases your risk of needing a blood transfusion during surgery.${hgbDisplay} Focus on iron-rich foods: red meat, liver, dark leafy greens (spinach, kale), lentils, beans, and fortified cereals. To boost absorption, pair iron-rich foods with vitamin C sources (citrus, bell peppers, tomatoes). Avoid tea, coffee, and calcium supplements within 1 hour of iron-rich meals as they block absorption. Your physician may also prescribe iron supplements or IV iron for faster correction.` });
+    patient.push({ domain: "Anemia", priority: "high", title: "Iron-Rich Diet for Anemia Correction", detail: `Anemia increases your risk of needing a blood transfusion during surgery.${hgbDisplay} Focus on iron-rich foods: red meat, liver, dark leafy greens (spinach, kale), lentils, beans, and fortified cereals. To boost absorption, pair iron-rich foods with vitamin C sources (citrus, bell peppers, tomatoes). Avoid tea, coffee, and calcium supplements within 1 hour of iron-rich meals as they block absorption. Your physician may also prescribe iron supplements or IV iron for faster correction.`,
+      learnMore: {
+        why: "Anemia reduces the oxygen-carrying capacity of blood. During surgery — when tissues are cut, blood vessels are clamped, and the body's metabolic demands increase — having adequate hemoglobin is critical for every organ receiving enough oxygen. Preoperative anemia is one of the strongest independent predictors of the need for blood transfusion, and transfusion itself carries its own risks: immune reactions, infection transmission, and extended hospital stay.",
+        evidence: "Between 30–50% of surgical patients have some degree of nutritional risk, and anemia is frequently unrecognized even in high-income settings. Iron-rich dietary interventions combined with vitamin C for absorption optimization can improve hemoglobin before surgery. When dietary correction is insufficient, physicians can prescribe oral iron or IV iron (ferric carboxymaltose allows single-dose correction). The perioperative target for elective surgery is generally hemoglobin ≥10–13 g/dL depending on expected blood loss.",
+        citations: [
+          { text: "Correia & Waitzberg. Impact of malnutrition on morbidity, mortality, LOS, and costs. Curr Opin Clin Nutr Metab Care. 2003;6(5):519–523.", url: "" },
+          { text: "ERAS protocols: preoperative anemia management — high-quality evidence, strong recommendation. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+        ],
+      },
+    });
   }
 
   // ══════ PROVIDER TRACK ══════
@@ -2650,6 +2884,7 @@ const DOMAIN_LABELS = {
 function PatientCard({ rec }) {
   const [expanded, setExpanded] = useState(false);
   const [showDetailed, setShowDetailed] = useState(false);
+  const [showLearnMore, setShowLearnMore] = useState(false);
   const DomainIcon = DOMAIN_ICONS[rec.domain] || IconDefault;
   const domainLabel = DOMAIN_LABELS[rec.domain] || rec.domain;
   const priorityConfig = {
@@ -2662,6 +2897,7 @@ function PatientCard({ rec }) {
   const firstDot = rec.detail.indexOf(". ");
   const summary = firstDot > 0 && firstDot < 120 ? rec.detail.slice(0, firstDot + 1) : rec.detail.slice(0, 120) + (rec.detail.length > 120 ? "…" : "");
   const hasMore = rec.detail.length > summary.replace("…", "").length + 5;
+  const lm = rec.learnMore;
 
   return (
     <>
@@ -2701,17 +2937,84 @@ function PatientCard({ rec }) {
             <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>
               {expanded ? rec.detail : summary}
             </div>
-            {hasMore && (
-              <button onClick={() => setExpanded(!expanded)} style={{
-                background: "none", border: "none", cursor: "pointer", padding: "6px 0 0",
-                fontSize: "12px", fontWeight: 600, color: SR.teal, fontFamily: SR.font,
-                display: "inline-flex", alignItems: "center", gap: "4px",
-              }}>
-                {expanded ? "Show less ▲" : "Read more ▼"}
-              </button>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap", marginTop: "2px" }}>
+              {hasMore && (
+                <button onClick={() => setExpanded(!expanded)} style={{
+                  background: "none", border: "none", cursor: "pointer", padding: "6px 0 0",
+                  fontSize: "12px", fontWeight: 600, color: SR.teal, fontFamily: SR.font,
+                  display: "inline-flex", alignItems: "center", gap: "4px",
+                }}>
+                  {expanded ? "Show less ▲" : "Read more ▼"}
+                </button>
+              )}
+              {lm && (
+                <button onClick={() => setShowLearnMore(!showLearnMore)} style={{
+                  background: "none", border: "none", cursor: "pointer", padding: "6px 0 0",
+                  fontSize: "12px", fontWeight: 600, color: SR.navy, fontFamily: SR.font,
+                  display: "inline-flex", alignItems: "center", gap: "5px",
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke={SR.navy} strokeWidth="2"/>
+                    <path d="M12 8v1M12 11v5" stroke={SR.navy} strokeWidth="2.2" strokeLinecap="round"/>
+                  </svg>
+                  {showLearnMore ? "Hide evidence ▲" : "Learn more ▼"}
+                </button>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* Learn More — Evidence Panel */}
+        {lm && showLearnMore && (
+          <div style={{
+            margin: "0 16px 16px",
+            background: SR.tealLight, borderRadius: "10px",
+            border: `1px solid ${SR.teal}22`,
+            padding: "16px 18px",
+            animation: "fadeIn 0.2s ease",
+          }}>
+            {/* Why this works */}
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Why this works
+              </div>
+              <p style={{ fontSize: "13px", color: SR.text, lineHeight: 1.65, margin: 0, fontFamily: SR.font }}>
+                {lm.why}
+              </p>
+            </div>
+            {/* Evidence */}
+            <div style={{ marginBottom: "12px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                What the evidence shows
+              </div>
+              <p style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, margin: 0, fontFamily: SR.font }}>
+                {lm.evidence}
+              </p>
+            </div>
+            {/* Citations */}
+            {lm.citations && lm.citations.length > 0 && (
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  Sources
+                </div>
+                <ol style={{ margin: 0, paddingLeft: "18px" }}>
+                  {lm.citations.map((c, i) => (
+                    <li key={i} style={{ fontSize: "11px", color: SR.textSecondary, lineHeight: 1.6, marginBottom: "4px", fontFamily: SR.font }}>
+                      {c.url ? (
+                        <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: SR.tealDark, textDecoration: "underline", textDecorationColor: `${SR.teal}55` }}>
+                          {c.text}
+                        </a>
+                      ) : (
+                        <span>{c.text}</span>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Detailed Plan CTA — only for recommendations with structured steps */}
         {rec.steps && (
           <div style={{
