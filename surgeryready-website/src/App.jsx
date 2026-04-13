@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { track } from "@vercel/analytics";
+import TimelineView from "./components/TimelineView.jsx";
 
 /* ═══════════════════════════════════════════════════════════════
    SURGERYREADY.NET — Full Website
@@ -3805,6 +3806,17 @@ function PreOpPage() {
                   {m === "both" ? "Both Tracks" : m === "patient" ? "Patient View" : "Provider View"}
                 </button>
               ))}
+              {(data.userRole === "patient" || !data.userRole) && plan.patient.length > 0 && (
+                <button onClick={() => setViewMode("timeline")} style={{
+                  padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                  border: `1.5px solid ${viewMode === "timeline" ? SR.teal : SR.border}`,
+                  background: viewMode === "timeline" ? SR.teal : SR.white,
+                  color: viewMode === "timeline" ? SR.white : SR.textSecondary,
+                  fontFamily: SR.font, transition: "all 0.2s",
+                }}>
+                  My Timeline
+                </button>
+              )}
               <button onClick={() => {
                 const el = document.getElementById("readiness-plan-printable");
                 const title = (data.firstName ? data.firstName + "s" : "Your") + " Surgical Readiness Plan - SurgeryReady";
@@ -3864,7 +3876,11 @@ function PreOpPage() {
             </span>
           </div>
 
-          <div className="sr-plan-grid" style={{ display: "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
+          {viewMode === "timeline" && (
+            <TimelineView data={data} plan={plan} />
+          )}
+
+          <div className="sr-plan-grid" style={{ display: viewMode === "timeline" ? "none" : "grid", gridTemplateColumns: showPatient && showProvider ? "1fr 1fr" : "1fr", gap: "28px" }}>
             {showPatient && (
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "18px", paddingBottom: "12px", borderBottom: `3px solid ${SR.teal}` }}>
