@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { TIMELINE_PHASES } from "../data/timeline.js";
+import { generateTimeline } from "../data/timeline.js";
 
 // ─── SR Design Tokens (mirrors App.jsx — never cross-import App.jsx) ─────────
 const SR = {
@@ -50,24 +49,6 @@ function domainColor(domain) {
   return DOMAIN_COLORS[domain] || SR.navy;
 }
 
-// ─── Active phase from weeks ──────────────────────────────────────────────────
-function getActivePhase(weeksUntil) {
-  const w = Number(weeksUntil) || 0;
-  if (w >= 8)  return 1;
-  if (w >= 4)  return 2;
-  if (w >= 2)  return 3;
-  if (w >= 1)  return 4;
-  if (w > 0)   return 5;
-  return 7;
-}
-
-// ─── Phase state ──────────────────────────────────────────────────────────────
-function phaseState(phaseId, activePhase) {
-  if (phaseId < activePhase)  return "past";
-  if (phaseId === activePhase) return "current";
-  return "upcoming";
-}
-
 // ─── Legend ───────────────────────────────────────────────────────────────────
 const LEGEND_ITEMS = [
   { label: "Exercise",    color: "#3B82F6" },
@@ -83,23 +64,11 @@ const LEGEND_ITEMS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function TimelineView({ data, plan }) {
-  const activePhase = getActivePhase(data.weeksUntil);
+  // Generate personalized phases — only forward-looking, no past phases
+  const phases = generateTimeline(data, plan);
 
   return (
     <div style={{ fontFamily: SR.font }}>
-
-      {/* Behind-schedule banner */}
-      {Number(data.weeksUntil) > 0 && Number(data.weeksUntil) < 8 && (
-        <div style={{
-          marginBottom: "20px", padding: "12px 16px",
-          background: SR.warningBg, border: `1px solid ${SR.warning}40`,
-          borderRadius: "10px", fontSize: "12px", color: SR.warning, fontFamily: SR.font,
-        }}>
-          <strong style={{ color: SR.warning }}>Starting at Phase {activePhase}:</strong> Your current window is{" "}
-          <strong>{data.weeksUntil} week{Number(data.weeksUntil) !== 1 ? "s" : ""} out</strong>.
-          Earlier phases are shown for context — begin Phase {activePhase} actions immediately.
-        </div>
-      )}
 
       {/* Domain legend */}
       <div style={{
@@ -117,24 +86,20 @@ export default function TimelineView({ data, plan }) {
         ))}
       </div>
 
-      {/* Phase blocks */}
-      {TIMELINE_PHASES.map((phase) => {
-        const state = phaseState(phase.id, activePhase);
+      {/* Phase blocks — index 0 is always current, rest are upcoming */}
+      {phases.map((phase, index) => {
+        const isCurrent = index === 0;
+        const isDOS = !!phase.dayOfSurgery;
         const visibleCards = phase.cards.filter(card => card.show(data, plan));
-        const isPast = state === "past";
-        const isCurrent = state === "current";
-        const isDOS = phase.dayOfSurgery;
 
         return (
           <PhaseBlock
             key={phase.id}
             phase={phase}
-            state={state}
-            isPast={isPast}
             isCurrent={isCurrent}
             isDOS={isDOS}
             visibleCards={visibleCards}
-            isLast={phase.id === TIMELINE_PHASES.length}
+            isLast={index === phases.length - 1}
           />
         );
       })}
@@ -143,22 +108,20 @@ export default function TimelineView({ data, plan }) {
 }
 
 // ─── PhaseBlock ───────────────────────────────────────────────────────────────
-function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLast }) {
-  const dotColor = isCurrent ? SR.teal : isPast ? SR.border : SR.navy;
-  const dotGlow  = isCurrent ? `0 0 0 3px ${SR.teal}30` : "none";
-  const badgeBg  = isCurrent ? SR.teal : isPast ? SR.border : SR.navy;
-  const badgeColor = isPast ? SR.muted : SR.white;
-  const metaOpacity = isPast ? 0.5 : 1;
+function PhaseBlock({ phase, isCurrent, isDOS, visibleCards, isLast }) {
+  const dotColor   = isCurrent ? SR.teal : SR.navy;
+  const dotGlow    = isCurrent ? `0 0 0 3px ${SR.teal}30` : "none";
+  const badgeBg    = isCurrent ? SR.teal : SR.navy;
 
   return (
-    <div style={{
-      display: "grid",
-      gridTemplateColumns: "170px 1px 1fr",
-      gap: "0",
-      opacity: isPast ? 0.7 : 1,
-      transition: "opacity 0.2s",
-    }}
-    className="sr-timeline-phase"
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "170px 1px 1fr",
+        gap: "0",
+        transition: "opacity 0.2s",
+      }}
+      className="sr-timeline-phase"
     >
       {/* Left column — phase meta */}
       <div style={{
@@ -166,12 +129,11 @@ function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLa
         textAlign: "right",
         paddingTop: "4px",
         paddingBottom: "36px",
-        opacity: metaOpacity,
       }}>
         <div style={{
           display: "inline-block",
           background: badgeBg,
-          color: badgeColor,
+          color: SR.white,
           fontSize: "9px",
           fontWeight: 700,
           letterSpacing: "0.12em",
@@ -196,6 +158,22 @@ function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLa
         <div style={{ fontSize: "10px", color: SR.muted, lineHeight: 1.5, fontFamily: SR.font }}>
           {phase.sub}
         </div>
+        {isCurrent && (
+          <div style={{
+            display: "inline-block",
+            marginTop: "6px",
+            fontSize: "9px",
+            fontWeight: 700,
+            color: SR.teal,
+            background: SR.tealLight,
+            padding: "2px 7px",
+            borderRadius: "20px",
+            letterSpacing: "0.08em",
+            fontFamily: SR.font,
+          }}>
+            START HERE
+          </div>
+        )}
       </div>
 
       {/* Center — spine */}
@@ -212,9 +190,7 @@ function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLa
         {!isLast && (
           <div style={{
             width: 2, flex: 1, minHeight: "36px",
-            background: isPast
-              ? SR.border
-              : `linear-gradient(to bottom, ${SR.navy}60 0%, ${SR.border} 100%)`,
+            background: `linear-gradient(to bottom, ${SR.navy}60 0%, ${SR.border} 100%)`,
           }} />
         )}
       </div>
@@ -273,7 +249,6 @@ function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLa
                 key={i}
                 card={card}
                 isDOS={isDOS}
-                isPast={isPast}
               />
             ))}
           </div>
@@ -297,7 +272,7 @@ function PhaseBlock({ phase, state, isPast, isCurrent, isDOS, visibleCards, isLa
 }
 
 // ─── TimelineCard ─────────────────────────────────────────────────────────────
-function TimelineCard({ card, isDOS, isPast }) {
+function TimelineCard({ card, isDOS }) {
   const color = isDOS ? SR.teal : domainColor(card.domain);
   const bg    = isDOS ? SR.navy : SR.white;
   const titleColor  = isDOS ? SR.white : SR.navy;
@@ -311,7 +286,6 @@ function TimelineCard({ card, isDOS, isPast }) {
       padding: "14px 14px 12px",
       borderTop: `3px solid ${color}`,
       boxShadow: SR.cardShadow,
-      opacity: isPast ? 0.75 : 1,
       transition: "box-shadow 0.15s",
     }}>
       <div style={{
