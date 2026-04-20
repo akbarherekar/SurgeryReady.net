@@ -18,15 +18,16 @@
 
 ## What This Product Does
 
-SurgeryReady is a **perioperative optimization platform** serving three audiences:
+SurgeryReady is an **evidence-based surgical preparation tool** serving two primary audiences:
 
 | Audience | Purpose |
 |---|---|
-| **Patients** | Guided prehabilitation (exercise, nutrition, fasting, thermal conditioning) before surgery |
-| **Providers** | Clinical risk stratification, medication/lab management, guideline lookup |
-| **Health Systems** | ERAS pathway integration, population-level surgical optimization |
+| **Patients** | Personalized, guideline-driven prep plan tailored to their surgery, health history, and timeline |
+| **Physicians** | Evidence-based perioperative risk stratification, medication hold windows, and prehab protocols |
 
-The core product model is a **dual-track design**: patient-facing UX (digestible, friendly, step-based) is strictly separated from provider-facing UX (scannable under time pressure, clinically precise).
+Health systems and surgical groups are a secondary audience (B2B pilots, ERAS integration) — not the primary product framing.
+
+The core product model is a **dual-track design**: one structured intake produces two tailored outputs — a plain-language checklist for the patient and a clinical decision-support summary for the physician. Same evidence, right format for each.
 
 The unifying biological framework is **hormesis** — controlled stress exposure as preparation.
 
@@ -37,20 +38,20 @@ The unifying biological framework is **hormesis** — controlled stress exposure
 ```
 src/
   components/
-    Navbar.jsx
-    Hero.jsx            # Split two-card layout (patients | health systems)
-    HowItWorks.jsx
-    ContactForm.jsx     # Formspree endpoint mnjoqngr, includes firstName field
-  pages/
-    GuidelinesPage.jsx  # Provider-facing guidelines (IN PROGRESS — see docs/GUIDELINES_PAGE.md)
+    TimelineView.jsx    # Patient-only forward-looking prep timeline
   data/
-    guidelines.js       # Clinical content, separate from UI (IN PROGRESS)
-  App.jsx
+    timeline.js         # Timeline phase/card generator (patient only)
+  App.jsx               # All homepage sections + PreOpPage + algorithm (single file, ~5000 lines)
   main.jsx
+  supabaseClient.js     # Supabase auth + persistence
 public/
 docs/                   # These context docs live here
 CLAUDE.md               # ← you are here
 ```
+
+**Note:** The entire site — homepage, PreOp assessment, algorithm — lives in `src/App.jsx`. There are no separate component files for Hero, Navbar, etc. Everything is inline in one file.
+
+**Vercel deploys from root `src/App.jsx`.** There is also a `surgeryready-website/src/App.jsx` (a parallel copy used for local preview server). Both must be kept in sync when making changes.
 
 **Active standalone artifact (versioned separately):**
 ```
@@ -111,7 +112,7 @@ const SR = {
 
 See `docs/ALGORITHM.md` for full spec. Summary:
 
-- **File:** `Surgical_Readiness_Algorithm_2026-03-25_v4.jsx` (1950 lines)
+- **File:** `src/App.jsx` — `PreOpPage` component + `generatePlan()` function (live, deployed)
 - **Steps (6):** Patient Info → Surgery Details → Medical History → Medications → Fitness Baseline → Nutrition
 - **Role selection:** Patient vs. Provider at step 1, drives branching throughout
 - **Key clinical modules:**
@@ -121,8 +122,22 @@ See `docs/ALGORITHM.md` for full spec. Summary:
   - DASI questionnaire with live VO₂max estimation
   - Expandable patient output cards with custom two-tone SVG domain icons
   - VO₂max modal
+  - Personalized forward-looking timeline (`TimelineView.jsx` + `src/data/timeline.js`)
+  - Supabase auth + plan persistence (save/resume across sessions)
 - **Known constraint:** PDF export was removed due to JSX parsing error (template literal + embedded script tag). Do **not** reintroduce PDF generation using that pattern.
 - **InfoButton placement:** Must be inside their `Field` component as children, not outside — placing them outside creates layout gaps.
+
+## Demo Patients
+
+Three showcase patients auto-fill the entire assessment when their name is typed in the First Name field. Defined as `DEMO_PATIENTS` const in `src/App.jsx` (just after BRAND config).
+
+| Name (type exactly) | Profile | Weeks to surgery |
+|---|---|---|
+| `Demo Patient 1` | 52F, total knee replacement, healthy baseline | 8 |
+| `Demo Patient 2` | 68M, AF on Apixaban, SGLT2i + GLP-1 RA, OSA | 4 |
+| `Demo Patient 3` | 74M, colorectal cancer, anemia (Hgb 9.2), frailty | 2 |
+
+Matching is case-insensitive. A teal confirmation banner appears for 3 seconds on load.
 
 ---
 
@@ -159,11 +174,10 @@ The platform is built on these authoritative sources. Always cite them when gene
 
 - **Read the file before editing.** Always view the current file state before making changes — stale context causes errors.
 - **Targeted edits only.** This is a production site. Make surgical (pun intended) string replacements, not full rewrites, unless a full rewrite is explicitly requested.
-- **Versioned timestamps.** New standalone JSX files get timestamped names: `Surgical_Readiness_Algorithm_YYYY-MM-DD_HHMM.jsx`
+- **Edit both App.jsx files.** Changes to the site must be applied to both `src/App.jsx` (deployed by Vercel) and `surgeryready-website/src/App.jsx` (local preview server). They must stay in sync.
 - **Separation of concerns is critical.** Content data files and UI component files must never be merged.
-- **No cross-dependencies on the algorithm file.** It is a standalone artifact.
-- **Akbar runs git commands himself.** Just produce the files / diffs.
 - **Clinical precision.** Use exact terminology: hemoglobin tiers (not "low blood count"), drug class names, guideline version numbers.
+- **Commit and push after every feature.** Claude runs git commands directly — no need to ask Akbar to run them.
 
 ---
 
