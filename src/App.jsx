@@ -1219,13 +1219,41 @@ function StepSurgery({ data, update }) {
 
 function StepMedical({ data, update }) {
   const categories = [
-    { key: "cardiac", label: "Cardiovascular", items: ["CAD/Angina", "CHF", "Valvular disease", "Arrhythmia/AF", "Pacemaker/AICD", "Cardiomyopathy/HCM", "Prior MI (within 6 months)", "Prior PCI/stent", "Peripheral vascular disease", "Prior stroke", "Uncontrolled HTN (DBP >110)"] },
+    { key: "cardiac", label: "Cardiovascular", items: ["CAD/Angina", "CHF", "HFrEF", "HFpEF", "Valvular disease", "Severe aortic stenosis (symptomatic)", "Severe aortic stenosis (asymptomatic)", "Mechanical valve", "Arrhythmia/AF", "Atrial fibrillation / flutter", "Pacemaker/AICD", "Cardiomyopathy/HCM", "Pulmonary hypertension", "Prior MI (within 6 months)", "Prior PCI/stent", "Peripheral vascular disease", "Prior stroke", "Uncontrolled HTN (DBP >110)"] },
     { key: "respiratory", label: "Respiratory", items: ["COPD/Emphysema", "Asthma", "OSA (diagnosed)", "OSA (suspected/STOP-BANG ≥3)", "Unexplained dyspnea"] },
-    { key: "endocrine", label: "Endocrine / Metabolic", items: ["Type 1 Diabetes", "Type 2 Diabetes", "HbA1c > 8", "Insulin pump", "Pheochromocytoma", "Adrenal disease"] },
-    { key: "other", label: "Other", items: ["Cirrhosis/liver disease", "Renal insufficiency/dialysis", "Anemia (Hgb <13)", "Bleeding disorder", "Sickle cell disease", "Seizure disorder", "Myasthenia gravis", "Rheumatoid arthritis", "Down syndrome", "Active cancer/chemo", "History of MH", "Difficult airway history", "Frailty/recent falls"] },
+    { key: "endocrine", label: "Endocrine / Metabolic", items: ["Type 1 Diabetes", "Type 2 Diabetes", "HbA1c > 8", "Insulin pump", "Pheochromocytoma", "Adrenal disease", "Adrenal insufficiency / Addison's", "Chronic steroid use"] },
+    { key: "other", label: "Other", items: ["Cirrhosis/liver disease", "Chronic kidney disease (CKD)", "On dialysis", "Renal insufficiency/dialysis", "Anemia (Hgb <13)", "Bleeding disorder", "Sickle cell disease", "Seizure disorder / epilepsy", "Seizure disorder", "Myasthenia gravis", "Rheumatoid arthritis / autoimmune", "Rheumatoid arthritis", "Down syndrome", "Active cancer/chemo", "History of MH", "Difficult airway history", "Frailty/recent falls"] },
   ];
   const showCigPerDay = data.smokingStatus === "current";
   const showAlcoholSub = data.alcoholUse === "moderate" || data.alcoholUse === "heavy";
+
+  // ── Conditional detail-field flags ──
+  const cardiac = data.cardiac || [];
+  const other = data.other || [];
+  const endocrine = data.endocrine || [];
+  const respiratory = data.respiratory || [];
+  const hasCAD = cardiac.some(c => ["CAD/Angina", "Prior MI (within 6 months)", "Prior PCI/stent"].includes(c));
+  const hasStent = cardiac.includes("Prior PCI/stent");
+  const hasHF = cardiac.some(c => ["CHF", "HFrEF", "HFpEF"].includes(c));
+  const hasAF = cardiac.includes("Arrhythmia/AF") || cardiac.includes("Atrial fibrillation / flutter");
+  const hasStroke = cardiac.includes("Prior stroke");
+  const hasOSA = respiratory.includes("OSA (diagnosed)") || respiratory.includes("OSA (suspected/STOP-BANG ≥3)");
+  const hasOSADiag = respiratory.includes("OSA (diagnosed)");
+  const hasDiabetes = endocrine.some(e => e.includes("Diabetes") || e.includes("HbA1c"));
+  const hasPheo = endocrine.includes("Pheochromocytoma");
+  const hasChronicSteroid = endocrine.includes("Chronic steroid use") || endocrine.includes("Adrenal insufficiency / Addison's");
+  const hasCKD = other.includes("Chronic kidney disease (CKD)") || other.includes("On dialysis") || other.includes("Renal insufficiency/dialysis");
+  const hasDialysis = other.includes("On dialysis") || other.includes("Renal insufficiency/dialysis");
+  const hasCirrhosis = other.includes("Cirrhosis/liver disease");
+  const hasRA = other.includes("Rheumatoid arthritis / autoimmune") || other.includes("Rheumatoid arthritis");
+  const hasMG = other.includes("Myasthenia gravis");
+  const hasSeizure = other.includes("Seizure disorder / epilepsy") || other.includes("Seizure disorder");
+  const hasCancer = other.includes("Active cancer/chemo") || (data.surgeryTags || []).includes("Cancer resection");
+  const hasAnemia = other.includes("Anemia (Hgb <13)") || (data.hemoglobin && parseFloat(data.hemoglobin) < 13);
+  const ageNum = parseInt(data.age) || 0;
+  const showGeriatric = ageNum >= 65;
+  const showAnyDetail = hasCAD || hasStent || hasHF || hasAF || hasStroke || hasOSA || hasDiabetes || hasPheo || hasChronicSteroid || hasCKD || hasCirrhosis || hasRA || hasMG || hasSeizure || hasCancer || hasAnemia || showGeriatric;
+
   return (
     <>
       {categories.map(cat => (
@@ -1233,6 +1261,208 @@ function StepMedical({ data, update }) {
           <MultiChip options={cat.items} selected={data[cat.key] || []} onChange={v => update(cat.key, v)} />
         </Field>
       ))}
+
+      {/* ── Clinical Detail Fields (conditional, unlock specific pathway recommendations) ── */}
+      {showAnyDetail && (
+        <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: `2px solid ${SR.borderLight}` }}>
+          <div style={{ fontSize: "14px", fontWeight: 700, color: SR.navy, marginBottom: "6px", fontFamily: SR.font }}>Clinical Detail (optional — unlocks more specific recommendations)</div>
+          <div style={{ fontSize: "11px", color: SR.muted, marginBottom: "14px", fontFamily: SR.font }}>Leave any field blank if unknown.</div>
+
+          {hasCAD && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Time since last cardiac event (MI/PCI/CABG)">
+                <Select value={data.cardiacEventMonths || ""} onChange={v => update("cardiacEventMonths", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "<3", label: "< 3 months" }, { value: "3-6", label: "3–6 months" }, { value: "6-12", label: "6–12 months" }, { value: ">12", label: "> 12 months" },
+                ]} />
+              </Field>
+              {hasStent && (
+                <Field label="Stent type">
+                  <Select value={data.stentType || ""} onChange={v => update("stentType", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "BMS", label: "Bare-metal stent (BMS)" }, { value: "DES", label: "Drug-eluting stent (DES)" }, { value: "none", label: "No stent" },
+                  ]} />
+                </Field>
+              )}
+            </div>
+          )}
+          {hasStent && (
+            <Field label="Currently on dual antiplatelet therapy (DAPT)?">
+              <Select value={data.onDAPT || ""} onChange={v => update("onDAPT", v)} options={[
+                { value: "", label: "Unknown" }, { value: "yes", label: "Yes (aspirin + P2Y12 inhibitor)" }, { value: "no", label: "No" },
+              ]} />
+            </Field>
+          )}
+
+          {hasHF && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Heart failure type">
+                <Select value={data.hfType || ""} onChange={v => update("hfType", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "HFrEF", label: "HFrEF (reduced EF)" }, { value: "HFpEF", label: "HFpEF (preserved EF)" },
+                ]} />
+              </Field>
+              <Field label="Echocardiogram within last year?">
+                <Select value={data.hasRecentEcho || ""} onChange={v => update("hasRecentEcho", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+                ]} />
+              </Field>
+            </div>
+          )}
+
+          {hasAF && (
+            <Field label="Rate-controlled (resting HR < 110)?">
+              <Select value={data.rateControlled || ""} onChange={v => update("rateControlled", v)} options={[
+                { value: "", label: "Unknown" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+              ]} />
+            </Field>
+          )}
+
+          {hasStroke && (
+            <Field label="Time since last stroke / TIA">
+              <Select value={data.strokeMonths || ""} onChange={v => update("strokeMonths", v)} options={[
+                { value: "", label: "Unknown" }, { value: "<3", label: "< 3 months" }, { value: "3-9", label: "3–9 months" }, { value: ">9", label: "> 9 months" },
+              ]} />
+            </Field>
+          )}
+
+          {hasOSA && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="STOP-BANG score (0–8)" hint="0–2 low / 3–4 intermediate / ≥5 high">
+                <Input type="number" value={data.stopBang || ""} onChange={v => update("stopBang", v)} placeholder="0–8" min="0" max="8" />
+              </Field>
+              {hasOSADiag && (
+                <Field label="CPAP adherent?">
+                  <Select value={data.cpapAdherent || ""} onChange={v => update("cpapAdherent", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "yes", label: "Yes — ≥4 hr/night" }, { value: "no", label: "No" },
+                  ]} />
+                </Field>
+              )}
+            </div>
+          )}
+
+          {hasDiabetes && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Last HbA1c (%)" hint="Target ≤ 8.5% for elective surgery; defer if > 9.0%">
+                <Input type="number" value={data.a1cValue || ""} onChange={v => update("a1cValue", v)} placeholder="e.g. 7.8" min="4" max="20" step="0.1" />
+              </Field>
+              <Field label="Insulin use">
+                <Select value={data.insulinType || ""} onChange={v => update("insulinType", v)} options={[
+                  { value: "", label: "Unknown / not on insulin" }, { value: "none", label: "Not on insulin" }, { value: "basal", label: "Basal only" }, { value: "basal-bolus", label: "Basal-bolus" }, { value: "pump", label: "Insulin pump" },
+                ]} />
+              </Field>
+            </div>
+          )}
+
+          {hasPheo && (
+            <Field label="Alpha-blockade started ≥10–14 days?">
+              <Select value={data.alphaBlockadeStarted || ""} onChange={v => update("alphaBlockadeStarted", v)} options={[
+                { value: "", label: "Unknown" }, { value: "yes", label: "Yes, ≥10–14 days" }, { value: "no", label: "No / not yet" },
+              ]} />
+            </Field>
+          )}
+
+          {hasChronicSteroid && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Chronic steroid dose" hint="Prednisone equivalent">
+                <Select value={data.steroidDose || ""} onChange={v => update("steroidDose", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "le5", label: "≤ 5 mg/day" }, { value: "5-20", label: "5–20 mg/day" }, { value: "ge20", label: "≥ 20 mg/day" }, { value: "addisons", label: "Addison's / replacement dose" },
+                ]} />
+              </Field>
+              <Field label="Duration on steroids">
+                <Select value={data.steroidDurationWks || ""} onChange={v => update("steroidDurationWks", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "lt3", label: "< 3 weeks" }, { value: "ge3", label: "≥ 3 weeks" },
+                ]} />
+              </Field>
+            </div>
+          )}
+
+          {hasAnemia && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Ferritin (ng/mL)" hint="< 30 = absolute iron deficiency">
+                <Input type="number" value={data.ferritinValue || ""} onChange={v => update("ferritinValue", v)} placeholder="e.g. 45" min="0" max="2000" />
+              </Field>
+              <Field label="TSAT (%)" hint="< 20% with ferritin 30–100 = functional deficiency">
+                <Input type="number" value={data.tsatValue || ""} onChange={v => update("tsatValue", v)} placeholder="e.g. 18" min="0" max="100" />
+              </Field>
+            </div>
+          )}
+
+          {(hasCKD || hasDialysis) && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="eGFR (mL/min/1.73m²)" hint="Drives DOAC hold timing, drug avoidance">
+                <Input type="number" value={data.egfrValue || ""} onChange={v => update("egfrValue", v)} placeholder="e.g. 45" min="0" max="150" />
+              </Field>
+              {hasDialysis && (
+                <Field label="On dialysis?">
+                  <Select value={data.onDialysis || ""} onChange={v => update("onDialysis", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+                  ]} />
+                </Field>
+              )}
+            </div>
+          )}
+
+          {hasCirrhosis && (
+            <Field label="Child-Pugh class" hint="A safe; B increased risk; C contraindicated">
+              <Select value={data.childPughClass || ""} onChange={v => update("childPughClass", v)} options={[
+                { value: "", label: "Unknown" }, { value: "A", label: "A" }, { value: "B", label: "B" }, { value: "C", label: "C" },
+              ]} />
+            </Field>
+          )}
+
+          {hasRA && (
+            <>
+              <Field label="Biologic medications (hold 1 dosing interval preop)">
+                <MultiChip options={["TNFi (etanercept/adalimumab/infliximab)", "IL-6i (tocilizumab)", "IL-17i (secukinumab)", "IL-23i (ustekinumab)", "JAK inhibitor (tofacitinib/baricitinib)", "Rituximab", "Abatacept", "None"]}
+                  selected={data.biologicMeds || []} onChange={v => update("biologicMeds", v)} />
+              </Field>
+              <Field label="Conventional DMARDs (continue through surgery)">
+                <MultiChip options={["Methotrexate (MTX)", "Hydroxychloroquine (HCQ)", "Sulfasalazine (SSZ)", "Leflunomide", "Apremilast", "None"]}
+                  selected={data.conventionalDMARDs || []} onChange={v => update("conventionalDMARDs", v)} />
+              </Field>
+            </>
+          )}
+
+          {hasMG && (
+            <Field label="On pyridostigmine?">
+              <Select value={data.pyridostigmineUse || ""} onChange={v => update("pyridostigmineUse", v)} options={[
+                { value: "", label: "Unknown" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+              ]} />
+            </Field>
+          )}
+
+          {hasSeizure && (
+            <Field label="Antiepileptic medications (continue through surgery)">
+              <MultiChip options={["Levetiracetam (Keppra)", "Phenytoin", "Valproate", "Lacosamide", "Lamotrigine", "Carbamazepine", "Other"]}
+                selected={data.aedMeds || []} onChange={v => update("aedMeds", v)} />
+            </Field>
+          )}
+
+          {hasCancer && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Weeks since last chemotherapy" hint="Recovery ≥3–4 weeks recommended">
+                <Input type="number" value={data.chemoWeeksAgo || ""} onChange={v => update("chemoWeeksAgo", v)} placeholder="e.g. 6" min="0" max="999" />
+              </Field>
+              <Field label="Anthracycline exposure (doxorubicin, etc.)?">
+                <Select value={data.anthracyclineExposure || ""} onChange={v => update("anthracyclineExposure", v)} options={[
+                  { value: "", label: "Unknown" }, { value: "yes", label: "Yes" }, { value: "no", label: "No" },
+                ]} />
+              </Field>
+            </div>
+          )}
+
+          {showGeriatric && (
+            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Clinical Frailty Scale (CFS 1–9)" hint="≥5 prompts geriatric assessment; ≥7 goals-of-care">
+                <Input type="number" value={data.cfsScore || ""} onChange={v => update("cfsScore", v)} placeholder="1–9" min="1" max="9" />
+              </Field>
+              <Field label="Mini-Cog / MoCA screen">
+                <Select value={data.miniCogNormal || ""} onChange={v => update("miniCogNormal", v)} options={[
+                  { value: "", label: "Not done" }, { value: "yes", label: "Normal" }, { value: "no", label: "Abnormal (delirium risk)" },
+                ]} />
+              </Field>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Smoking, Alcohol & Anemia Subsection ── */}
       <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: `2px solid ${SR.borderLight}` }}>
@@ -2399,121 +2629,715 @@ function generatePlan(d) {
     });
   }
 
-  // ══════ PROVIDER TRACK ══════
+  // ══════ PROVIDER TRACK — 34 PATHWAYS ══════
 
-  // ── MEDICATIONS ──
-  if (cardioMeds.includes("ACE inhibitor") || cardioMeds.includes("ARB")) {
-    provider.push({ domain: "Medications", priority: "high", title: "ACE-I/ARB: Consider Withholding", detail: "2024 AHA/ACC Class 2b: Consider withholding ACE inhibitor/ARB on the morning of surgery to reduce intraoperative hypotension. Continue all other antihypertensives. No change to K+ monitoring for diuretic patients." });
+  // ── Pathway-dispatch flags ──
+  const hasCADFlag      = cardiac.some(c => ["CAD/Angina", "Prior MI (within 6 months)", "Prior PCI/stent"].includes(c));
+  const hasStentFlag    = cardiac.includes("Prior PCI/stent");
+  const hasHFFlag       = cardiac.some(c => ["CHF", "HFrEF", "HFpEF"].includes(c));
+  const hfTypeResolved  = d.hfType || (cardiac.includes("HFrEF") ? "HFrEF" : cardiac.includes("HFpEF") ? "HFpEF" : cardiac.includes("CHF") ? "HFrEF" : "");
+  const hasAFFlag       = cardiac.includes("Arrhythmia/AF") || cardiac.includes("Atrial fibrillation / flutter");
+  const hasSevereASSym  = cardiac.includes("Severe aortic stenosis (symptomatic)");
+  const hasSevereASAsy  = cardiac.includes("Severe aortic stenosis (asymptomatic)");
+  const hasSevereAS     = hasSevereASSym || hasSevereASAsy;
+  const hasMechValve    = cardiac.includes("Mechanical valve");
+  const hasHCM          = cardiac.includes("Cardiomyopathy/HCM");
+  const hasPulmHTN      = cardiac.includes("Pulmonary hypertension");
+  const hasStrokeFlag   = cardiac.includes("Prior stroke");
+  const hasCIED         = cardiac.includes("Pacemaker/AICD");
+  const hasCOPD         = respiratory.includes("COPD/Emphysema");
+  const hasOSADx        = respiratory.includes("OSA (diagnosed)");
+  const hasOSASus       = respiratory.includes("OSA (suspected/STOP-BANG ≥3)");
+  const hasOSAFlag      = hasOSADx || hasOSASus;
+  const hasAsthma       = respiratory.includes("Asthma");
+  const hasPheoFlag     = endocrine.includes("Pheochromocytoma");
+  const hasAdrenal      = endocrine.includes("Adrenal insufficiency / Addison's") || endocrine.includes("Adrenal disease");
+  const hasChronicSteroid = endocrine.includes("Chronic steroid use") || hasAdrenal || (d.otherMeds || []).includes("Corticosteroids");
+  const hasCirrhosisFlag  = other.includes("Cirrhosis/liver disease");
+  const hasCKDFlag        = other.includes("Chronic kidney disease (CKD)") || other.includes("On dialysis") || other.includes("Renal insufficiency/dialysis");
+  const onDialysisFlag    = other.includes("On dialysis") || other.includes("Renal insufficiency/dialysis") || d.onDialysis === "yes";
+  const hasRAFlag         = other.includes("Rheumatoid arthritis / autoimmune") || other.includes("Rheumatoid arthritis");
+  const hasMGFlag         = other.includes("Myasthenia gravis");
+  const hasSeizureFlag    = other.includes("Seizure disorder / epilepsy") || other.includes("Seizure disorder");
+  const hasCancerFlag     = other.includes("Active cancer/chemo") || surgeryTags.includes("Cancer resection");
+  const a1cNum            = d.a1cValue ? parseFloat(d.a1cValue) : null;
+  const egfrNum           = d.egfrValue ? parseFloat(d.egfrValue) : null;
+  const ferritinNum       = d.ferritinValue ? parseFloat(d.ferritinValue) : null;
+  const tsatNum           = d.tsatValue ? parseFloat(d.tsatValue) : null;
+  const stopBangNum       = d.stopBang ? parseInt(d.stopBang) : null;
+  const cfsNum            = d.cfsScore ? parseInt(d.cfsScore) : null;
+  const childPugh         = d.childPughClass || "";
+  const biologicMeds      = d.biologicMeds || [];
+  const conventionalDMARDs = d.conventionalDMARDs || [];
+  const aedMeds           = d.aedMeds || [];
+  const chemoWksAgo       = d.chemoWeeksAgo ? parseInt(d.chemoWeeksAgo) : null;
+
+  // Surgery magnitude (derived)
+  const majorSurgery   = d.riskCategory === "high" || surgeryTags.some(t => ["Open chest/cardiac", "Vascular", "Cancer resection", "Neurologic"].includes(t));
+  const surgeryMagnitude = majorSurgery ? "major" : d.riskCategory === "elevated" ? "moderate" : "minor";
+
+  // Time-keyed detail formatter: sections keyed by window, rendered as newline-separated labeled lines
+  const timedDetail = (sections, citation) => {
+    const order = ["ge8", "wk47", "wk12", "lt1", "dos", "readiness"];
+    const labels = { ge8: "≥8 WK", wk47: "4–7 WK", wk12: "1–2 WK", lt1: "< 1 WK", dos: "DAY OF SURGERY", readiness: "READINESS" };
+    const lines = [];
+    for (const k of order) if (sections[k]) lines.push(`${labels[k]}: ${sections[k]}`);
+    if (citation) lines.push(`Source: ${citation}`);
+    return lines.join("\n");
+  };
+
+  // ═══ NEW ALERTS ═══
+  if (d.cardiacEventMonths === "<3") alerts.push({ type: "danger", text: "Cardiac event < 3 months — elective surgery contraindicated (2024 AHA/ACC Class 1: ≥60 days since MI). Defer or seek urgent cardiology risk-benefit analysis." });
+  if (d.strokeMonths === "<3") alerts.push({ type: "danger", text: "Stroke / TIA < 3 months — delay elective surgery ≥3 months (2024 AHA/ACC Class 2a)." });
+  if (a1cNum !== null && a1cNum > 9.0) alerts.push({ type: "warning", text: `HbA1c ${a1cNum}% — exceeds 9.0% threshold. Defer elective surgery and optimize glycemic control (ADA 2025). Target ≤ 8.5% for elective.` });
+  if (childPugh === "C") alerts.push({ type: "danger", text: "Child-Pugh C cirrhosis — elective surgery contraindicated (mortality >50% if MELD >20). Hepatology consult required; consider TIPS / transplant evaluation before any procedure." });
+  if (hasPulmHTN && majorSurgery) alerts.push({ type: "warning", text: "Pulmonary hypertension + major surgery — PH center referral indicated (Class 2a). Invasive monitoring, continue all pulmonary vasodilators, inhaled NO available." });
+  if (hasPheoFlag && d.alphaBlockadeStarted === "no") alerts.push({ type: "danger", text: "Pheochromocytoma without alpha-blockade — DO NOT proceed. Alpha-blockade (phenoxybenzamine or doxazosin) required ≥10–14 days preoperatively. Beta-blockade only AFTER alpha." });
+
+  // ───────────────────────────────────────────────
+  // SECTION A — CARDIOVASCULAR (Pathways 1–8)
+  // ───────────────────────────────────────────────
+
+  // Pathway 1: CAD / Prior MI
+  if (hasCADFlag) {
+    const mo = d.cardiacEventMonths || "";
+    const stent = d.stentType || "";
+    const onDAPT = d.onDAPT === "yes";
+    let readiness = "≥60 d since MI (Class 1). GDMT optimized. Cardiology clearance documented.";
+    if (mo === "<3") readiness = "NOT MET: <3 months from cardiac event. Defer elective surgery.";
+    else if (stent === "DES" && mo === "3-6") readiness = "MARGINAL: DES 3–6 mo — elective OK only if time-sensitive; prefer ≥6 mo.";
+    else if (stent === "BMS" && mo === "<3") readiness = "NOT MET: BMS <3 mo. Prefer ≥3 mo time-sensitive, ≥6 mo elective.";
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: `CAD / Prior MI — ${mo || "timing unknown"}${stent ? " / " + stent : ""}`,
+      detail: timedDetail({
+        ge8: "Optimize GDMT: high-intensity statin, BB (continue; do NOT start <7d preop per POISE), aspirin, ACEi/ARB. BNP/NT-proBNP if elevated risk. DASI to replace subjective METs.",
+        wk47: "If BNP >92 or NT-proBNP >300 → echo. DASI ≤34 + elevated risk → cardiology consult. Verify stent intervals: BMS ≥3 mo time-sensitive / ≥6 mo elective DES / ≥12 mo ACS. Plan DAPT management.",
+        wk12: onDAPT ? "DAPT hold: clopidogrel 5d / prasugrel 7–10d / ticagrelor 3–5d. CONTINUE statin + beta-blocker." : "Continue statin + beta-blocker. Verify antiplatelet plan.",
+        dos: "Continue BB + statin. Hold ACEi/ARB if HTN-only (STOP-or-NOT). Postop troponin at 24h and 48h (Class 2b). If MINS: ASA + high-intensity statin; consider dabigatran 110 mg BID (MANAGE); cardiology ≤30 d.",
+        readiness,
+      }, "2024 AHA/ACC; POISE Lancet 2008; MANAGE Lancet 2018; ASRA 5th Ed 2025"),
+    });
   }
+
+  // Pathway 2: Heart Failure
+  if (hasHFFlag) {
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: `Heart Failure${hfTypeResolved ? " — " + hfTypeResolved : ""}`,
+      detail: timedDetail({
+        ge8: hfTypeResolved === "HFrEF" ? "HFrEF quadruple therapy: (1) beta-blocker, (2) ARNI or ACEi/ARB, (3) MRA, (4) SGLT2i (hold 3–4 d preop). Echo if none in 1 yr. BNP/NT-proBNP baseline. Optimize to euvolemia." : "Optimize HFpEF: diuresis to euvolemia, BP control, rate control. Echo within 1 yr. BNP/NT-proBNP trend.",
+        wk47: "Re-check BNP trend. Decompensated HF → DEFER until compensated. Confirm echo ≤ 1 year.",
+        wk12: "SGLT2i already held (if applicable). Reconfirm euvolemia; avoid fluid overload.",
+        dos: "Continue beta-blocker, ARNI/ACEi (HFrEF), statin. SGLT2i held. Monitor ketones. Avoid fluid overload.",
+        readiness: "Compensated HF. GDMT stable ≥2 wk. BNP stable/down. Echo documented. Euvolemic.",
+      }, "Heidenreich Circulation 2022; 2024 AHA/ACC Periop Guidelines"),
+    });
+  }
+
+  // Pathway 3: Valvular Heart Disease
+  if (hasSevereAS || hasMechValve || hasHCM || cardiac.includes("Valvular disease")) {
+    const section = hasSevereASSym
+      ? "SEVERE SYMPTOMATIC AS: Valve intervention (SAVR/TAVR) BEFORE elective NCS."
+      : hasSevereASAsy
+      ? "SEVERE ASYMPTOMATIC AS: Proceed with elevated-risk awareness + cardiology co-management."
+      : hasHCM
+      ? "HCM: Maintain preload + afterload; avoid tachycardia, hypovolemia, inotropes. Echo within 1 yr."
+      : hasMechValve
+      ? "MECHANICAL VALVE: Bridge with UFH/LMWH during warfarin hold per ASRA 5th Ed. Target INR pre-bridge <1.5."
+      : "VHD: Echo if suspected moderate-severe disease or no echo in 1 yr (Class 1).";
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "Valvular Heart Disease",
+      detail: timedDetail({
+        ge8: section,
+        wk47: "Echo within 1 yr or clinical change (Class 1). Cardiology co-management for severe disease.",
+        dos: hasMechValve ? "Resume anticoagulation per ASRA 5th Ed restart windows. Monitor for thromboembolic event." : "Hemodynamic goals per lesion. Avoid tachycardia and hypovolemia in HCM/AS.",
+        readiness: "Severity quantified on echo. Appropriate intervention scheduled or documented not indicated.",
+      }, "2024 AHA/ACC; Otto Circulation 2021"),
+    });
+  }
+
+  // Pathway 4: Hypertension — handled via ACEi/ARB card (Pathway 32) + uncontrolled HTN condition flag below
+  if (cardiac.includes("Uncontrolled HTN (DBP >110)")) {
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "Uncontrolled Hypertension (DBP >110)",
+      detail: timedDetail({
+        ge8: "Assess for end-organ damage (fundoscopy, ECG, Cr, urine protein). Optimize antihypertensives — target BP <160/100.",
+        wk47: "Continue CCB, BB, clonidine (no abrupt stop). Recheck BP weekly.",
+        dos: "SBP ≥180 / DBP ≥110 with EOD → consider deferring (Class 2b). Without EOD → proceed with invasive monitoring.",
+        readiness: "BP <180/110 stable; end-organ damage ruled out or stable.",
+      }, "2024 AHA/ACC; ESAIC 2025"),
+    });
+  }
+
+  // Pathway 5: AF / Arrhythmias
+  if (hasAFFlag) {
+    const rateOK = d.rateControlled === "yes";
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "Atrial Fibrillation / Flutter",
+      detail: timedDetail({
+        ge8: `Rate control target HR <110 (RACE II). ${rateOK ? "Rate-controlled." : "NOT YET rate-controlled — optimize with BB or CCB."} CHA₂DS₂-VASc for anticoagulation decision.`,
+        wk47: "Review anticoag timing per ASRA 5th Ed (warfarin hold 5d, bridge if high risk; DOACs per Pathway 19 — do NOT bridge DOACs).",
+        dos: "Continue rate agents perioperatively. Troponin at 24h/48h if elevated-risk NCS. New periop AF: treat triggers, rate control.",
+        readiness: "HR <110. CHA₂DS₂-VASc documented. Anticoag timing reconciled with ASRA 5th.",
+      }, "ASRA 5th Ed 2025; BRIDGE NEJM 2015"),
+    });
+  }
+
+  // Pathway 6: Pulmonary HTN
+  if (hasPulmHTN) {
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "Pulmonary Hypertension",
+      detail: timedDetail({
+        ge8: "Severe PH → PH center referral (Class 2a). Continue ALL pulmonary vasodilators (Class 1). Never interrupt IV prostacyclin.",
+        wk47: "Echo if none within 1 yr. Right heart cath if functional decline.",
+        dos: "Invasive arterial + central monitoring. Avoid hypoxemia, hypercarbia, acidosis. Maintain RV preload. Have inhaled NO available.",
+        readiness: "Functional class documented. Vasodilator therapy uninterrupted. PH center plan of care on file.",
+      }, "Humbert Eur Heart J 2022"),
+    });
+  }
+
+  // Pathway 7: Prior Stroke / PVD
+  if (hasStrokeFlag || cardiac.includes("Peripheral vascular disease")) {
+    const sm = d.strokeMonths || "";
+    let readiness = "≥3 mo since stroke (Class 2a). Baseline MAP documented.";
+    if (sm === "<3") readiness = "NOT MET: <3 mo since stroke. Defer elective ≥3 months.";
+    else if (sm === "3-9") readiness = "MARGINAL: 3–9 mo. Prefer ≥9 mo if elective.";
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "Prior Stroke / Cerebrovascular Disease",
+      detail: timedDetail({
+        ge8: "Delay elective NCS ≥3 mo post-stroke (Class 2a). Carotid duplex US if symptomatic stenosis or TIA <6 mo.",
+        wk47: "Document baseline BP. Avoid MAP <20% below baseline intraoperatively.",
+        dos: "BP target: avoid MAP <20% below baseline. Neuro checks q-shift postop.",
+        readiness,
+      }, "Glance JAMA Surg 2022; 2024 AHA/ACC"),
+    });
+  }
+
+  // Pathway 8: CIED
+  if (hasCIED) {
+    provider.push({
+      domain: "Cardiac Risk", priority: "high", title: "CIED (Pacemaker / ICD)",
+      detail: timedDetail({
+        ge8: "Device interrogation within 6–12 mo. Determine pacemaker dependency. Assess EMI risk from planned surgery.",
+        wk47: "Coordinate with EP team for reprogramming plan. Confirm magnet availability intraop.",
+        dos: "Pacemaker-dependent: asynchronous mode (VOO/DOO) or magnet. ICD: disable tachy-therapies. External defib pads applied. RESTORE therapies before discharge.",
+        readiness: "Recent interrogation documented. Reprogram/deactivation plan in anesthesia note. Magnet in OR.",
+      }, "2024 AHA/ACC; Crossley Heart Rhythm 2011"),
+    });
+  }
+
+  // ───────────────────────────────────────────────
+  // SECTION B — RESPIRATORY (Pathways 9–11)
+  // ───────────────────────────────────────────────
+
+  // Pathway 9: COPD
+  if (hasCOPD) {
+    provider.push({
+      domain: "Respiratory", priority: "high", title: "COPD / Emphysema",
+      detail: timedDetail({
+        ge8: "Continue all inhalers. Optimize LABA + LAMA. Add ICS if eosinophils >300. Smoking cessation ≥4 wk → 23% PPC reduction; ≥8 wk → 47%. PFTs NOT routine (ESAIC 2025) — reserve for lung resection.",
+        wk47: "If symptomatic: prednisone 40 mg ×5 d burst. Incentive spirometry 10 breaths q1–2 h.",
+        dos: "All inhalers AM. Avoid desflurane. Postop: IS + early mobilization. Opioid-sparing analgesia.",
+        readiness: "Symptoms optimized. Inhalers continued. Smoking cessation documented.",
+      }, "ESAIC 2025 Eur J Anaesthesiol; GOLD 2025"),
+    });
+  }
+
+  // Pathway 10: OSA (replaces old generic OSA card)
+  if (hasOSAFlag) {
+    const sb = stopBangNum;
+    const sbBand = sb === null ? "score not entered" : sb <= 2 ? "low (0–2)" : sb <= 4 ? "intermediate (3–4)" : "high (≥5)";
+    provider.push({
+      domain: "Respiratory", priority: "medium", title: `OSA — STOP-BANG ${sbBand}`,
+      detail: timedDetail({
+        ge8: hasOSADx ? `Diagnosed OSA: bring CPAP. ${d.cpapAdherent === "no" ? "NON-ADHERENT — reinforce, re-initiate ≥2 wk preop. " : ""}Assess pulm HTN / RV dysfunction.` : "Suspected OSA: STOP-BANG scoring. If ≥3 and ≥4 wk available → sleep study.",
+        wk47: sb !== null && sb >= 5 ? "STOP-BANG ≥5: empiric CPAP. Assume OSA for periop planning." : "Reinforce CPAP adherence. Plan postop continuous SpO₂.",
+        dos: "Bring CPAP to hospital. Postop: continuous SpO₂, CPAP when not eating, opioid-sparing multimodal analgesia, avoid supine.",
+        readiness: hasOSADx ? "CPAP present at hospital; adherence documented." : "STOP-BANG documented; empiric CPAP plan if ≥5.",
+      }, "Chung Anesth Analg 2016; Tracy Future Sci OA 2025"),
+    });
+  }
+
+  // Pathway 10b: Unexplained dyspnea (retained)
+  if (respiratory.includes("Unexplained dyspnea")) {
+    provider.push({
+      domain: "Respiratory", priority: "high", title: "Unexplained Dyspnea",
+      detail: timedDetail({
+        ge8: "Order BNP/NT-proBNP (Class 2b). If elevated → echo before proceeding. DASI questionnaire for functional capacity.",
+        wk47: "PFTs only if needed to assess optimization for lung resection. Optimize bronchodilators if obstructive pattern.",
+        dos: "Stratify risk based on workup results. Plan for postop troponin if elevated cardiac risk emerges.",
+        readiness: "Etiology identified or ruled out. Cardiology/pulmonology clearance as indicated.",
+      }, "2024 AHA/ACC"),
+    });
+  }
+
+  // Pathway 11: Asthma
+  if (hasAsthma) {
+    provider.push({
+      domain: "Respiratory", priority: "medium", title: "Asthma",
+      detail: timedDetail({
+        ge8: "Elective surgery only when well-controlled (bronchospasm <2%). Uncontrolled: increase ICS, add LABA.",
+        wk47: "Uncontrolled asthma → methylprednisolone 40 mg ×5 d.",
+        dos: "Avoid desflurane and histamine-releasing NMBAs. Prefer sevoflurane + rocuronium/sugammadex. Nebulizer in recovery.",
+        readiness: "Symptoms controlled, PEF at baseline, no recent exacerbation.",
+      }, "GINA 2024"),
+    });
+  }
+
+  // ───────────────────────────────────────────────
+  // SECTION C — ENDOCRINE & METABOLIC (Pathways 12–16)
+  // ───────────────────────────────────────────────
+
+  // Pathway 12: Diabetes
+  if (isDiabetic) {
+    const a1cLine = a1cNum !== null
+      ? (a1cNum > 9.0 ? `A1C ${a1cNum}% — EXCEEDS 9.0%: DEFER elective surgery.`
+        : a1cNum > 8.5 ? `A1C ${a1cNum}% — above 8.5% target; optimize before elective.`
+        : `A1C ${a1cNum}% — within target.`)
+      : "Order A1C if none in 90 d. Target ≤8.5% for elective; defer if >9.0%.";
+    const insulin = d.insulinType || "";
+    let insulinLine = "No insulin use documented.";
+    if (insulin === "basal") insulinLine = "Basal insulin: reduce 20–25% evening before.";
+    else if (insulin === "basal-bolus") insulinLine = "Basal-bolus: basal −20–25%; NPH −50%; HOLD all bolus while NPO.";
+    else if (insulin === "pump") insulinLine = "Insulin pump: continue basal ≤1 missed meal. Disconnect >3 h → IV insulin with manual basal rate.";
+    provider.push({
+      domain: "Endocrine", priority: "high", title: "Diabetes — Perioperative Glucose",
+      detail: timedDetail({
+        ge8: a1cLine,
+        wk47: "Metformin: hold AM (24–48 h if eGFR 30–60). Sulfonylureas: hold AM. DPP-4i: continue. SGLT2i / GLP-1 RA per their pathways.",
+        wk12: insulinLine,
+        dos: "Glucose target 80–180 mg/dL (ADA 2025). Cancel if >300 + ketones >2.5. Order POC glucose on arrival.",
+        readiness: a1cNum !== null && a1cNum > 9.0 ? "NOT MET: A1C >9%." : "A1C ≤8.5%. Medication holds reconciled. Glucose plan documented.",
+      }, "ADA 2025; SAMBA Anesth Analg 2024; SPAQI J Clin Anesth 2024"),
+    });
+  }
+
+  // Pathway 13: GLP-1 RA
   if (hasGLP1) {
-    const risk = d.glp1Phase === "yes" || d.glp1GI === "active" ? "HIGH-RISK" : "Standard";
-    provider.push({ domain: "Medications", priority: "high", title: `GLP-1 RA Management — ${risk}`, detail: risk === "HIGH-RISK"
-      ? "Escalation phase or active GI symptoms. Liquid diet 24h before surgery. Point-of-care gastric ultrasound on DOS. If retained gastric contents: rapid sequence induction or delay. Chart review with anesthesiologist required."
-      : "Stable dose, no GI symptoms — most patients may continue GLP-1 RA. Standard NPO guidelines apply. Monitor blood glucose perioperatively." });
+    const risk = d.glp1Phase === "yes" || d.glp1GI === "active";
+    const weeklyAgent = diabetesMeds.some(m => m.includes("semaglutide") || m.includes("Tirzepatide"));
+    provider.push({
+      domain: "Medications", priority: "high", title: `GLP-1 RA — ${risk ? "HIGH RISK" : "Standard"}`,
+      detail: timedDetail({
+        ge8: risk ? "Escalation phase, high dose, weekly agent, active GI symptoms, or gastroparesis: liquid diet ≥24 h before." : "No risk factors: CONTINUE. Standard NPO.",
+        wk12: weeklyAgent ? "Weekly agent (semaglutide/tirzepatide): HOLD 7 days before surgery." : "Daily agent: hold day of surgery.",
+        dos: d.glp1GI === "active" ? "Active GI symptoms: consider delay. If proceeding: liquid diet, gastric US, RSI if retained solids." : "Standard NPO. Monitor glucose perioperatively.",
+        readiness: risk ? "Liquid diet adherence confirmed. Gastric US plan in place." : "Standard readiness.",
+      }, "Multi-Society Guidance Surg Endosc 2025; SPAQI BJA 2025"),
+    });
   }
+
+  // Pathway 14: SGLT2i
   if (hasSGLT2) {
-    provider.push({ domain: "Medications", priority: "high", title: "SGLT2 Inhibitor: HOLD 3–4 Days Before Surgery", detail: "Discontinue empagliflozin/dapagliflozin/canagliflozin 3–4 days before elective surgery. Order point-of-care ketones on DOS. Monitor for euglycemic DKA perioperatively. Ensure adequate hydration. Restart only when eating and drinking normally. (2024 AHA/ACC & ESAIC 2025)" });
+    provider.push({
+      domain: "Medications", priority: "high", title: "SGLT2 Inhibitor",
+      detail: timedDetail({
+        wk12: "HOLD: empagliflozin / dapagliflozin / canagliflozin ≥3 d. Ertugliflozin ≥4 d (Class I AHA/ACC).",
+        dos: "POC β-hydroxybutyrate: <0.6 normal / >1.5 = DKA workup. If DKA: IV fluids + insulin + dextrose.",
+        readiness: "Restart only when eating normally AND ketones <0.6. HF exception: shared decision with cardiology.",
+      }, "2024 AHA/ACC; Dixit JAMA Surg 2025"),
+    });
   }
+
+  // Pathway 15: Pheochromocytoma
+  if (hasPheoFlag) {
+    const alpha = d.alphaBlockadeStarted || "";
+    provider.push({
+      domain: "Endocrine", priority: "high", title: "Pheochromocytoma — Preop Alpha-Blockade",
+      detail: timedDetail({
+        ge8: "Phenoxybenzamine 10 mg BID → titrate to 40 mg BID, OR doxazosin 1–32 mg. START ≥10–14 d before surgery.",
+        wk47: "Continue alpha titration to Roizen criteria: no BP >160/90 ×24 h; no orthostatic <80/45; no ST/T changes ×1 wk.",
+        wk12: "Beta-blockade ONLY after alpha established (2–3 d later). NEVER beta first. Volume expansion: high-Na diet + IV NS.",
+        dos: "Confirm Roizen criteria met. Arterial line + central access. Phentolamine, nitroprusside, esmolol available.",
+        readiness: alpha === "no" ? "NOT MET: alpha-blockade not started. DO NOT PROCEED." : "Roizen criteria met. Volume expanded.",
+      }, "Endocrine Society 2014; StatPearls NBK589634"),
+    });
+  }
+
+  // Pathway 16: Stress-Dose Steroids
+  if (hasChronicSteroid) {
+    const dose = d.steroidDose || "";
+    const dur = d.steroidDurationWks || "";
+    const needsCoverage = dose === "addisons" || (dose === "ge20" && dur === "ge3") || (dose === "5-20" && dur === "ge3");
+    let dosing = "No coverage needed (≤5 mg/d any duration).";
+    if (dose === "addisons") dosing = "ALWAYS covers (Addison's/replacement).";
+    else if (dose === "ge20" && dur === "ge3") dosing = "Prednisone ≥20 mg/d ≥3 wk: YES coverage.";
+    else if (dose === "5-20" && dur === "ge3") dosing = "5–20 mg/d >3 wk (uncertain HPA): CONSIDER coverage.";
+    let protocol = "";
+    if (needsCoverage) {
+      protocol = surgeryMagnitude === "minor"
+        ? "Minor: usual dose. Consider hydrocortisone 25 mg IV."
+        : surgeryMagnitude === "moderate"
+        ? "Moderate: hydrocortisone 50 mg IV induction → 25 mg q8h ×24 h → usual dose."
+        : "Major: hydrocortisone 100 mg IV induction → 50 mg q8h ×24–48 h → taper.";
+    }
+    provider.push({
+      domain: "Endocrine", priority: needsCoverage ? "high" : "medium", title: "Stress-Dose Steroid Assessment",
+      detail: timedDetail({
+        ge8: dosing,
+        dos: needsCoverage ? protocol : "Continue usual dose. No stress-dose coverage required.",
+        readiness: needsCoverage ? `${surgeryMagnitude.toUpperCase()} surgery dosing protocol documented.` : "No coverage needed.",
+      }, "Woodcock Anaesthesia 2020; Bornstein JCEM 2016"),
+    });
+  }
+
+  // ───────────────────────────────────────────────
+  // SECTION D — HEMATOLOGIC (Pathways 17–19)
+  // ───────────────────────────────────────────────
+
+  // Pathway 17: Anemia — severity-graded (enriched with ferritin/TSAT)
+  if (hasAnemiaCondition || hasAnemiaHgb || d.bloodLoss === "significant") {
+    const ironKnown = d.ironDeficiency === "yes";
+    let ironWorkup = "Order ferritin + TSAT.";
+    if (ferritinNum !== null && ferritinNum < 30) ironWorkup = `Ferritin ${ferritinNum} — ABSOLUTE deficiency → IV iron (ferric carboxymaltose 750–1000 mg ≥2–4 wk preop).`;
+    else if (ferritinNum !== null && ferritinNum >= 30 && ferritinNum <= 100 && tsatNum !== null && tsatNum < 20) ironWorkup = `Ferritin ${ferritinNum} + TSAT ${tsatNum}% — FUNCTIONAL deficiency → IV iron.`;
+    else if (ferritinNum !== null && ferritinNum > 100 && tsatNum !== null && tsatNum >= 20) ironWorkup = `Ferritin ${ferritinNum} + TSAT ${tsatNum}% — iron replete. Investigate B12, folate, CKD, GI bleeding.`;
+    else if (ironKnown) ironWorkup = "Known iron deficiency → IV iron 2–4 wk preop (ferric carboxymaltose).";
+
+    let title, sections, priority = "high";
+    if (hgb !== null && hgb < 8) {
+      title = `Severe Anemia (Hgb ${hgb}) — URGENT`;
+      sections = {
+        ge8: "Hematology consult. Rule out bleeding. Consider deferring elective surgery.",
+        wk47: `${ironWorkup} Consider transfusion to ≥10 (1 unit at a time). EPO if CKD. T&C.`,
+        dos: "Confirm blood product availability. T&C ready.",
+        readiness: "NOT MET until Hgb ≥10 and etiology addressed.",
+      };
+    } else if (hgb !== null && hgb < 10) {
+      title = `Moderate Anemia (Hgb ${hgb})`;
+      sections = {
+        ge8: `${ironWorkup} IV iron ≥2–4 wk preop. EPO if CKD.`,
+        wk47: "Recheck Hgb 2 wk post-infusion. T&C for major surgery.",
+        dos: "Blood products available. Hgb recheck documented.",
+        readiness: "Hgb trending up. Etiology addressed.",
+      };
+    } else if (hgb !== null && hgb < 13) {
+      title = `Mild Anemia (Hgb ${hgb})`;
+      sections = {
+        ge8: weeks >= 6 ? "Oral iron 325 mg daily + vitamin C. Recheck 2–4 wk." : `${ironWorkup} IV iron if <4 wk.`,
+        wk47: "T&S for significant expected blood loss. Recheck 2–4 wk.",
+        dos: "Hgb recheck if IV iron given.",
+        readiness: "Hgb improving; ferritin/TSAT normalized.",
+      };
+    } else {
+      title = "Anemia Management — Obtain Hemoglobin";
+      sections = {
+        ge8: "Order CBC with iron studies (ferritin, TIBC, TSAT, retic count).",
+        readiness: "Hgb measured; severity graded.",
+      };
+      priority = "medium";
+    }
+    provider.push({ domain: "Hematologic", priority, title, detail: timedDetail(sections, "ICCAMS Ann Surg 2023; BSH Br J Haematol 2024; TRICC NEJM 1999") });
+  }
+
+  // Pathway 18: Sickle Cell
+  if (other.includes("Sickle cell disease")) {
+    provider.push({
+      domain: "Hematologic", priority: "high", title: "Sickle Cell Disease",
+      detail: timedDetail({
+        ge8: "Hematology co-management. Phenotypically matched blood. Target Hgb 10 (NOT >11). HbS <30% major / <60% minor.",
+        wk47: "Plan exchange transfusion timing if HbS target requires.",
+        dos: "IV NS 1–1.5 mL/kg/hr evening before. Active warming. SpO₂ >95%. IS q1–2 h. Avoid dehydration, hypothermia, hypoxemia, acidosis.",
+        readiness: "Hgb 10, HbS at target, matched units on file, ACS prevention bundle ready.",
+      }, "Vichinsky NEJM 1995; Walker Anaesthesia 2021"),
+    });
+  }
+
+  // Pathway 19: Anticoagulation (ASRA 5th Ed table)
+  if (anticoag.length > 0) {
+    const crclHint = egfrNum !== null && egfrNum < 50 ? ` Renal-adjusted: eGFR ${egfrNum} — extend DOAC holds (dabigatran: ≥48 h low / ≥120 h high for CrCl 30–49).` : "";
+    provider.push({
+      domain: "Medications", priority: "high", title: "Anticoagulation — ASRA 5th Ed (2025)",
+      detail: timedDetail({
+        ge8: `Active agents: ${anticoag.join(", ")}. Reconcile timing with ASRA 5th Ed. "Low dose" / "high dose" replaces prophylactic/therapeutic. Deep plexus now managed as neuraxial.${crclHint}`,
+        wk12: "DRUG TIMING (low/high bleed risk): apixaban ≥36/72 h · rivaroxaban ≥24/72 h · dabigatran ≥48/72 h (CrCl ≥50) · LMWH ≥12/24 h · warfarin 5 d (INR <1.5) · clopidogrel 5–7 d · ticagrelor 5 d. DOAC anti-Xa <30 ng/mL or aXa ≤0.1 IU/mL may allow earlier.",
+        dos: "Verify INR/anti-Xa as appropriate. Confirm neuraxial timing with anesthesia.",
+        readiness: "RESTART: 6 h low / 24 h high for most DOACs; 12/24–72 h LMWH; warfarin per indication.",
+      }, "Kopp ASRA 5th Ed Reg Anesth Pain Med 2025 PMID 39880411"),
+    });
+  }
+
+  // ───────────────────────────────────────────────
+  // SECTION E — SUBSTANCE USE (Pathways 20–22)
+  // ───────────────────────────────────────────────
+
+  // Pathway 20: Smoking (time-keyed)
+  if (d.smokingStatus === "current") {
+    const cigDay = parseInt(d.cigPerDay) || 0;
+    const nrt = cigDay >= 10 ? "21 mg patch" : "14 mg patch";
+    const heavy = cigDay >= 20;
+    provider.push({
+      domain: "Smoking", priority: "high", title: `Smoking Cessation — ${cigDay || "?"} cig/d`,
+      detail: timedDetail({
+        ge8: `Quit now. NRT ${nrt} + rescue gum/lozenge. Varenicline 1 mg BID ×12 wk. Cessation program referral. Spirometry education. ≥8 wk cessation = 47% PPC reduction. Ciliary recovery 2–4 wk; immune 6–8 wk.`,
+        wk47: `Quit now. Same NRT. Assess adherence. Spirometry education. 23% PPC reduction at ≥4 wk.`,
+        wk12: `Even 24–48 h helps. NRT patch + gum. No smoking on DOS. COHb normalizes 12–24 h.`,
+        dos: "Verify cessation. NRT patch on admission. Incentive spirometer at bedside.",
+        readiness: heavy ? `HEAVY (≥20/d): consider PFTs if lung resection, optimize bronchodilators, enhanced postop monitoring.` : "NRT plan documented. Cessation timeline on file.",
+      }, "Mills Arch Intern Med 2011; Wong Anesth Analg 2017"),
+    });
+  } else if (d.smokingStatus === "former_lt8") {
+    provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation (<8 wk)", detail: "Patient quit <8 wk ago. Reinforce abstinence, continue NRT if in use. Incentive spirometry education. Airway reactivity remains increased first 8 wk — standard precautions for airway management." });
+  }
+
+  // Pathway 21: Alcohol (PAWSS / CIWA-Ar)
+  if (d.alcoholUse === "heavy") {
+    const withdrawal = d.withdrawalHistory === "yes";
+    provider.push({
+      domain: "Alcohol", priority: "high", title: withdrawal ? "Heavy Alcohol + Withdrawal History — CRITICAL" : "Heavy Alcohol Use",
+      detail: timedDetail({
+        ge8: "AUDIT-C score; PAWSS ≥4 = high withdrawal risk (sens 93%). LABS: CMP, CBC, PT/INR, Mg, phosphate, GGT. Thiamine 100 mg PO daily (MANDATORY — prevents Wernicke). Folate 1 mg. MVI. Counsel cessation ≥4 wk (immune + platelet recovery).",
+        wk47: "Continue thiamine/folate. Document cessation duration. Addiction medicine referral if unable to abstain.",
+        dos: withdrawal ? "PAWSS-triggered benzo prophylaxis protocol. ICU consideration. Addiction medicine/psychiatry consult." : "CIWA-Ar monitoring ×72 h postop. Low threshold for benzo rescue (typical withdrawal 6–24 h after last drink).",
+        readiness: `CIWA-Ar dosing: ≤8 none · 9–19 lorazepam 1–2 mg q1h · ≥20 diazepam 10–20 mg IV q15–30 min; phenobarbital rescue. Document prominently in anesthesia note (enzyme induction → ↑ anesthetic/opioid requirements).`,
+      }, "Maldonado Alcohol Alcohol 2015; PAWSS Alcohol Alcohol 2014"),
+    });
+  } else if (d.alcoholUse === "moderate") {
+    provider.push({ domain: "Alcohol", priority: "medium", title: "Moderate Alcohol Use", detail: "Counsel cessation ≥2 wk preop. Order CMP for liver screening. Thiamine supplementation. Monitor subclinical withdrawal perioperatively. Document in anesthesia note (may affect drug metabolism)." });
+  }
+
+  // Pathway 22: Buprenorphine / Methadone / Naltrexone
   if (hasBup) {
-    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine: CONTINUE Through Surgery", detail: "Do NOT discontinue buprenorphine perioperatively (ASRA/ASA/AAAM/ASAM consensus, reaffirmed 2024–2025). Continue home dose. Evidence: lower opioid requirements, similar pain scores, lower OUD relapse risk. Supplement with multimodal analgesia (regional, ketamine, acetaminophen, NSAIDs)." });
+    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine — CONTINUE", detail: "Do NOT discontinue perioperatively (ASRA/ASA/AAAM/ASAM 2021, reaffirmed 2024–2025). Continue home dose. Full mu-agonists CAN be co-administered. Multimodal: regional, ketamine, NSAIDs, gabapentinoids. Evidence: lower opioid requirements, similar pain scores, lower OUD relapse risk. (Kohan Reg Anesth Pain Med 2021 PMID 34385292)" });
   }
   if (hasMethadone) {
-    provider.push({ domain: "Medications", priority: "high", title: "Methadone: Continue Maintenance Dose", detail: "Continue methadone through surgery. If NPO: IV methadone at half the oral dose divided q6–12h. Order EKG for QTc monitoring. Multimodal analgesia approach." });
+    provider.push({ domain: "Medications", priority: "high", title: "Methadone — Continue", detail: "Continue maintenance dose. If NPO: IV = 50% oral divided q6–8 h. ECG REQUIRED (QTc >500 = TdP risk). Multimodal analgesia." });
   }
   if (hasNaltrexone) {
     const isXR = painMeds.includes("Naltrexone (XR/Vivitrol)");
-    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone: HOLD ${isXR ? "30 Days" : "3 Days"} Before Surgery`, detail: isXR ? "Extended-release naltrexone (Vivitrol): must be held 30 days before elective surgery to allow opioid receptor availability for intraoperative/postoperative analgesia." : "Oral naltrexone: hold 3 days (72 hours) before surgery." });
-  }
-  if (anticoag.length > 0) {
-    provider.push({ domain: "Medications", priority: "high", title: "Anticoagulation Management per ASRA 5th Ed (2025)", detail: `Active anticoagulants: ${anticoag.join(", ")}. Use ASRA 5th Edition drug-specific timing for neuraxial and deep plexus blocks (now managed like neuraxial). Consider anti-Xa calibrated assays for DOACs which may allow earlier procedures. Note: "low dose" and "high dose" replace old "prophylactic/therapeutic" terminology. Verify renal function (CrCl) for DOAC clearance timing.` });
+    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone — HOLD ${isXR ? "30 Days" : "72 h"}`, detail: isXR ? "Extended-release (Vivitrol): hold ≥30 days before elective surgery — allows opioid receptor availability. Emergency: opioid-free strategies (regional, ketamine, dexmedetomidine)." : "Oral naltrexone: hold 72 h before surgery." });
   }
 
-  // ── CARDIAC RISK ──
-  if (riskLevel === "elevated" || riskLevel === "high") {
-    provider.push({ domain: "Cardiac Risk", priority: "high", title: "2024 AHA/ACC Stepwise Algorithm", detail: `Risk level: ${riskLevel.toUpperCase()}. Use validated risk calculators (RCRI, ACS-NSQIP, MICA). Administer DASI questionnaire for functional capacity (replaces subjective METs). For poor functional capacity + elevated risk: consider BNP/NT-proBNP (Class 2b) before stress testing (downgraded to Class 2b from 2a). BNP <92 or NT-proBNP <300 suggests lower risk.` });
-  }
-  if (cardiac.includes("Pacemaker/AICD")) {
-    provider.push({ domain: "Cardiac Risk", priority: "high", title: "CIED Management", detail: "Preoperative device interrogation required. Coordinate with EP team for reprogramming plan and magnet availability. Ensure deactivation/reactivation protocol established before surgery." });
+  // ───────────────────────────────────────────────
+  // SECTION F — HEPATIC / RENAL / MSK (Pathways 23–25)
+  // ───────────────────────────────────────────────
+
+  // Pathway 23: Cirrhosis
+  if (hasCirrhosisFlag) {
+    const riskLine = childPugh === "A" ? "Child-Pugh A: safe for most surgery."
+      : childPugh === "B" ? "Child-Pugh B: increased risk — careful risk-benefit analysis."
+      : childPugh === "C" ? "Child-Pugh C: CONTRAINDICATED for elective surgery. Hepatology + transplant evaluation."
+      : "Child-Pugh class not provided. MELD <10 low / 10–15 mod / >15 high (avoid elective) / >20 mortality >50% / >25 life-saving only.";
+    provider.push({
+      domain: "Hepatic", priority: "high", title: `Cirrhosis${childPugh ? " — Child-Pugh " + childPugh : ""}`,
+      detail: timedDetail({
+        ge8: riskLine + " Hepatology consult for decompensated cirrhosis.",
+        wk47: "Coagulopathy: TEG/ROTEM-guided. Platelets <50K → transfuse. Avoid FFP for INR alone. Ascites: paracentesis if tense (albumin 6–8 g/L if >5 L drained). Nutrition: 1.2–1.5 g/kg protein.",
+        dos: "TEG/ROTEM available. Ascites decompressed. Nutrition optimized. Ammonia/lactulose plan.",
+        readiness: childPugh === "C" ? "NOT MET: Child-Pugh C contraindicated." : "Coagulation, volume, nutrition optimized.",
+      }, "ACG Guideline 2025; VOCAL-Penn Mahmud 2020"),
+    });
   }
 
-  // ── RESPIRATORY ──
-  if (respiratory.includes("OSA (diagnosed)") || respiratory.includes("OSA (suspected/STOP-BANG ≥3)")) {
-    provider.push({ domain: "Respiratory", priority: "medium", title: "OSA Management", detail: "Instruct patient to bring PAP/CPAP to hospital. For diagnosed OSA: assess for complications (pulmonary HTN, RV dysfunction). For suspected (STOP-BANG ≥3): consider formal sleep study referral if time permits. Plan for postoperative continuous pulse oximetry. If STOP-BANG ≥5: consider preoperative CPAP initiation." });
-  }
-  if (respiratory.includes("Unexplained dyspnea")) {
-    provider.push({ domain: "Respiratory", priority: "high", title: "Evaluate Unexplained Dyspnea", detail: "Consider BNP/NT-proBNP (Class 2b). If elevated, echocardiography before proceeding. Administer DASI questionnaire. PFTs only if needed to assess optimization for lung resection. Optimize bronchodilator therapy if obstructive component suspected." });
+  // Pathway 24: Renal / Dialysis
+  if (hasCKDFlag || onDialysisFlag) {
+    const drugList = "Avoid: succinylcholine, morphine, meperidine, tramadol. Prefer: cisatracurium + fentanyl/hydromorphone.";
+    provider.push({
+      domain: "Renal", priority: "high", title: onDialysisFlag ? "Dialysis-Dependent ESRD" : `CKD${egfrNum !== null ? " (eGFR " + egfrNum + ")" : ""}`,
+      detail: timedDetail({
+        ge8: onDialysisFlag ? "Coordinate with nephrology. Establish optimal dry weight. Confirm access site." : "KDIGO bundle: volume optimization, avoid nephrotoxins (NSAIDs, contrast), normoglycemia, Cr/UOP monitoring.",
+        wk47: "Reconcile DOAC hold timing with eGFR (see Pathway 19).",
+        wk12: "Medication review: dose-adjust renally-cleared drugs.",
+        dos: onDialysisFlag ? "Dialyze within 24 h preop. NO heparin last session. K+ <5.5, Mg ≥2.0 verified. " + drugList : "K+ and Mg verified. Strict fluid balance. " + drugList,
+        readiness: onDialysisFlag ? "Dialyzed <24 h. Electrolytes verified. Access protected." : "Baseline renal function documented. Nephrotoxin avoidance plan.",
+      }, "ASRA 5th Ed 2025; KDIGO 2012; BigpAK-2 Lancet 2026"),
+    });
   }
 
-  // ── ENDOCRINE ──
-  if (isDiabetic) {
-    provider.push({ domain: "Endocrine", priority: "high", title: "Perioperative Glucose Management", detail: `Order A1C if none in 90 days. Intraoperative glucose target: 140–180 mg/dL (STS/ERAS). Assess for GLP-1 RA and SGLT2i use. Order insulin subset in preop orders. For insulin pump patients: consider endocrine consult and follow institutional pump protocol.` });
+  // Pathway 25: Rheumatoid Arthritis / Biologics
+  if (hasRAFlag || biologicMeds.length > 0) {
+    const hasBiologic = biologicMeds.some(m => m !== "None");
+    const hasJAK = biologicMeds.some(m => m.includes("JAK"));
+    const continueDMARDs = conventionalDMARDs.filter(m => m !== "None").join(", ") || "none listed";
+    provider.push({
+      domain: "Rheumatologic", priority: "high", title: "Rheumatoid Arthritis / Biologics (ACR/AAHKS 2022)",
+      detail: timedDetail({
+        ge8: `CONTINUE conventional DMARDs: MTX, HCQ, SSZ, leflunomide, apremilast (${continueDMARDs}).`,
+        wk12: hasBiologic ? "WITHHOLD all biologics 1 dosing interval before surgery (TNFi, IL-6i, IL-17i, IL-23i, abatacept, rituximab)." : "No biologics listed.",
+        lt1: hasJAK ? "JAK inhibitors: hold ≥3 days." : "",
+        dos: "Cervical flex/ext X-rays if symptomatic (AAI in 25%). TMJ/cricoarytenoid assessment. Video laryngoscopy first-line.",
+        readiness: `Biologic holds documented. Restart all ~14 d post wound healing.`,
+      }, "Goodman Arthritis Care Res 2022 PMID 35718887"),
+    });
   }
 
-  // ── HEMATOLOGIC: SEVERITY-GRADED ANEMIA ──
-  if (hasAnemiaCondition || hasAnemiaHgb || d.bloodLoss === "significant") {
-    const ironDeficient = d.ironDeficiency === "yes";
-    const ironAppend = ironDeficient ? " IV iron is first-line (oral iron has poor bioavailability and insufficient time preoperatively). Ferric carboxymaltose allows single-dose correction." : "";
-    if (hgb !== null && hgb < 8) {
-      provider.push({ domain: "Hematologic", priority: "high", title: `Severe Anemia (Hgb ${hgb} g/dL) — URGENT`, detail: `DANGER: Hgb < 8 g/dL. Urgent hematology consult. Consider preoperative transfusion to Hgb ≥10. Order iron studies (ferritin, TIBC, serum iron, reticulocyte count), B12, folate. Rule out active blood loss. Consider deferring elective surgery. Type and crossmatch.${ironAppend}` });
-    } else if (hgb !== null && hgb < 10) {
-      provider.push({ domain: "Hematologic", priority: "high", title: `Moderate Anemia (Hgb ${hgb} g/dL)`, detail: `Order iron studies (ferritin, TIBC, serum iron, reticulocyte count), B12, folate. If iron-deficient: IV iron (ferric carboxymaltose or iron sucrose) 2–4 weeks preop. Consider hematology referral. Consider EPO if renal etiology contributing. Recheck Hgb 2 weeks post IV iron. Type and crossmatch for significant expected blood loss.${ironAppend}` });
-    } else if (hgb !== null && hgb < 13) {
-      provider.push({ domain: "Hematologic", priority: "high", title: `Mild Anemia (Hgb ${hgb} g/dL)`, detail: `Order iron studies (ferritin, TIBC, serum iron). Ferritin <30 or TSAT <20% = confirmed iron deficiency → IV iron 2–4 weeks preop. Ferritin 30–100 with low TSAT = functional deficiency → IV iron also recommended. Iron-replete: investigate other causes (chronic disease, B12/folate, renal). Type and screen for significant expected blood loss.${ironAppend}` });
-    } else {
-      provider.push({ domain: "Hematologic", priority: "high", title: "Anemia Management — Obtain Hemoglobin", detail: `Anemia indicated but no hemoglobin value entered. Order CBC with iron studies (ferritin, TIBC, serum iron). Treat confirmed iron deficiency with IV iron 2–4 weeks preop. Consider anemia clinic referral per institutional protocol. Recommend obtaining hemoglobin for severity grading.${ironAppend}` });
+  // ───────────────────────────────────────────────
+  // SECTION G — NEURO / CANCER / GERIATRIC / SURGERY-SPECIFIC (Pathways 26–31)
+  // ───────────────────────────────────────────────
+
+  // Pathway 26: Myasthenia Gravis
+  if (hasMGFlag) {
+    provider.push({
+      domain: "Neurologic", priority: "high", title: "Myasthenia Gravis",
+      detail: timedDetail({
+        ge8: "PFTs: FVC <20 mL/kg = high postop ventilatory failure risk. Optimize pyridostigmine, IVIG/PLEX if unstable.",
+        wk47: "Neurology co-management. Document MGFA class.",
+        dos: `Continue pyridostigmine (PO 60 mg ≈ IV 2 mg — do NOT abruptly stop). NMBA dose: 10–25% normal rocuronium. Sugammadex preferred. Quantitative TOF MANDATORY. AVOID aminoglycosides, Mg, fluoroquinolones. ICU for MGFA III–V or FVC <20.`,
+        readiness: "PFT documented. Pyridostigmine continued. Sugammadex available. ICU bed if severe.",
+      }, "Daum BJA Educ 2021; StatPearls NBK572091"),
+    });
+  }
+
+  // Pathway 27: Seizure Disorder
+  if (hasSeizureFlag) {
+    const aeds = aedMeds.filter(m => m !== "Other").join(", ") || "listed AEDs";
+    provider.push({
+      domain: "Neurologic", priority: "medium", title: "Seizure Disorder — Continue AEDs",
+      detail: timedDetail({
+        ge8: `Continue all AEDs (${aeds}). Check phenytoin/valproate levels if applicable.`,
+        dos: "AM dose with sip of water. IV conversion if NPO extended: levetiracetam 1:1 PO:IV; fosphenytoin 20 mg PE/kg; valproate 1:1; lacosamide 1:1.",
+        readiness: "AED continuation plan documented. AVOID meperidine, tramadol. Resume PO ASAP.",
+      }, "AES Status Epilepticus Algorithm"),
+    });
+  }
+
+  // Pathway 28: Cancer + Chemotherapy
+  if (hasCancerFlag) {
+    const recentChemo = chemoWksAgo !== null && chemoWksAgo < 3;
+    const anthra = d.anthracyclineExposure === "yes";
+    provider.push({
+      domain: "Oncologic", priority: "high", title: "Cancer / Recent Chemotherapy",
+      detail: timedDetail({
+        ge8: anthra ? "Anthracycline exposure: echo + GLS + troponin + BNP. LVEF <50% or GLS drop >15% → cardiology. ICIs: troponin baseline + serial (myocarditis 1–2%, mortality 25–40%)." : "HER2 therapy: LVEF + GLS q3 mo if applicable.",
+        wk47: "Hematologic recovery: ANC >1.0–1.5, Plt >50 K (>100 K neuro/eye). ≥3–4 wk post-chemo.",
+        wk12: "Targeted therapy holds: bevacizumab 6–8 wk, TKIs ≥1 wk, ICIs 1–3 wk.",
+        dos: "VTE risk: Khorana ≥2 → thromboprophylaxis. Extended 4 wk LMWH for high-risk cancer surgery.",
+        readiness: recentChemo ? "NOT MET: <3 wk post-chemo. Delay for count recovery." : "Counts recovered. Targeted therapy holds confirmed. Cardio-onc clearance if anthra/ICI.",
+      }, "ESC 2022 Cardio-Onc Eur Heart J; ASCO VTE JCO 2023"),
+    });
+  }
+
+  // Pathway 29: Elderly ≥75 / Frailty
+  if (age >= 75 || other.includes("Frailty/recent falls") || (cfsNum !== null && cfsNum >= 5)) {
+    let cfsLine = "Screen with CFS, mFI, or RAI.";
+    if (cfsNum !== null) {
+      cfsLine = cfsNum >= 7 ? `CFS ${cfsNum}: GOALS-OF-CARE discussion. Advance directives / DNR.`
+        : cfsNum >= 5 ? `CFS ${cfsNum}: geriatric assessment indicated.`
+        : `CFS ${cfsNum}: robust.`;
     }
-  }
-  if (other.includes("Sickle cell disease")) {
-    provider.push({ domain: "Hematologic", priority: "high", title: "Sickle Cell Protocol", detail: "Order BMP, CBC, reticulocyte count, HbS. Target Hb ≥10 g/dL and HbS <30%. Phenotypically matched blood for any transfusion. Coordinate with hematology." });
+    const miniCogLine = d.miniCogNormal === "no" ? "Mini-Cog ABNORMAL — high delirium risk." : d.miniCogNormal === "yes" ? "Mini-Cog normal." : "Screen with Mini-Cog or MoCA (<26).";
+    provider.push({
+      domain: "Frailty/Age", priority: "high", title: `Elderly ≥${age >= 75 ? "75" : "65"} / Frailty`,
+      detail: timedDetail({
+        ge8: `${cfsLine} ${miniCogLine} Polypharmacy review per Beers 2023. Albumin, grip, protein. Advance care planning.`,
+        wk47: "Nutritional optimization (1.2–1.5 g/kg protein). Physical prehabilitation if time permits.",
+        dos: "ESAIC delirium bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids (glasses/hearing aids). BIS 40–60. AVOID benzos, anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
+        readiness: "Frailty documented. Delirium bundle orders active. Advance directives on file. Routine age-based EKG NOT indicated (ESAIC 2025).",
+      }, "Aldecoa Eur J Anaesthesiol 2024; Varley JAMA Surg 2023"),
+    });
   }
 
-  // ── AGE / FRAILTY ──
-  if (age >= 75 || other.includes("Frailty/recent falls")) {
-    provider.push({ domain: "Frailty/Age", priority: "high", title: "Frailty Screening & Geriatric Optimization", detail: "Screen with validated tool (Clinical Frailty Scale, mFI, or RAI). Frailty is stronger predictor than age alone. Assess delirium risk (CAM). Cognitive screening. Advance care planning/DNR discussion. Consider perioperative geriatrics consult. Routine age-based EKG is NOT supported by evidence (ESAIC 2025)." });
-  }
-
-  // ── SURGERY-SPECIFIC ──
+  // Pathway 30: Joint Replacement
   if (needsImplant) {
-    provider.push({ domain: "Surgery-Specific", priority: "medium", title: "MRSA/MSSA Screening & Decolonization", detail: "Order nasal swab for MRSA/MSSA PCR screening. Prescribe mupirocin nasal ointment + CHG bathing per institutional decolonization protocol for implant/foreign body procedures." });
+    provider.push({
+      domain: "Surgery-Specific", priority: "high", title: "Implant / Joint Replacement Pathway",
+      detail: timedDetail({
+        ge8: "Nasal swab for S. aureus within 30 d of surgery. Universal decolonization: mupirocin 2% nasal BID ×5 d + CHG 4% wash ×3–5 d.",
+        wk47: "Anemia target: Hgb ≥13 DOS (Pathway 17). If <13, IV iron ≥2–4 wk preop.",
+        wk12: "Review VTE prophylaxis plan: ASA 81 mg BID ×4–6 wk (AAOS/ICM 2018). Elevated risk → LMWH or DOAC. IPC for all.",
+        dos: "Confirm decolonization completed. Preop antibiotics timed per SCIP. IPC in OR.",
+        readiness: "Swab negative or decolonized. Hgb ≥13. VTE plan documented.",
+      }, "AAOS/ICM 2018; AAHKS 2022 VTE Guidelines"),
+    });
   }
+
+  // Pathway 31: Vascular Surgery
   if (surgeryTags.includes("Vascular")) {
-    provider.push({ domain: "Surgery-Specific", priority: "high", title: "Vascular Surgery — Elevated Risk Protocol", detail: "Vascular surgery remains elevated-risk category. Biomarker-based risk stratification (BNP/NT-proBNP) especially valuable. Plan postoperative troponin surveillance for MINS detection." });
+    provider.push({
+      domain: "Surgery-Specific", priority: "high", title: "Vascular Surgery — Highest MACE Risk",
+      detail: timedDetail({
+        ge8: "Full 2024 AHA/ACC algorithm for ALL patients. RCRI + DASI + BNP (Class 2a). Preop revascularization NOT beneficial (CARP).",
+        wk47: "Optimize GDMT: high-intensity statin, aspirin, beta-blocker (continue; do NOT start <7 d preop).",
+        dos: "Plan MINS surveillance: hs-cTn at 6–12 h, POD 1, POD 2. Postop ICU/step-down for monitoring.",
+        readiness: "Workup complete. MINS surveillance ordered. If MINS detected: ASA + statin; consider dabigatran 110 mg BID (MANAGE); cardiology ≤30 d.",
+      }, "CARP NEJM 2004; MANAGE Lancet 2018"),
+    });
   }
 
-  // ── PROVIDER: SMOKING CESSATION PROTOCOL ──
-  if (d.smokingStatus === "current") {
-    const cigDay = parseInt(d.cigPerDay) || 0;
-    const nrtDose = cigDay >= 10 ? "21mg patch" : "14mg patch";
-    let smokingDetail = `Prescribe NRT: ${nrtDose} plus rescue gum/lozenge as needed. Consider varenicline (start 1–2 weeks before quit date, 12-week course) or bupropion. Refer to cessation program if timeline permits. Preoperative incentive spirometry education for ALL current smokers. Plan postoperative respiratory monitoring and aggressive pulmonary toilet.`;
-    if (cigDay >= 20) {
-      smokingDetail += " HEAVY SMOKER: consider PFTs if lung resection planned, optimize bronchodilators, higher NRT dose may be needed, plan enhanced postoperative pulmonary monitoring.";
-    }
-    provider.push({ domain: "Smoking", priority: "high", title: "Smoking Cessation Protocol", detail: smokingDetail });
-  } else if (d.smokingStatus === "former_lt8") {
-    provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation — Reinforce", detail: "Patient quit <8 weeks ago. Reinforce abstinence, continue NRT if in use. Order incentive spirometry education. Note: airway reactivity remains increased in first 8 weeks after cessation — standard precautions for airway management." });
+  // ───────────────────────────────────────────────
+  // SECTION H — CROSS-CUTTING (Pathways 32–34)
+  // ───────────────────────────────────────────────
+
+  // Pathway 32: ACEi/ARB
+  if (cardioMeds.includes("ACE inhibitor") || cardioMeds.includes("ARB")) {
+    const hfrefContinue = hfTypeResolved === "HFrEF";
+    provider.push({
+      domain: "Medications", priority: "high", title: "ACEi / ARB Management",
+      detail: timedDetail({
+        ge8: hfrefContinue ? "HFrEF: CONTINUE as GDMT (Class 2a)." : "HTN-only: hold 24 h before elevated-risk surgery (Class 2b, STOP-or-NOT).",
+        dos: hfrefContinue ? "CONTINUE through surgery." : "Hold morning of surgery. Continue all other antihypertensives.",
+        readiness: "RESTART within 48 h postop. CRITICAL: 25% never restarted — document restart order.",
+      }, "STOP-or-NOT JAMA 2024; POISE-3 NEJM 2022"),
+    });
   }
 
-  // ── PROVIDER: ALCOHOL PROTOCOL ──
-  if (d.alcoholUse === "heavy") {
-    let alcoholDetail = "LABS: CMP (LFTs), CBC with diff (thrombocytopenia, macrocytosis), PT/INR, magnesium, phosphate. Consider prealbumin. SUPPLEMENTS: Thiamine 100mg PO daily (mandatory — prevents Wernicke), folate 1mg daily, multivitamin.";
-    if (d.withdrawalHistory === "yes") {
-      alcoholDetail += " WITHDRAWAL HISTORY POSITIVE: DANGER. Order PAWSS score. Benzo-based prophylaxis protocol. CIWA-Ar monitoring. May require ICU postoperatively. Addiction medicine/psychiatry consult mandatory.";
-    } else {
-      alcoholDetail += " Order CIWA-Ar monitoring ×72h postoperatively. Low threshold for benzo rescue. Withdrawal typically 6–24h after last drink.";
-    }
-    alcoholDetail += " Counsel cessation ≥4 weeks preop. Addiction medicine referral if unable to abstain. Document prominently in anesthesia note (enzyme induction → higher anesthetic/opioid requirements).";
-    provider.push({ domain: "Alcohol", priority: "high", title: "Heavy Alcohol Use — Perioperative Protocol", detail: alcoholDetail });
-  } else if (d.alcoholUse === "moderate") {
-    provider.push({ domain: "Alcohol", priority: "medium", title: "Moderate Alcohol Use — Evaluation & Counseling", detail: "Counsel cessation ≥2 weeks preoperatively. Order CMP for liver screening. Consider thiamine supplementation. Monitor for subclinical withdrawal perioperatively. Document alcohol use in anesthesia note (may affect drug metabolism)." });
+  // Pathway 33: VTE Prophylaxis (Caprini)
+  {
+    let caprini = 0;
+    if (age >= 75) caprini += 3; else if (age >= 61) caprini += 2; else if (age >= 41) caprini += 1;
+    if (hasCancerFlag) caprini += 2;
+    if (bmi !== null && bmi >= 25) caprini += 1;
+    if (surgeryMagnitude === "major") caprini += 2; else if (surgeryMagnitude === "moderate") caprini += 1;
+    if (other.includes("Frailty/recent falls")) caprini += 1;
+    if (hasHFFlag) caprini += 1;
+    if (hasStrokeFlag) caprini += 5;
+    const tier = caprini >= 8 ? "Very High (≥8): Combined pharm+mech + EXTENDED ≤30 d. Cancer → LMWH."
+      : caprini >= 5 ? "High (5–7): Combined pharm+mech × hospitalization + 7–10 d."
+      : caprini >= 3 ? "Moderate (3–4): Pharm ± mech × hospitalization."
+      : caprini >= 1 ? "Low (1–2): Mechanical OR pharm × hospitalization."
+      : "Minimal (0): Early ambulation only.";
+    provider.push({
+      domain: "VTE", priority: caprini >= 5 ? "high" : "medium", title: `VTE Prophylaxis — Caprini ${caprini}`,
+      detail: timedDetail({
+        ge8: `Score: ${caprini}. ${tier}`,
+        dos: "Reconcile timing with ASRA 5th Ed neuraxial intervals. IPC in OR for all patients.",
+        readiness: "Caprini documented. Pharm + mech ordered per tier. Duration per tier.",
+      }, "Pannucci Mayo Clin Proc 2020; CHEST 2012"),
+    });
   }
 
-  // ── DAY-OF-SURGERY ──
-  let dosItems = "Verify: medications held/continued per plan, labs within acceptable range, blood glucose on arrival, K+ for diuretic patients, pregnancy test if applicable, CPAP brought (if OSA), ketones checked (if was on SGLT2i), all consult clearances documented, resuscitation preferences confirmed.";
-  if (d.smokingStatus === "current") dosItems += " SMOKING: verify cessation status, NRT plan documented for admission, incentive spirometer at bedside.";
-  if (d.alcoholUse === "heavy") dosItems += " ALCOHOL: verify cessation duration, withdrawal risk plan active, thiamine administered, CIWA-Ar orders placed if indicated.";
-  if (d.withdrawalHistory === "yes") dosItems += " WITHDRAWAL: CIWA-Ar orders verified, benzodiazepine protocol ready, ICU bed available if needed.";
-  if ((hasAnemiaCondition || hasAnemiaHgb) && hgb !== null) dosItems += " ANEMIA: Hgb recheck if IV iron given, blood product availability confirmed with blood bank.";
-  provider.push({ domain: "Day of Surgery", priority: "medium", title: "DOS Verification Checklist", detail: dosItems });
+  // Pathway 34: Delirium Prevention
+  if (age >= 65 || d.miniCogNormal === "no" || (cfsNum !== null && cfsNum >= 5)) {
+    provider.push({
+      domain: "Neurologic", priority: "medium", title: "Delirium Prevention (ESAIC 2024)",
+      detail: timedDetail({
+        ge8: "Screen: MoCA or Mini-Cog preop. Document baseline cognition. Identify modifiable risks (polypharmacy, sleep, hearing/vision).",
+        dos: "Bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids, pain control. BIS 40–60. AVOID benzos/anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
+        readiness: "Bundle orders active. CAM/4AT q8–12 h ×72 h postop.",
+      }, "Aldecoa Eur J Anaesthesiol 2024;41:81–108"),
+    });
+  }
+
+  // ───────────────────────────────────────────────
+  // DAY-OF-SURGERY FINAL CHECKLIST
+  // ───────────────────────────────────────────────
+  {
+    const items = [];
+    items.push("BASE: Medications held/continued per plan · labs within range · glucose on arrival · K+ for diuretic pts · pregnancy test if applicable · consent signed · resuscitation preferences confirmed.");
+    if (hasCADFlag) items.push("CARDIAC: BB continued · statin continued · troponin orders at 24/48 h placed.");
+    if (hasHFFlag) items.push("HF: Euvolemic · GDMT reconciled · SGLT2i held if applicable.");
+    if (hasSGLT2) items.push("SGLT2i: POC ketones <0.6 verified.");
+    if (hasGLP1 && (d.glp1Phase === "yes" || d.glp1GI === "active")) items.push("GLP-1 RA HIGH RISK: Gastric US; RSI plan if retained solids.");
+    if (isDiabetic) items.push("DIABETES: A1C on file · insulin pump plan · POC glucose.");
+    if (hasChronicSteroid && (d.steroidDose === "addisons" || (d.steroidDose === "ge20" && d.steroidDurationWks === "ge3"))) items.push("STRESS-DOSE STEROID: Hydrocortisone dose per surgery magnitude.");
+    if (hasPheoFlag) items.push("PHEO: Roizen criteria met · phentolamine/esmolol available.");
+    if (hasAnemiaCondition || hasAnemiaHgb) items.push("ANEMIA: Hgb recheck if IV iron given · blood bank crossmatch confirmed.");
+    if (other.includes("Sickle cell disease")) items.push("SICKLE CELL: Hgb 10 / HbS target / matched blood / warming / SpO₂ >95%.");
+    if (anticoag.length > 0) items.push("ANTICOAG: Hold timing verified per ASRA 5th · anti-Xa as needed.");
+    if (d.smokingStatus === "current") items.push("SMOKING: Cessation verified · NRT on admission · IS at bedside.");
+    if (d.alcoholUse === "heavy") items.push("ALCOHOL: Thiamine administered · CIWA-Ar orders · ICU if PAWSS+.");
+    if (hasOSAFlag) items.push("OSA: CPAP at bedside · continuous SpO₂ orders.");
+    if (hasRAFlag) items.push("RA: Cervical imaging reviewed · VL ready · biologic hold confirmed.");
+    if (hasMGFlag) items.push("MG: Sugammadex available · quantitative TOF · ICU bed if MGFA III–V.");
+    if (hasSeizureFlag) items.push("SEIZURE: AED AM dose · IV conversion plan.");
+    if (hasCIED) items.push("CIED: Reprogram / magnet plan in anesthesia note.");
+    if (hasPulmHTN) items.push("PULMONARY HTN: Inhaled NO available · invasive monitoring.");
+    if (hasCirrhosisFlag) items.push("CIRRHOSIS: TEG/ROTEM · platelet threshold 50K · albumin/ascites plan.");
+    if (onDialysisFlag) items.push("DIALYSIS: Dialyzed <24 h · K+ <5.5 · Mg ≥2.0 · access protected.");
+    if (needsImplant) items.push("IMPLANT: Decolonization complete · preop abx per SCIP · IPC in OR.");
+    if (surgeryTags.includes("Vascular")) items.push("VASCULAR: MINS surveillance orders placed (hs-cTn 6–12 h, POD 1, 2).");
+    if (age >= 65) items.push("GERIATRIC: Delirium bundle · BIS 40–60 · CAM/4AT orders.");
+    provider.push({ domain: "Day of Surgery", priority: "medium", title: "DOS Verification Checklist", detail: items.join("\n") });
+  }
 
   return { patient, provider, alerts, riskLevel };
 }
@@ -3063,7 +3887,24 @@ function PlanCard({ rec, color }) {
         </div>
       </div>
       <div style={{ fontSize: "14px", fontWeight: 700, color: SR.text, marginBottom: "6px", fontFamily: SR.font }}>{rec.title}</div>
-      <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>{rec.detail}</div>
+      <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>
+        {rec.detail.includes("\n")
+          ? rec.detail.split("\n").map((line, i) => {
+              const colonIdx = line.indexOf(":");
+              const hasLabel = colonIdx > 0 && colonIdx < 24;
+              return (
+                <div key={i} style={{ marginBottom: "4px" }}>
+                  {hasLabel ? (
+                    <>
+                      <span style={{ fontWeight: 700, color: SR.text }}>{line.slice(0, colonIdx + 1)}</span>
+                      {line.slice(colonIdx + 1)}
+                    </>
+                  ) : line}
+                </div>
+              );
+            })
+          : rec.detail}
+      </div>
     </div>
   );
 }
