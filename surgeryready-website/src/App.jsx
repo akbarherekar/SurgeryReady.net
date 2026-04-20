@@ -160,7 +160,7 @@ function Nav({ currentPage, onNavigate }) {
   const links = [
     { label: "How it works", href: "#how-it-works", page: "home" },
     { label: "For patients", href: "#for-patients", page: "home" },
-    { label: "For hospitals", href: "#for-hospitals", page: "home" },
+    { label: "For physicians", href: "#for-hospitals", page: "home" },
     { label: "Pre-Op Assessment", href: "#", page: "preop", highlight: true },
     { label: "About", href: "#about", page: "home" },
   ];
@@ -276,22 +276,21 @@ function Hero({ onNavigate }) {
 
       <div style={{ maxWidth: "1140px", margin: "0 auto", padding: "0 24px", position: "relative" }}>
         <div style={{ textAlign: "center", marginBottom: "12px" }}>
-          <SectionLabel>Hybrid perioperative optimization</SectionLabel>
+          <SectionLabel>Evidence-based surgical preparation</SectionLabel>
         </div>
 
         <h1 className="sr-hero" style={{
           fontFamily: FONT_DISPLAY, fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700,
           color: BRAND.navy, lineHeight: 1.15, margin: "0 0 16px", textAlign: "center",
         }}>
-          Get surgery-ready, the right way.
+          The evidence-based prep tool for patients and their physicians.
         </h1>
 
         <p style={{
           fontSize: "17px", lineHeight: 1.7, color: BRAND.textLight, maxWidth: "600px",
           margin: "0 auto 48px", fontFamily: FONT, textAlign: "center",
         }}>
-          Remote physician coaches, metabolic health guidance, and smart digital
-          checklists — for patients and the teams that care for them.
+          Personalized, guideline-driven recommendations for every patient — whether you're preparing for surgery yourself or optimizing a patient you care for.
         </p>
 
         {/* ── SPLIT PATH CARDS ── */}
@@ -317,10 +316,10 @@ function Hero({ onNavigate }) {
               </svg>
             </div>
             <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
-              I'm a patient or provider
+              I'm preparing for surgery
             </div>
             <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
-              Get a personalized surgical readiness plan with evidence-based recommendations in minutes.
+              Get a personalized, evidence-based prep plan tailored to your surgery, health, and timeline — in minutes.
             </p>
             <div style={{
               background: BRAND.teal, color: BRAND.white, padding: "13px 28px", borderRadius: "8px",
@@ -331,10 +330,7 @@ function Hero({ onNavigate }) {
           </div>
 
           {/* Right: Health System → Learn More */}
-          <div onClick={() => {
-            const el = document.querySelector("#how-it-works");
-            if (el) el.scrollIntoView({ behavior: "smooth" });
-          }} style={{
+          <div onClick={() => { onNavigate("preop"); window.scrollTo(0, 0); }} style={{
             background: BRAND.white, borderRadius: "16px", border: `1.5px solid ${BRAND.border}`,
             padding: "36px 28px", textAlign: "center", cursor: "pointer",
             transition: "transform 0.2s, box-shadow 0.2s",
@@ -353,17 +349,17 @@ function Hero({ onNavigate }) {
               </svg>
             </div>
             <div style={{ fontSize: "20px", fontWeight: 700, color: BRAND.navy, fontFamily: FONT, marginBottom: "8px" }}>
-              I'm a health system
+              I'm a physician or care team
             </div>
             <p style={{ fontSize: "14px", color: BRAND.textLight, lineHeight: 1.6, fontFamily: FONT, margin: "0 0 24px" }}>
-              Reduce cancellations, optimize perioperative care, and improve surgical outcomes at scale.
+              Run an evidence-based perioperative optimization for your patient — risk stratification, medication holds, and prehab protocols in one workflow.
             </p>
             <div style={{
               background: "transparent", color: BRAND.navy, padding: "13px 28px", borderRadius: "8px",
               fontSize: "15px", fontWeight: 600, fontFamily: FONT, display: "inline-block",
               border: `1.5px solid ${BRAND.navy}`,
             }}>
-              Learn more →
+              Start provider assessment →
             </div>
           </div>
 
@@ -388,17 +384,17 @@ function ValueProps() {
   const cards = [
     {
       audience: "For patients",
-      text: "Clear, step-by-step prep, coaching, and recovery support — from symptoms to surgery and back home.",
+      text: "A clear, step-by-step prep plan built around your surgery, health history, and timeline — not a generic handout.",
       color: BRAND.patientBlue, bg: BRAND.lightBlue,
     },
     {
-      audience: "For hospitals",
-      text: "Fewer day-of-surgery cancellations, smoother OR flow, and better perioperative metrics.",
+      audience: "For physicians",
+      text: "Evidence-based perioperative risk stratification, medication hold windows, and prehab protocols — guideline-sourced and scannable.",
       color: BRAND.teal, bg: BRAND.tealLight,
     },
     {
-      audience: "For payers & employers",
-      text: "Lower complication and readmission rates with a scalable, tech-enabled model.",
+      audience: "Evidence-based",
+      text: "Built on ASRA, AHA/ACC, ERAS, and ESAIC guidelines. Every recommendation is sourced, not generated.",
       color: BRAND.providerOrange, bg: BRAND.lightOrange,
     },
   ];
@@ -435,9 +431,9 @@ function Journey() {
     <SectionWrapper id="journey" bg={BRAND.cream} py="100px">
       <div style={{ textAlign: "center", marginBottom: "60px" }}>
         <SectionLabel>The SurgeryReady journey</SectionLabel>
-        <SectionTitle align="center">One connected journey</SectionTitle>
+        <SectionTitle align="center">One tool. Two perspectives.</SectionTitle>
         <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, maxWidth: "560px", margin: "0 auto", lineHeight: 1.7 }}>
-          From the day surgery is mentioned to the weeks after discharge, SurgeryReady keeps everyone aligned.
+          Patients see their prep plan in plain language. Physicians see the same data as clinical decision support. Same evidence, right format for each.
         </p>
       </div>
       <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
@@ -456,7 +452,7 @@ function Journey() {
         ))}
       </div>
       <p style={{ textAlign: "center", fontSize: "14px", color: BRAND.teal, fontWeight: 600, fontFamily: FONT, marginTop: "40px" }}>
-        Built by clinicians, for clinicians. Designed by anesthesiologists and surgeons who live in the OR every day.
+        Designed by anesthesiologists and surgeons who use it for their own patients.
       </p>
     </SectionWrapper>
   );
@@ -468,9 +464,9 @@ function Journey() {
    ═══════════════════════════════════════════════════════════════ */
 function HowItWorks() {
   const steps = [
-    { num: "01", title: "Enroll", desc: "Patients are onboarded via referral from surgeons, pre-anesthesia testing, or employer programs." },
-    { num: "02", title: "Optimize", desc: "Remote coaches work through evidence-informed protocols for chronic disease, nutrition, sleep, and movement." },
-    { num: "03", title: "Monitor & report", desc: "Progress dashboards, risk flags, and readiness summaries feed back to the surgical and anesthesia teams." },
+    { num: "01", title: "Complete the assessment", desc: "Patients and physicians both enter surgery details, medical history, medications, fitness baseline, and nutrition — the same structured intake, tailored outputs." },
+    { num: "02", title: "Get your personalized plan", desc: "Patients receive a step-by-step prep checklist. Physicians receive evidence-based risk flags, medication hold windows, and lab ordering guidance." },
+    { num: "03", title: "Track readiness to surgery day", desc: "A forward-looking timeline maps each week to surgery — exercise progression, critical medication holds, fasting windows, and day-of checklist." },
   ];
 
   return (
@@ -478,8 +474,7 @@ function HowItWorks() {
       <SectionLabel>Process</SectionLabel>
       <SectionTitle>How SurgeryReady works</SectionTitle>
       <p style={{ fontSize: "16px", color: BRAND.textLight, fontFamily: FONT, maxWidth: "640px", lineHeight: 1.7, marginBottom: "48px" }}>
-        A simple, tech-enabled workflow that plugs into your existing perioperative processes
-        without adding work to your over-stretched teams.
+        One structured workflow. Two tailored outputs — one for the patient, one for the care team.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
         {steps.map((s, i) => (
@@ -570,15 +565,15 @@ function ForHospitals() {
       items: ["Better control of diabetes, OSA, and HTN pre-op", "Alignment with ERAS and SSI bundles", "Support for PSIs, readmissions, and NSQIP metrics"],
     },
     {
-      title: "Financial",
-      items: ["Fewer costly complications and readmissions", "Hybrid onshore/offshore coaching model", "Management services organization (MSO) friendly"],
+      title: "Evidence-sourced",
+      items: ["ASRA 5th Edition anticoagulation protocols", "2024 AHA/ACC cardiac risk guidelines", "ERAS, ESAIC, and NSQIP-aligned recommendations"],
     },
   ];
 
   return (
     <SectionWrapper id="for-hospitals" bg={BRAND.white}>
-      <SectionLabel>For hospitals, health systems & surgical centers</SectionLabel>
-      <SectionTitle>A turnkey perioperative optimization service that extends your care team, not your payroll.</SectionTitle>
+      <SectionLabel>For physicians and care teams</SectionLabel>
+      <SectionTitle>Evidence-based perioperative decision support, built for time-pressured clinicians.</SectionTitle>
 
       <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px", marginTop: "48px" }}>
         {columns.map(col => (
@@ -608,12 +603,12 @@ function ForHospitals() {
         textAlign: "center",
       }}>
         <h3 style={{ fontSize: "22px", fontWeight: 700, color: BRAND.white, fontFamily: FONT_DISPLAY, margin: "0 0 8px" }}>
-          Ready to explore a pilot?
+          Start using SurgeryReady with your patients today
         </h3>
         <p style={{ fontSize: "14px", color: "rgba(255,255,255,0.8)", fontFamily: FONT, margin: "0 0 24px" }}>
-          We partner with hospitals, health systems, and large surgical groups to run 3–6 month pilots focused on cancellations, LOS, and readmissions.
+          Run the assessment alongside your patient or send them the link to complete it independently. Results feed directly into their prep plan and your clinical summary.
         </p>
-        <Btn href="#contact" style={{ background: BRAND.white, color: BRAND.navy }}>Schedule a strategy call →</Btn>
+        <Btn href="#contact" style={{ background: BRAND.white, color: BRAND.navy }}>Get in touch →</Btn>
       </div>
     </SectionWrapper>
   );
@@ -696,10 +691,9 @@ function Contact() {
       <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "60px", alignItems: "start" }}>
         <div>
           <SectionLabel>Get started</SectionLabel>
-          <SectionTitle>Let's get your patients SurgeryReady</SectionTitle>
+          <SectionTitle>Let's talk</SectionTitle>
           <p style={{ fontSize: "15px", color: BRAND.textLight, fontFamily: FONT, lineHeight: 1.7 }}>
-            Share a few details and we'll follow up with a short discovery call to understand your
-            current perioperative challenges and explore a pilot that fits your organization.
+            Whether you're a physician wanting to use SurgeryReady with your patients, or a health system exploring a clinical partnership — reach out and one of our clinical founders will follow up personally.
           </p>
           <p style={{ fontSize: "13px", color: BRAND.muted, fontFamily: FONT, marginTop: "24px" }}>
             We'll never spam you or share your information. One of our clinical founders will reach out personally.
