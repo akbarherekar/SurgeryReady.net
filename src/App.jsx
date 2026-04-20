@@ -55,6 +55,73 @@ const BRAND = {
 const FONT = "'DM Sans', sans-serif";
 const FONT_DISPLAY = "'Playfair Display', serif";
 
+/* ─── Demo patients — type the name in the first name field to auto-fill ─── */
+const DEMO_PATIENTS = {
+  "demo patient 1": {
+    firstName: "Demo Patient 1", userRole: "patient",
+    age: "52", sex: "female", height: "65", weight: "165",
+    surgeryType: "Total knee replacement", riskCategory: "elevated",
+    weeksUntil: "8", duration: "medium", eras: "yes",
+    bloodLoss: "moderate", surgeryTags: ["Joint replacement"],
+    cardiac: [], respiratory: [], endocrine: [], other: [],
+    smokingStatus: "never", alcoholUse: "none",
+    hemoglobin: "13.2", ironDeficiency: "no",
+    cardioMeds: ["Statin"], anticoag: [], diabetesMeds: [], painMeds: [], otherMeds: [],
+    exerciseLevel: "light", dasiScore: "28", vo2max: "22",
+    gripStrength: "28", tracksHRV: "no", thermalHabits: [],
+    proteinLevel: "moderate", weightLoss: "no",
+    eatingPattern: "regular", supplements: ["Multivitamin", "Vitamin D"],
+  },
+  "demo patient 2": {
+    firstName: "Demo Patient 2", userRole: "patient",
+    age: "68", sex: "male", height: "70", weight: "210",
+    surgeryType: "Left hip replacement", riskCategory: "elevated",
+    weeksUntil: "4", duration: "medium", eras: "yes",
+    bloodLoss: "moderate", surgeryTags: ["Joint replacement"],
+    cardiac: ["Atrial fibrillation (AF)", "Hypertension (uncontrolled, DBP>110)"],
+    respiratory: ["Obstructive sleep apnea (diagnosed)"],
+    endocrine: ["Type 2 Diabetes", "HbA1c >8 (poorly controlled)"],
+    other: [],
+    rateControlled: "yes", cpapAdherent: "yes", a1cValue: "8.4", stopBang: "5",
+    smokingStatus: "former_lt8", alcoholUse: "moderate", withdrawalHistory: "no",
+    hemoglobin: "11.8", ironDeficiency: "yes",
+    cardioMeds: ["Beta-blocker", "ACE inhibitor", "Statin"],
+    anticoag: ["Apixaban", "Aspirin"],
+    diabetesMeds: ["SGLT2 inhibitors", "GLP-1 RAs"],
+    glp1Phase: "yes", glp1GI: "mild",
+    painMeds: [], otherMeds: [],
+    exerciseLevel: "sedentary", dasiScore: "15", vo2max: "15",
+    gripStrength: "24", tracksHRV: "no", thermalHabits: [],
+    proteinLevel: "low", weightLoss: "mild",
+    eatingPattern: "irregular", supplements: [],
+  },
+  "demo patient 3": {
+    firstName: "Demo Patient 3", userRole: "patient",
+    age: "74", sex: "male", height: "68", weight: "148",
+    surgeryType: "Colorectal cancer resection", riskCategory: "high",
+    weeksUntil: "2", duration: "long", eras: "yes",
+    bloodLoss: "significant", surgeryTags: ["Cancer resection"],
+    cardiac: ["Hypertension (uncontrolled, DBP>110)"],
+    respiratory: ["COPD/Emphysema"],
+    endocrine: ["Type 2 Diabetes"],
+    other: ["Anemia", "Active cancer/receiving chemotherapy", "CKD (chronic kidney disease)", "Frailty/falls risk"],
+    a1cValue: "7.2", egfrValue: "38", ferritinValue: "8", tsatValue: "12",
+    chemoWeeksAgo: "3", cfsScore: "5",
+    smokingStatus: "current", cigPerDay: "10", alcoholUse: "none",
+    hemoglobin: "9.2", ironDeficiency: "yes",
+    cardioMeds: ["Beta-blocker", "Statin", "ACE inhibitor"],
+    anticoag: ["Aspirin"],
+    diabetesMeds: ["Metformin"],
+    painMeds: ["Chronic opioids (not buprenorphine/methadone)"],
+    otherMeds: ["Corticosteroids"],
+    exerciseLevel: "sedentary", dasiScore: "8", vo2max: "10",
+    gripStrength: "18", tracksHRV: "no", thermalHabits: [],
+    proteinLevel: "low", albumin: "3.0", weightLoss: "significant",
+    eatingPattern: "irregular",
+    supplements: ["Protein supplement", "Immunonutrition (Impact/equivalent)"],
+  },
+};
+
 /* ─── Responsive hook ─── */
 function useIsMobile(breakpoint = 768) {
   const [isMobile, setIsMobile] = useState(false);
@@ -1074,14 +1141,18 @@ function MultiChip({ options, selected, onChange }) {
   );
 }
 
-function StepDemographics({ data, update }) {
+function StepDemographics({ data, update, loadDemo }) {
   const providerAck = !!data.providerAck;
   const isProvider = data.userRole === "provider";
 
   return (
     <>
       <Field label="First Name">
-        <Input value={data.firstName || ""} onChange={v => update("firstName", v)} placeholder="e.g. Sam" />
+        <Input value={data.firstName || ""} onChange={v => {
+          update("firstName", v);
+          const match = DEMO_PATIENTS[v.toLowerCase().trim()];
+          if (match && loadDemo) loadDemo(match);
+        }} placeholder="e.g. Sam" />
       </Field>
       <Field label="I am a...">
         <div style={{ display: "flex", gap: "12px" }}>
@@ -4425,6 +4496,13 @@ function PreOpPage() {
     return () => clearTimeout(saveTimerRef.current);
   }, [progress, planId, session]);
 
+  const [demoLoaded, setDemoLoaded] = useState(null);
+  const loadDemo = useCallback((demoData) => {
+    setData(demoData);
+    setDemoLoaded(demoData.firstName);
+    setTimeout(() => setDemoLoaded(null), 3000);
+  }, []);
+
   const update = useCallback((key, value) => {
     setData(prev => ({ ...prev, [key]: value }));
   }, []);
@@ -4507,7 +4585,7 @@ function PreOpPage() {
   }, []);
 
   const stepComponents = [
-    <StepDemographics data={data} update={update} />,
+    <StepDemographics data={data} update={update} loadDemo={loadDemo} />,
     <StepSurgery data={data} update={update} />,
     <StepMedical data={data} update={update} />,
     <StepMedications data={data} update={update} />,
@@ -4864,6 +4942,17 @@ function PreOpPage() {
             <span style={{ color: SR.teal, fontSize: "13px", fontWeight: 700 }}>{STEP_NUMS[step]}</span>
             {STEP_LABELS[step]}
           </h2>
+          {demoLoaded && (
+            <div style={{
+              background: SR.tealLight, border: `1px solid ${SR.teal}`,
+              borderRadius: "8px", padding: "10px 16px", marginBottom: "20px",
+              fontSize: "13px", color: SR.teal, fontFamily: SR.font, fontWeight: 600,
+              display: "flex", alignItems: "center", gap: "8px",
+            }}>
+              <span>&#10003;</span>
+              Demo data loaded for {demoLoaded} — all fields pre-filled across all steps.
+            </div>
+          )}
           {stepComponents[step]}
         </div>
 
