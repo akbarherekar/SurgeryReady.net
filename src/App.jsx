@@ -2781,6 +2781,15 @@ function generatePlan(d) {
         dos: "Continue BB + statin. Hold ACEi/ARB if HTN-only (STOP-or-NOT). Postop troponin at 24h and 48h (Class 2b). If MINS: ASA + high-intensity statin; consider dabigatran 110 mg BID (MANAGE); cardiology ≤30 d.",
         readiness,
       }, "2024 AHA/ACC; POISE Lancet 2008; MANAGE Lancet 2018; ASRA 5th Ed 2025"),
+      learnMore: {
+        why: "CAD and prior MI markedly amplify perioperative MACE risk via catecholamine surge, hypercoagulability, and systemic inflammation. The 2024 AHA/ACC guideline replaces subjective METs estimation with the validated DASI questionnaire and introduces BNP/NT-proBNP thresholds (>92 or >300 pg/mL) for selective echo referral. Beta-blockers must NOT be started within 7 days of surgery — the POISE trial showed acute initiation reduces MI but significantly increases stroke and all-cause mortality.",
+        evidence: "POISE (Lancet 2008, n=8,351) demonstrated perioperative beta-blocker initiation reduced non-fatal MI by 27% but increased stroke by 100% and total mortality. MANAGE (Lancet 2018, n=1,754) showed dabigatran 110 mg BID significantly reduced major vascular complications in patients with MINS. The 2024 AHA/ACC perioperative guideline codifies these findings into current Class recommendations.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Devereaux PJ et al. Effects of extended-release metoprolol succinate (POISE). Lancet. 2008;371:1839–47.", url: "https://pubmed.ncbi.nlm.nih.gov/18479744/" },
+          { text: "Devereaux PJ et al. Dabigatran in patients with MINS (MANAGE). Lancet. 2018;391:2325–34.", url: "https://pubmed.ncbi.nlm.nih.gov/30025699/" },
+        ],
+      },
     });
   }
 
@@ -2795,6 +2804,14 @@ function generatePlan(d) {
         dos: "Continue beta-blocker, ARNI/ACEi (HFrEF), statin. SGLT2i held. Monitor ketones. Avoid fluid overload.",
         readiness: "Compensated HF. GDMT stable ≥2 wk. BNP stable/down. Echo documented. Euvolemic.",
       }, "Heidenreich Circulation 2022; 2024 AHA/ACC Periop Guidelines"),
+      learnMore: {
+        why: "Heart failure confers some of the highest perioperative MACE risk. Decompensated HF is a Class III indication for elective surgery (absolute contraindication until stabilized). HFrEF patients benefit from guideline-directed medical therapy (GDMT) quadruple therapy; SGLT2 inhibitors are now a pillar of this regimen but must be held 3–4 days preoperatively to prevent euglycemic DKA. Euvolemia at the time of surgery is the single most modifiable predictor of perioperative outcome in HF.",
+        evidence: "The 2022 AHA/ACC Heart Failure Guideline (Heidenreich et al., Circulation 2022) establishes GDMT for HFrEF including quadruple therapy. The 2024 AHA/ACC Perioperative Guideline integrates HF-specific risk stratification using BNP thresholds and echo criteria to guide surgical timing.",
+        citations: [
+          { text: "Heidenreich PA et al. 2022 AHA/ACC Heart Failure Guideline. Circulation. 2022;145:e895–e1032.", url: "https://pubmed.ncbi.nlm.nih.gov/35363499/" },
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -2817,6 +2834,14 @@ function generatePlan(d) {
         dos: hasMechValve ? "Resume anticoagulation per ASRA 5th Ed restart windows. Monitor for thromboembolic event." : "Hemodynamic goals per lesion. Avoid tachycardia and hypovolemia in HCM/AS.",
         readiness: "Severity quantified on echo. Appropriate intervention scheduled or documented not indicated.",
       }, "2024 AHA/ACC; Otto Circulation 2021"),
+      learnMore: {
+        why: "Severe symptomatic aortic stenosis is the highest-risk valvular lesion — it carries a Class III indication for elective noncardiac surgery without prior valve intervention. Mechanical valve patients require bridging anticoagulation per ASRA 5th Ed during warfarin hold periods. HCM patients are uniquely sensitive to preload reduction, afterload drop, and tachycardia — all common perioperative occurrences.",
+        evidence: "The 2021 AHA/ACC Valvular Heart Disease Guideline (Otto et al., Circulation 2021) and 2024 AHA/ACC Perioperative Guideline both provide Class I recommendations for echo within 1 year of surgery in patients with known or suspected moderate-severe VHD.",
+        citations: [
+          { text: "Otto CM et al. 2021 AHA/ACC Guideline for the Management of Patients With Valvular Heart Disease. Circulation. 2021;143:e72–e227.", url: "https://pubmed.ncbi.nlm.nih.gov/34353922/" },
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -2830,6 +2855,14 @@ function generatePlan(d) {
         dos: "SBP ≥180 / DBP ≥110 with EOD → consider deferring (Class 2b). Without EOD → proceed with invasive monitoring.",
         readiness: "BP <180/110 stable; end-organ damage ruled out or stable.",
       }, "2024 AHA/ACC; ESAIC 2025"),
+      learnMore: {
+        why: "Severe uncontrolled hypertension (DBP >110) increases perioperative risk through end-organ damage to the heart, kidneys, and cerebral vasculature. The perioperative concern is less the absolute BP value and more the presence of end-organ damage — fundoscopic changes, proteinuria, ECG changes, or elevated creatinine. Clonidine must never be stopped abruptly perioperatively as rebound hypertensive crisis can occur.",
+        evidence: "The 2024 AHA/ACC Perioperative Guideline (Class 2b) recommends considering deferral when SBP ≥180 or DBP ≥110 with evidence of end-organ damage. ESAIC 2025 provides additional guidance on perioperative BP targets and antihypertensive management for noncardiac surgery.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "ESAIC 2025 Guidelines for Perioperative Care. Eur J Anaesthesiol. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -2844,6 +2877,14 @@ function generatePlan(d) {
         dos: "Continue rate agents perioperatively. Troponin at 24h/48h if elevated-risk NCS. New periop AF: treat triggers, rate control.",
         readiness: "HR <110. CHA₂DS₂-VASc documented. Anticoag timing reconciled with ASRA 5th.",
       }, "ASRA 5th Ed 2025; BRIDGE NEJM 2015"),
+      learnMore: {
+        why: "AF patients require two distinct risk-management strategies: rate control to prevent tachycardia-mediated cardiomyopathy and stroke prevention via anticoagulation. A critical practice point: DOACs should NOT be bridged with heparin perioperatively — the BRIDGE trial showed bridging doubles bleeding without reducing thromboembolism in most AF patients. Anticoagulation hold timing is governed by ASRA 5th Ed drug-specific intervals.",
+        evidence: "BRIDGE (NEJM 2015, n=1,884) demonstrated that forgoing bridging anticoagulation in AF patients was non-inferior for thromboembolism prevention but significantly reduced major bleeding events. ASRA 5th Ed (2025) provides drug-specific hold intervals for AF anticoagulation in the perioperative setting.",
+        citations: [
+          { text: "Douketis JD et al. Perioperative Bridging Anticoagulation in Patients with Atrial Fibrillation (BRIDGE). NEJM. 2015;373:823–33.", url: "https://pubmed.ncbi.nlm.nih.gov/26095867/" },
+          { text: "Kopp SL et al. ASRA 5th Edition Anticoagulation Guidelines. Reg Anesth Pain Med. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39880411/" },
+        ],
+      },
     });
   }
 
@@ -2857,6 +2898,13 @@ function generatePlan(d) {
         dos: "Invasive arterial + central monitoring. Avoid hypoxemia, hypercarbia, acidosis. Maintain RV preload. Have inhaled NO available.",
         readiness: "Functional class documented. Vasodilator therapy uninterrupted. PH center plan of care on file.",
       }, "Humbert Eur Heart J 2022"),
+      learnMore: {
+        why: "Pulmonary hypertension carries a perioperative mortality of 7–14% for elective noncardiac surgery and up to 30–50% for emergency procedures. The RV is uniquely vulnerable to increases in afterload, hypoxemia, hypercarbia, and acidosis — all common perioperative events. Interruption of IV prostacyclin infusion even briefly can precipitate acute RV failure and death.",
+        evidence: "The 2022 ESC/ERS PH Guidelines (Humbert et al., Eur Heart J 2022) classify severe PH as a major risk factor for perioperative death and recommend referral to a PH center of expertise before any elective surgery.",
+        citations: [
+          { text: "Humbert M et al. 2022 ESC/ERS Guidelines for the Diagnosis and Treatment of Pulmonary Hypertension. Eur Heart J. 2022;43:3618–3731.", url: "https://pubmed.ncbi.nlm.nih.gov/36017548/" },
+        ],
+      },
     });
   }
 
@@ -2874,6 +2922,14 @@ function generatePlan(d) {
         dos: "BP target: avoid MAP <20% below baseline. Neuro checks q-shift postop.",
         readiness,
       }, "Glance JAMA Surg 2022; 2024 AHA/ACC"),
+      learnMore: {
+        why: "Recent stroke creates a perioperative window of heightened vulnerability — cerebral autoregulation is impaired for weeks post-event, making the brain critically dependent on adequate perfusion pressure. The 2024 AHA/ACC guideline recommends delaying elective surgery ≥3 months after stroke (Class 2a) to allow autoregulation to recover and reduce recurrent stroke risk.",
+        evidence: "The 2024 AHA/ACC Perioperative Guideline and Glance et al. (JAMA Surg 2022) both demonstrate that the risk of perioperative stroke is highest within the first 3 months following a cerebrovascular event, with risk declining substantially after 9 months.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Glance LG et al. Perioperative major adverse cardiovascular events after noncardiac surgery in patients with prior stroke. JAMA Surg. 2022.", url: "https://pubmed.ncbi.nlm.nih.gov/35044421/" },
+        ],
+      },
     });
   }
 
@@ -2887,6 +2943,14 @@ function generatePlan(d) {
         dos: "Pacemaker-dependent: asynchronous mode (VOO/DOO) or magnet. ICD: disable tachy-therapies. External defib pads applied. RESTORE therapies before discharge.",
         readiness: "Recent interrogation documented. Reprogram/deactivation plan in anesthesia note. Magnet in OR.",
       }, "2024 AHA/ACC; Crossley Heart Rhythm 2011"),
+      learnMore: {
+        why: "Electromagnetic interference (EMI) from electrosurgery can inhibit pacemaker output in demand mode or inappropriately trigger/inhibit ICD therapies. Pacemaker-dependent patients without a reprogramming plan may develop hemodynamically significant pauses. ICD anti-tachycardia therapies must be deactivated before surgery — failure to do so risks inappropriate shocks triggered by electrocautery artifact.",
+        evidence: "The 2024 AHA/ACC Perioperative Guideline and Crossley et al. Heart Rhythm Society Expert Consensus (2011) provide comprehensive CIED management protocols including interrogation requirements, reprogramming thresholds, and magnet behavior documentation.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Crossley GH et al. The Heart Rhythm Society Expert Consensus on Perioperative Management of CIED. Heart Rhythm. 2011;8:1114–1154.", url: "https://pubmed.ncbi.nlm.nih.gov/21722856/" },
+        ],
+      },
     });
   }
 
@@ -2904,6 +2968,14 @@ function generatePlan(d) {
         dos: "All inhalers AM. Avoid desflurane. Postop: IS + early mobilization. Opioid-sparing analgesia.",
         readiness: "Symptoms optimized. Inhalers continued. Smoking cessation documented.",
       }, "ESAIC 2025 Eur J Anaesthesiol; GOLD 2025"),
+      learnMore: {
+        why: "COPD increases the risk of postoperative pulmonary complications (PPCs) including pneumonia, bronchospasm, and prolonged ventilation. Preoperative optimization of bronchodilator therapy reduces airway resistance and improves respiratory reserve. Smoking cessation ≥8 weeks before surgery reduces PPC risk by 47% — the most impactful single intervention. Routine preoperative PFTs are NOT indicated by ESAIC 2025 except for planned lung resection.",
+        evidence: "GOLD 2025 provides updated COPD management standards including inhaler optimization. ESAIC 2025 perioperative guidelines specifically address PPC risk reduction strategies, smoking cessation timelines, and the limited role of preoperative spirometry outside thoracic surgery.",
+        citations: [
+          { text: "Global Initiative for Chronic Obstructive Lung Disease (GOLD). 2025 GOLD Report.", url: "https://goldcopd.org/2025-gold-report/" },
+          { text: "ESAIC 2025 Guidelines for Perioperative Care. Eur J Anaesthesiol. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -2919,6 +2991,13 @@ function generatePlan(d) {
         dos: "Bring CPAP to hospital. Postop: continuous SpO₂, CPAP when not eating, opioid-sparing multimodal analgesia, avoid supine.",
         readiness: hasOSADx ? "CPAP present at hospital; adherence documented." : "STOP-BANG documented; empiric CPAP plan if ≥5.",
       }, "Chung Anesth Analg 2016; Tracy Future Sci OA 2025"),
+      learnMore: {
+        why: "OSA increases perioperative risk through episodic hypoxemia, hypercarbia, and upper airway obstruction — particularly in the postoperative period when REM sleep rebound occurs on nights 2–3 following surgery. Opioids suppress ventilatory drive and worsen upper airway collapse, making opioid-sparing multimodal analgesia essential. STOP-BANG ≥5 has sensitivity >90% for moderate-severe OSA.",
+        evidence: "Chung et al. (Anesth Analg 2016) validated the STOP-BANG questionnaire as a perioperative OSA screening tool with sensitivity >90% for moderate-severe OSA at a cutoff of ≥3. CPAP adherence preoperatively is associated with reduced postoperative respiratory complications.",
+        citations: [
+          { text: "Chung F et al. STOP-Bang Questionnaire: A Practical Approach to Screen for Obstructive Sleep Apnea. Anesth Analg. 2016;123:227–229.", url: "https://pubmed.ncbi.nlm.nih.gov/26895655/" },
+        ],
+      },
     });
   }
 
@@ -2932,6 +3011,13 @@ function generatePlan(d) {
         dos: "Stratify risk based on workup results. Plan for postop troponin if elevated cardiac risk emerges.",
         readiness: "Etiology identified or ruled out. Cardiology/pulmonology clearance as indicated.",
       }, "2024 AHA/ACC"),
+      learnMore: {
+        why: "Unexplained dyspnea before surgery represents unquantified cardiopulmonary risk. BNP/NT-proBNP is the most sensitive biomarker to differentiate cardiac from pulmonary etiology — an elevated value warrants echo before proceeding with elevated-risk surgery. The DASI questionnaire provides an objective functional capacity estimate that outperforms subjective METs assessment.",
+        evidence: "The 2024 AHA/ACC Perioperative Guideline recommends BNP/NT-proBNP measurement (Class 2b) in patients with unexplained dyspnea undergoing elevated-risk noncardiac surgery to guide further cardiac workup.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -2945,6 +3031,13 @@ function generatePlan(d) {
         dos: "Avoid desflurane and histamine-releasing NMBAs. Prefer sevoflurane + rocuronium/sugammadex. Nebulizer in recovery.",
         readiness: "Symptoms controlled, PEF at baseline, no recent exacerbation.",
       }, "GINA 2024"),
+      learnMore: {
+        why: "Perioperative bronchospasm occurs in approximately 2% of asthmatic patients and is far more likely with uncontrolled disease. Desflurane is a potent airway irritant and bronchoconstrictive agent — it must be avoided. Histamine-releasing NMBAs (atracurium, mivacurium) can precipitate bronchospasm; rocuronium with sugammadex reversal is the preferred neuromuscular blocking strategy.",
+        evidence: "GINA 2024 defines well-controlled asthma as the threshold for elective surgery. Anesthesia-specific guidance emphasizes sevoflurane as the preferred inhalational agent and rocuronium/sugammadex as the preferred NMBA strategy in asthmatic patients.",
+        citations: [
+          { text: "Global Initiative for Asthma (GINA). 2024 GINA Main Report.", url: "https://ginasthma.org/2024-gina-main-report/" },
+        ],
+      },
     });
   }
 
@@ -2973,6 +3066,14 @@ function generatePlan(d) {
         dos: "Glucose target 80–180 mg/dL (ADA 2025). Cancel if >300 + ketones >2.5. Order POC glucose on arrival.",
         readiness: a1cNum !== null && a1cNum > 9.0 ? "NOT MET: A1C >9%." : "A1C ≤8.5%. Medication holds reconciled. Glucose plan documented.",
       }, "ADA 2025; SAMBA Anesth Analg 2024; SPAQI J Clin Anesth 2024"),
+      learnMore: {
+        why: "Perioperative hyperglycemia (>180 mg/dL) is independently associated with surgical site infection, impaired wound healing, and increased 30-day mortality. HbA1c >9.0% signals chronically uncontrolled diabetes — elective surgery should be deferred. ADA 2025 targets 80–180 mg/dL intraoperatively; tighter targets (140–180 mg/dL) apply in the ICU. Sulfonylureas and insulin boluses while NPO carry significant hypoglycemia risk.",
+        evidence: "ADA Standards of Medical Care in Diabetes 2025 (Diabetes Care Supplement 1) establishes perioperative glucose targets and medication management protocols. SAMBA (Anesth Analg 2024) and SPAQI (J Clin Anesth 2024) provide anesthesia society-specific perioperative glycemic management consensus recommendations.",
+        citations: [
+          { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2025. Diabetes Care. 2025;48(Suppl 1).", url: "https://diabetesjournals.org/care/issue/48/Supplement_1" },
+          { text: "Joshi GP et al. Perioperative Glucose Management for Patients Undergoing Ambulatory Surgery. Anesth Analg. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
+        ],
+      },
     });
   }
 
@@ -2988,6 +3089,14 @@ function generatePlan(d) {
         dos: d.glp1GI === "active" ? "Active GI symptoms: consider delay. If proceeding: liquid diet, gastric US, RSI if retained solids." : "Standard NPO. Monitor glucose perioperatively.",
         readiness: risk ? "Liquid diet adherence confirmed. Gastric US plan in place." : "Standard readiness.",
       }, "Multi-Society Guidance Surg Endosc 2025; SPAQI BJA 2025"),
+      learnMore: {
+        why: "GLP-1 receptor agonists dramatically slow gastric emptying — semaglutide can delay emptying for days to weeks, even in patients who have followed standard NPO guidelines. This creates a risk of pulmonary aspiration of undigested food during induction. The multi-society guidance recommends holding weekly agents 7 days preoperatively and considering gastric ultrasound to confirm an empty stomach in high-risk patients.",
+        evidence: "A 2023–2025 multi-society consensus (ADA, ASGE, ASMBS, OMA, TOS — published in Surg Endosc 2025) recommends holding weekly GLP-1 RA agents 1 week before elective surgery. Case reports of pulmonary aspiration despite appropriate NPO fasting in GLP-1 RA patients prompted these recommendations.",
+        citations: [
+          { text: "Multi-Society Guidance on Perioperative GLP-1 RA Management. Surg Endosc. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39688735/" },
+          { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2025. Diabetes Care. 2025;48(Suppl 1).", url: "https://diabetesjournals.org/care/issue/48/Supplement_1" },
+        ],
+      },
     });
   }
 
@@ -3000,6 +3109,14 @@ function generatePlan(d) {
         dos: "POC β-hydroxybutyrate: <0.6 normal / >1.5 = DKA workup. If DKA: IV fluids + insulin + dextrose.",
         readiness: "Restart only when eating normally AND ketones <0.6. HF exception: shared decision with cardiology.",
       }, "2024 AHA/ACC; Dixit JAMA Surg 2025"),
+      learnMore: {
+        why: "SGLT2 inhibitors suppress glucose-coupled ketone clearance — perioperative fasting and surgical stress can precipitate euglycemic DKA (euDKA) in patients who do not hold the drug. EuDKA is insidious because blood glucose may be near-normal, masking the diagnosis if providers do not check ketones. Hold times are 3–4 days depending on agent (ertugliflozin requires 4 days due to longer half-life).",
+        evidence: "The 2024 AHA/ACC Perioperative Guideline provides Class I recommendations for SGLT2i hold timing. Dixit et al. (JAMA Surg 2025) document the incidence and clinical features of perioperative euDKA and support point-of-care ketone testing as the mandatory screening tool.",
+        citations: [
+          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Dixit A et al. SGLT2 Inhibitors and Perioperative Euglycemic DKA. JAMA Surg. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+        ],
+      },
     });
   }
 
@@ -3012,9 +3129,17 @@ function generatePlan(d) {
         ge8: "Phenoxybenzamine 10 mg BID → titrate to 40 mg BID, OR doxazosin 1–32 mg. START ≥10–14 d before surgery.",
         wk47: "Continue alpha titration to Roizen criteria: no BP >160/90 ×24 h; no orthostatic <80/45; no ST/T changes ×1 wk.",
         wk12: "Beta-blockade ONLY after alpha established (2–3 d later). NEVER beta first. Volume expansion: high-Na diet + IV NS.",
+
         dos: "Confirm Roizen criteria met. Arterial line + central access. Phentolamine, nitroprusside, esmolol available.",
         readiness: alpha === "no" ? "NOT MET: alpha-blockade not started. DO NOT PROCEED." : "Roizen criteria met. Volume expanded.",
       }, "Endocrine Society 2014; StatPearls NBK589634"),
+      learnMore: {
+        why: "Pheochromocytoma is among the most dangerous perioperative conditions — unblocked catecholamine surges during tumor manipulation can cause hypertensive crisis, malignant arrhythmias, and cardiac arrest. Alpha-blockade MUST be established before beta-blockade; initiating beta-blockers first leaves alpha receptors unopposed and can precipitate severe vasoconstriction. The Roizen criteria define readiness for surgery.",
+        evidence: "The Endocrine Society 2014 Clinical Practice Guideline on pheochromocytoma/paraganglioma mandates preoperative alpha-adrenergic blockade for at least 7–14 days before surgery, with Roizen criteria used to verify adequate blockade.",
+        citations: [
+          { text: "Lenders JW et al. Pheochromocytoma and Paraganglioma: An Endocrine Society Clinical Practice Guideline. J Clin Endocrinol Metab. 2014;99:1915–1942.", url: "https://pubmed.ncbi.nlm.nih.gov/24893135/" },
+        ],
+      },
     });
   }
 
@@ -3042,6 +3167,14 @@ function generatePlan(d) {
         dos: needsCoverage ? protocol : "Continue usual dose. No stress-dose coverage required.",
         readiness: needsCoverage ? `${surgeryMagnitude.toUpperCase()} surgery dosing protocol documented.` : "No coverage needed.",
       }, "Woodcock Anaesthesia 2020; Bornstein JCEM 2016"),
+      learnMore: {
+        why: "Chronic corticosteroid use suppresses the hypothalamic-pituitary-adrenal (HPA) axis. Under surgical stress, the normally intact HPA axis produces 75–150 mg of cortisol equivalent — patients with HPA suppression cannot mount this response. Addisonian crisis perioperatively can cause refractory hypotension and cardiovascular collapse. Stress-dose coverage is calibrated to surgical magnitude: minor, moderate, or major.",
+        evidence: "Woodcock et al. (Anaesthesia 2020) and Bornstein et al. Endocrine Society Guideline (JCEM 2016) both support cortisol coverage based on clinical indicators of HPA suppression (dose ≥20 mg/d prednisone ≥3 weeks, or any dose with signs of adrenal insufficiency) rather than routine stimulation testing.",
+        citations: [
+          { text: "Woodcock T et al. Guidelines for the management of glucocorticoids during the peri-operative period. Anaesthesia. 2020;75:654–663.", url: "https://pubmed.ncbi.nlm.nih.gov/31903587/" },
+          { text: "Bornstein SR et al. Diagnosis and Treatment of Primary Adrenal Insufficiency. JCEM. 2016;101:364–389.", url: "https://pubmed.ncbi.nlm.nih.gov/26760044/" },
+        ],
+      },
     });
   }
 
@@ -3091,7 +3224,16 @@ function generatePlan(d) {
       };
       priority = "medium";
     }
-    provider.push({ domain: "Hematologic", priority, title, detail: timedDetail(sections, "ICCAMS Ann Surg 2023; BSH Br J Haematol 2024; TRICC NEJM 1999") });
+    provider.push({ domain: "Hematologic", priority, title, detail: timedDetail(sections, "ICCAMS Ann Surg 2023; BSH Br J Haematol 2024; TRICC NEJM 1999"),
+      learnMore: {
+        why: "Preoperative anemia is among the most modifiable perioperative risk factors. Iron deficiency anemia responds to IV iron (ferric carboxymaltose) within 2–4 weeks — sufficient time for meaningful Hgb correction in most elective surgical schedules. The TRICC trial established that a restrictive transfusion trigger (Hgb ≤7 g/dL) is non-inferior to a liberal trigger in most ICU patients, shifting practice toward patient blood management.",
+        evidence: "The ICCAMS consensus (Ann Surg 2023) and BSH guidelines (Br J Haematol 2024) establish evidence-based perioperative anemia management protocols, including IV iron indications by ferritin/TSAT thresholds. TRICC (NEJM 1999, n=838) demonstrated safety of restrictive transfusion triggers in critically ill patients.",
+        citations: [
+          { text: "Richards T et al. ICCAMS Consensus on Perioperative Iron Deficiency and Anemia. Ann Surg. 2023.", url: "https://pubmed.ncbi.nlm.nih.gov/37772477/" },
+          { text: "Hébert PC et al. A Multicenter Randomized Controlled Clinical Trial of Transfusion Requirements (TRICC). NEJM. 1999;340:409–417.", url: "https://pubmed.ncbi.nlm.nih.gov/9971864/" },
+        ],
+      },
+    });
   }
 
   // Pathway 18: Sickle Cell
@@ -3104,6 +3246,13 @@ function generatePlan(d) {
         dos: "IV NS 1–1.5 mL/kg/hr evening before. Active warming. SpO₂ >95%. IS q1–2 h. Avoid dehydration, hypothermia, hypoxemia, acidosis.",
         readiness: "Hgb 10, HbS at target, matched units on file, ACS prevention bundle ready.",
       }, "Vichinsky NEJM 1995; Walker Anaesthesia 2021"),
+      learnMore: {
+        why: "Sickle cell disease patients are at high risk for perioperative acute chest syndrome (ACS), pain crisis, and stroke. The perioperative triad of hypoxemia, hypothermia, and hypovolemia are powerful triggers for sickling. Preoperative transfusion targets Hgb 10 g/dL — exceeding this risks hyperviscosity. Phenotypically matched blood is required to minimize alloimmunization risk.",
+        evidence: "Vichinsky et al. (NEJM 1995, n=604) demonstrated that a conservative preoperative transfusion strategy (Hgb target 10) produced equivalent outcomes to aggressive exchange transfusion with significantly fewer transfusion complications in sickle cell patients undergoing elective surgery.",
+        citations: [
+          { text: "Vichinsky EP et al. A Comparison of Conservative and Aggressive Transfusion Regimens in the Perioperative Management of Sickle Cell Disease. NEJM. 1995;333:206–213.", url: "https://pubmed.ncbi.nlm.nih.gov/7791837/" },
+        ],
+      },
     });
   }
 
@@ -3118,6 +3267,13 @@ function generatePlan(d) {
         dos: "Verify INR/anti-Xa as appropriate. Confirm neuraxial timing with anesthesia.",
         readiness: "RESTART: 6 h low / 24 h high for most DOACs; 12/24–72 h LMWH; warfarin per indication.",
       }, "Kopp ASRA 5th Ed Reg Anesth Pain Med 2025 PMID 39880411"),
+      learnMore: {
+        why: "The 5th Edition ASRA guidelines (2025) introduced a paradigm shift: the prophylactic/therapeutic classification was replaced with a low-dose/high-dose bleeding risk framework based on the severity of bleeding consequences at the procedure site. Deep peripheral nerve blocks (femoral, sciatic, lumbar plexus) are now managed under the same time intervals as neuraxial procedures. Renal function must be checked — dabigatran requires extended holds at CrCl 30–49 mL/min.",
+        evidence: "Kopp et al. (Reg Anesth Pain Med 2025, PMID 39880411) present the complete 5th edition guidelines with updated drug-specific time intervals, new pharmacologic agents, and the new low/high bleeding risk classification framework that replaces all prior editions.",
+        citations: [
+          { text: "Kopp SL et al. ASRA Pain Medicine Consensus Guidelines on Anticoagulation — Fifth Edition. Reg Anesth Pain Med. 2025. PMID 39880411.", url: "https://pubmed.ncbi.nlm.nih.gov/39880411/" },
+        ],
+      },
     });
   }
 
@@ -3139,9 +3295,25 @@ function generatePlan(d) {
         dos: "Verify cessation. NRT patch on admission. Incentive spirometer at bedside.",
         readiness: heavy ? `HEAVY (≥20/d): consider PFTs if lung resection, optimize bronchodilators, enhanced postop monitoring.` : "NRT plan documented. Cessation timeline on file.",
       }, "Mills Arch Intern Med 2011; Wong Anesth Analg 2017"),
+      learnMore: {
+        why: "Smoking impairs pulmonary mucociliary clearance, increases carboxyhemoglobin, reduces tissue oxygen delivery, and impairs wound healing through microvascular effects. Cessation ≥8 weeks before surgery allows near-complete ciliary recovery and immune restoration. Even 24–48 hours of cessation normalizes carboxyhemoglobin and improves oxygen delivery — meaningful even on the day of surgery.",
+        evidence: "Mills et al. (Arch Intern Med 2011) meta-analysis of 25 RCTs found cessation ≥4 weeks reduced postoperative pulmonary complications by 23%, and ≥8 weeks by 47%. Wong et al. (Anesth Analg 2017) confirmed dose-dependent benefit of cessation duration on perioperative outcomes.",
+        citations: [
+          { text: "Mills E et al. Smoking cessation reduces postoperative complications: a systematic review and meta-analysis. Am J Med. 2011;124:144–154.", url: "https://pubmed.ncbi.nlm.nih.gov/21272753/" },
+          { text: "Wong J et al. Stopping smoking before surgery remains beneficial even in the short term. Anesth Analg. 2017.", url: "https://pubmed.ncbi.nlm.nih.gov/27167465/" },
+        ],
+      },
     });
   } else if (d.smokingStatus === "former_lt8") {
-    provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation (<8 wk)", detail: "Patient quit <8 wk ago. Reinforce abstinence, continue NRT if in use. Incentive spirometry education. Airway reactivity remains increased first 8 wk — standard precautions for airway management." });
+    provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation (<8 wk)", detail: "Patient quit <8 wk ago. Reinforce abstinence, continue NRT if in use. Incentive spirometry education. Airway reactivity remains increased first 8 wk — standard precautions for airway management.",
+      learnMore: {
+        why: "Airway hyperreactivity persists for up to 8 weeks after smoking cessation due to residual mucosal inflammation. During this window, bronchospasm risk during intubation and extubation is elevated compared to never-smokers. Mucociliary clearance recovers within 2–4 weeks; immune function within 6–8 weeks.",
+        evidence: "Wong et al. (Anesth Analg 2017) demonstrated that even recent cessation of <8 weeks provides benefit over continued smoking, and all cessation provides progressive risk reduction. Reinforcing abstinence in this window is clinically meaningful.",
+        citations: [
+          { text: "Wong J et al. Stopping smoking before surgery remains beneficial even in the short term. Anesth Analg. 2017.", url: "https://pubmed.ncbi.nlm.nih.gov/27167465/" },
+        ],
+      },
+    });
   }
 
   // Pathway 21: Alcohol (PAWSS / CIWA-Ar)
@@ -3155,21 +3327,60 @@ function generatePlan(d) {
         dos: withdrawal ? "PAWSS-triggered benzo prophylaxis protocol. ICU consideration. Addiction medicine/psychiatry consult." : "CIWA-Ar monitoring ×72 h postop. Low threshold for benzo rescue (typical withdrawal 6–24 h after last drink).",
         readiness: `CIWA-Ar dosing: ≤8 none · 9–19 lorazepam 1–2 mg q1h · ≥20 diazepam 10–20 mg IV q15–30 min; phenobarbital rescue. Document prominently in anesthesia note (enzyme induction → ↑ anesthetic/opioid requirements).`,
       }, "Maldonado Alcohol Alcohol 2015; PAWSS Alcohol Alcohol 2014"),
+      learnMore: {
+        why: "Heavy alcohol use causes hepatic enzyme induction (CYP2E1), increasing anesthetic metabolism and opioid requirements. Perioperative abstinence triggers alcohol withdrawal syndrome (AWS) typically 6–72 hours after the last drink — often occurring postoperatively when the patient has been NPO. PAWSS score ≥4 predicts complicated withdrawal with 93% sensitivity. Thiamine is mandatory: Wernicke encephalopathy can be precipitated by glucose administration without thiamine.",
+        evidence: "Maldonado et al. validated the PAWSS (Prediction of Alcohol Withdrawal Severity Scale) in Alcohol Alcohol 2014, demonstrating 93% sensitivity and 99% specificity for severe AWS at a score of ≥4. CIWA-Ar is the validated monitoring instrument for titrating benzodiazepine rescue.",
+        citations: [
+          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol Alcohol. 2014;49:125–134.", url: "https://pubmed.ncbi.nlm.nih.gov/24699255/" },
+        ],
+      },
     });
   } else if (d.alcoholUse === "moderate") {
-    provider.push({ domain: "Alcohol", priority: "medium", title: "Moderate Alcohol Use", detail: "Counsel cessation ≥2 wk preop. Order CMP for liver screening. Thiamine supplementation. Monitor subclinical withdrawal perioperatively. Document in anesthesia note (may affect drug metabolism)." });
+    provider.push({ domain: "Alcohol", priority: "medium", title: "Moderate Alcohol Use", detail: "Counsel cessation ≥2 wk preop. Order CMP for liver screening. Thiamine supplementation. Monitor subclinical withdrawal perioperatively. Document in anesthesia note (may affect drug metabolism).",
+      learnMore: {
+        why: "Even moderate alcohol use (>14 drinks/week) causes subclinical hepatic enzyme induction and can affect drug metabolism. Perioperative abstinence — even 2 weeks — reduces the risk of subclinical withdrawal and allows partial immune and platelet function recovery.",
+        evidence: "Perioperative alcohol cessation counseling is supported by multiple observational studies showing reduced wound complication rates with ≥2 weeks of preoperative abstinence. CMP screening identifies early hepatic dysfunction that may affect coagulation and drug clearance.",
+        citations: [
+          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol Alcohol. 2014;49:125–134.", url: "https://pubmed.ncbi.nlm.nih.gov/24699255/" },
+        ],
+      },
+    });
   }
 
   // Pathway 22: Buprenorphine / Methadone / Naltrexone
   if (hasBup) {
-    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine — CONTINUE", detail: "Do NOT discontinue perioperatively (ASRA/ASA/AAAM/ASAM 2021, reaffirmed 2024–2025). Continue home dose. Full mu-agonists CAN be co-administered. Multimodal: regional, ketamine, NSAIDs, gabapentinoids. Evidence: lower opioid requirements, similar pain scores, lower OUD relapse risk. (Kohan Reg Anesth Pain Med 2021 PMID 34385292)" });
+    provider.push({ domain: "Medications", priority: "high", title: "Buprenorphine — CONTINUE", detail: "Do NOT discontinue perioperatively (ASRA/ASA/AAAM/ASAM 2021, reaffirmed 2024–2025). Continue home dose. Full mu-agonists CAN be co-administered. Multimodal: regional, ketamine, NSAIDs, gabapentinoids. Evidence: lower opioid requirements, similar pain scores, lower OUD relapse risk. (Kohan Reg Anesth Pain Med 2021 PMID 34385292)",
+      learnMore: {
+        why: "Buprenorphine was historically held perioperatively over concerns that its high opioid receptor affinity would block full agonist analgesics. Current evidence and 2021+ consensus guidelines are clear: continuation is preferred. Discontinuation carries major risk of OUD relapse and undertreated pain. Full mu-agonists can be titrated to effect alongside continued buprenorphine at typical maintenance doses (≤16–24 mg/d).",
+        evidence: "Kohan et al. (Reg Anesth Pain Med 2021, PMID 34385292) present the ASRA/ASA/AAAM/ASAM consensus statement recommending continuation of buprenorphine perioperatively, with lower opioid requirements and equivalent pain scores compared to patients whose buprenorphine was held.",
+        citations: [
+          { text: "Kohan L et al. Buprenorphine Management in the Perioperative Period: ASRA/ASA/AAAM/ASAM Consensus. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+        ],
+      },
+    });
   }
   if (hasMethadone) {
-    provider.push({ domain: "Medications", priority: "high", title: "Methadone — Continue", detail: "Continue maintenance dose. If NPO: IV = 50% oral divided q6–8 h. ECG REQUIRED (QTc >500 = TdP risk). Multimodal analgesia." });
+    provider.push({ domain: "Medications", priority: "high", title: "Methadone — Continue", detail: "Continue maintenance dose. If NPO: IV = 50% oral divided q6–8 h. ECG REQUIRED (QTc >500 = TdP risk). Multimodal analgesia.",
+      learnMore: {
+        why: "Methadone maintenance must be continued perioperatively to prevent withdrawal and OUD relapse. Methadone prolongs the QTc interval — ECG is mandatory before surgery and QTc >500 ms triggers dose reduction and cardiology consultation. IV conversion (50% of oral dose divided q6–8 h) is required when the patient is NPO.",
+        evidence: "ASRA/ASA/AAAM/ASAM consensus guidance (2021, PMID 34385292) recommends continuation of methadone maintenance perioperatively with appropriate IV conversion and QTc monitoring.",
+        citations: [
+          { text: "Kohan L et al. Methadone Management in the Perioperative Period. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+        ],
+      },
+    });
   }
   if (hasNaltrexone) {
     const isXR = painMeds.includes("Naltrexone (XR/Vivitrol)");
-    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone — HOLD ${isXR ? "30 Days" : "72 h"}`, detail: isXR ? "Extended-release (Vivitrol): hold ≥30 days before elective surgery — allows opioid receptor availability. Emergency: opioid-free strategies (regional, ketamine, dexmedetomidine)." : "Oral naltrexone: hold 72 h before surgery." });
+    provider.push({ domain: "Medications", priority: "high", title: `Naltrexone — HOLD ${isXR ? "30 Days" : "72 h"}`, detail: isXR ? "Extended-release (Vivitrol): hold ≥30 days before elective surgery — allows opioid receptor availability. Emergency: opioid-free strategies (regional, ketamine, dexmedetomidine)." : "Oral naltrexone: hold 72 h before surgery.",
+      learnMore: {
+        why: "Naltrexone is a competitive opioid antagonist — if not held appropriately before surgery, it blocks all opioid analgesia including emergency analgesics. Extended-release naltrexone (Vivitrol) has a 28-day duration of action and requires a 30-day hold for elective surgery to allow receptor availability. Oral naltrexone clears in 72 hours.",
+        evidence: "ASRA/ASA consensus guidance recommends holding oral naltrexone 72 h before surgery and XR naltrexone ≥30 days. For emergency surgery on a naltrexone-blocked patient, opioid-free strategies (regional anesthesia, ketamine, dexmedetomidine, NSAIDs) are the only available analgesic options.",
+        citations: [
+          { text: "Kohan L et al. Naltrexone and Opioid Antagonist Management Perioperatively. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+        ],
+      },
+    });
   }
 
   // ───────────────────────────────────────────────
@@ -3190,6 +3401,13 @@ function generatePlan(d) {
         dos: "TEG/ROTEM available. Ascites decompressed. Nutrition optimized. Ammonia/lactulose plan.",
         readiness: childPugh === "C" ? "NOT MET: Child-Pugh C contraindicated." : "Coagulation, volume, nutrition optimized.",
       }, "ACG Guideline 2025; VOCAL-Penn Mahmud 2020"),
+      learnMore: {
+        why: "Cirrhosis impairs synthetic function (coagulopathy, hypoalbuminemia), portal circulation (varices, ascites), and detoxification — all of which are directly relevant to surgical outcomes. Child-Pugh C cirrhosis carries 30-day surgical mortality >80% for major procedures. INR alone is unreliable for guiding transfusion in cirrhosis — TEG/ROTEM provides the only accurate coagulation assessment in this population.",
+        evidence: "The ACG Clinical Guideline on cirrhosis and VOCAL-Penn risk score (Mahmud et al. 2020) provide validated risk stratification and management recommendations. Child-Pugh and MELD scoring systems predict perioperative mortality, with MELD >20 associated with >50% mortality for elective surgery.",
+        citations: [
+          { text: "Northup PG et al. ACG Clinical Guideline: Coagulation in Cirrhosis. Am J Gastroenterol. 2021;116:1248–1272.", url: "https://pubmed.ncbi.nlm.nih.gov/34003804/" },
+        ],
+      },
     });
   }
 
@@ -3205,6 +3423,14 @@ function generatePlan(d) {
         dos: onDialysisFlag ? "Dialyze within 24 h preop. NO heparin last session. K+ <5.5, Mg ≥2.0 verified. " + drugList : "K+ and Mg verified. Strict fluid balance. " + drugList,
         readiness: onDialysisFlag ? "Dialyzed <24 h. Electrolytes verified. Access protected." : "Baseline renal function documented. Nephrotoxin avoidance plan.",
       }, "ASRA 5th Ed 2025; KDIGO 2012; BigpAK-2 Lancet 2026"),
+      learnMore: {
+        why: "CKD magnifies multiple perioperative risks: renally-cleared drugs (morphine, tramadol, succinylcholine, metformin) accumulate to toxic levels; DOAC hold windows must be extended based on CrCl; contrast nephropathy can precipitate acute-on-chronic kidney injury. Dialysis patients require timing of their last session within 24 hours preoperatively and electrolyte verification — hyperkalemia (K+ >5.5) is a contraindication to proceeding.",
+        evidence: "KDIGO 2012 defines CKD staging and perioperative kidney protection strategies. ASRA 5th Ed (2025) provides eGFR-adjusted DOAC hold tables. BigpAK-2 (Lancet 2026) established perioperative kidney protection protocols.",
+        citations: [
+          { text: "KDIGO. Clinical Practice Guideline for the Evaluation and Management of CKD. Kidney Int Suppl. 2013;3:1–150.", url: "https://kdigo.org/guidelines/ckd-evaluation-and-management/" },
+          { text: "Kopp SL et al. ASRA 5th Edition Anticoagulation Guidelines. Reg Anesth Pain Med. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39880411/" },
+        ],
+      },
     });
   }
 
@@ -3222,6 +3448,13 @@ function generatePlan(d) {
         dos: "Cervical flex/ext X-rays if symptomatic (AAI in 25%). TMJ/cricoarytenoid assessment. Video laryngoscopy first-line.",
         readiness: `Biologic holds documented. Restart all ~14 d post wound healing.`,
       }, "Goodman Arthritis Care Res 2022 PMID 35718887"),
+      learnMore: {
+        why: "Biologic DMARDs (TNF inhibitors, IL-6 inhibitors, rituximab) significantly increase infection risk — particularly surgical site infection. They are withheld for 1 dosing interval before surgery to reduce perioperative immunosuppression. Conventional DMARDs (methotrexate, hydroxychloroquine) are continued — evidence shows stopping them increases disease flares without reducing infection risk. Atlantoaxial instability (AAI) occurs in up to 25% of RA patients and creates airway management risk.",
+        evidence: "Goodman et al. ACR/AAHKS 2022 Guideline (Arthritis Care Res 2022, PMID 35718887) provides evidence-based perioperative DMARD and biologic management recommendations for RA patients undergoing elective arthroplasty.",
+        citations: [
+          { text: "Goodman SM et al. 2022 ACR/AAHKS Guideline for Perioperative Management of Antirheumatic Medication in Patients with Rheumatic Diseases. Arthritis Care Res. 2022.", url: "https://pubmed.ncbi.nlm.nih.gov/35718887/" },
+        ],
+      },
     });
   }
 
@@ -3239,6 +3472,13 @@ function generatePlan(d) {
         dos: `Continue pyridostigmine (PO 60 mg ≈ IV 2 mg — do NOT abruptly stop). NMBA dose: 10–25% normal rocuronium. Sugammadex preferred. Quantitative TOF MANDATORY. AVOID aminoglycosides, Mg, fluoroquinolones. ICU for MGFA III–V or FVC <20.`,
         readiness: "PFT documented. Pyridostigmine continued. Sugammadex available. ICU bed if severe.",
       }, "Daum BJA Educ 2021; StatPearls NBK572091"),
+      learnMore: {
+        why: "MG patients have unpredictable neuromuscular junction sensitivity — standard NMBA doses can cause prolonged paralysis and respiratory failure. Non-depolarizing NMBAs must be dosed at 10–25% of normal (never succinylcholine in unstable MG — risk of life-threatening hyperkalemia). Quantitative TOF monitoring is mandatory for reversal decisions. Aminoglycosides, Mg2+, and fluoroquinolones can precipitate myasthenic crisis and must be avoided.",
+        evidence: "Daum et al. (BJA Education 2021) provides comprehensive anaesthetic management of MG patients, covering MGFA classification, NMBA pharmacology in MG, and postoperative ventilatory risk assessment based on FVC.",
+        citations: [
+          { text: "Daum M et al. Anaesthetic management of patients with myasthenia gravis. BJA Educ. 2021;21:414–419.", url: "https://pubmed.ncbi.nlm.nih.gov/33551985/" },
+        ],
+      },
     });
   }
 
@@ -3252,6 +3492,13 @@ function generatePlan(d) {
         dos: "AM dose with sip of water. IV conversion if NPO extended: levetiracetam 1:1 PO:IV; fosphenytoin 20 mg PE/kg; valproate 1:1; lacosamide 1:1.",
         readiness: "AED continuation plan documented. AVOID meperidine, tramadol. Resume PO ASAP.",
       }, "AES Status Epilepticus Algorithm"),
+      learnMore: {
+        why: "AED discontinuation perioperatively can precipitate breakthrough seizures or status epilepticus. All AEDs should be continued through the perioperative period without interruption. IV equivalents must be prepared for NPO patients — seizure threshold drugs (phenytoin, valproate, levetiracetam) are all available in parenteral formulation. Meperidine and tramadol lower seizure threshold and must be avoided.",
+        evidence: "The American Epilepsy Society guidelines and published AED perioperative management protocols support continuation of all antiepileptic drugs throughout surgery, with parenteral alternatives for NPO patients.",
+        citations: [
+          { text: "American Epilepsy Society. Perioperative Management of Antiseizure Medications.", url: "https://www.aesnet.org/" },
+        ],
+      },
     });
   }
 
@@ -3268,6 +3515,14 @@ function generatePlan(d) {
         dos: "VTE risk: Khorana ≥2 → thromboprophylaxis. Extended 4 wk LMWH for high-risk cancer surgery.",
         readiness: recentChemo ? "NOT MET: <3 wk post-chemo. Delay for count recovery." : "Counts recovered. Targeted therapy holds confirmed. Cardio-onc clearance if anthra/ICI.",
       }, "ESC 2022 Cardio-Onc Eur Heart J; ASCO VTE JCO 2023"),
+      learnMore: {
+        why: "Cancer surgery carries compounding perioperative risks: myelosuppression from recent chemotherapy, VTE from the malignant state, and cardiotoxicity from anthracyclines or immune checkpoint inhibitors. ICI-associated myocarditis has a case fatality rate of 25–40% — troponin screening before surgery in exposed patients is mandatory. Bevacizumab impairs surgical wound healing and must be held 6–8 weeks before elective surgery.",
+        evidence: "ESC 2022 Cardio-Oncology Guidelines (Eur Heart J 2022) provide comprehensive cardiotoxicity monitoring and management protocols. ASCO VTE Guidelines (JCO 2023) establish Khorana-score-based thromboprophylaxis algorithms for cancer surgery patients.",
+        citations: [
+          { text: "Lyon AR et al. 2022 ESC Guidelines on Cardio-Oncology. Eur Heart J. 2022;43:4229–4361.", url: "https://pubmed.ncbi.nlm.nih.gov/36017585/" },
+          { text: "Key NS et al. Venous Thromboembolism Prophylaxis and Treatment in Patients with Cancer. J Clin Oncol. 2023;41:3063–3071.", url: "https://pubmed.ncbi.nlm.nih.gov/36943943/" },
+        ],
+      },
     });
   }
 
@@ -3288,6 +3543,14 @@ function generatePlan(d) {
         dos: "ESAIC delirium bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids (glasses/hearing aids). BIS 40–60. AVOID benzos, anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
         readiness: "Frailty documented. Delirium bundle orders active. Advance directives on file. Routine age-based EKG NOT indicated (ESAIC 2025).",
       }, "Aldecoa Eur J Anaesthesiol 2024; Varley JAMA Surg 2023"),
+      learnMore: {
+        why: "Frailty is a physiological syndrome of reduced reserve that predicts postoperative complications, delirium, prolonged hospital stay, and mortality independently of age and comorbidity. The Clinical Frailty Scale (CFS) 5–6 indicates moderate frailty; ≥7 indicates severe frailty where goals-of-care discussion is warranted. Benzodiazepines and anticholinergic medications are major delirium precipitants and must be avoided perioperatively in elderly patients.",
+        evidence: "Aldecoa et al. (Eur J Anaesthesiol 2024) provides the ESAIC delirium prevention guidelines, validating the multicomponent bundle approach. Varley et al. (JAMA Surg 2023) demonstrate frailty as an independent predictor of 30-day outcomes in surgical patients.",
+        citations: [
+          { text: "Aldecoa C et al. European Society of Anaesthesiology and Intensive Care Evidence-Based and Consensus-Based Guideline on Postoperative Delirium. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37916500/" },
+          { text: "Varley PR et al. Frailty and Surgical Outcomes. JAMA Surg. 2023.", url: "https://pubmed.ncbi.nlm.nih.gov/37285114/" },
+        ],
+      },
     });
   }
 
@@ -3302,6 +3565,14 @@ function generatePlan(d) {
         dos: "Confirm decolonization completed. Preop antibiotics timed per SCIP. IPC in OR.",
         readiness: "Swab negative or decolonized. Hgb ≥13. VTE plan documented.",
       }, "AAOS/ICM 2018; AAHKS 2022 VTE Guidelines"),
+      learnMore: {
+        why: "Periprosthetic joint infection (PJI) is catastrophic — it requires implant removal, prolonged antibiotic therapy, and repeat surgery. Preoperative decolonization of S. aureus carriers (identified by nasal swab) with mupirocin and CHG reduces SSI risk by 50–60% in joint replacement. Preoperative anemia (Hgb <13) is a strong independent predictor of transfusion and PJI.",
+        evidence: "AAOS/ICM 2018 and AAHKS 2022 guidelines establish S. aureus decolonization protocols, VTE prophylaxis algorithms, and anemia management targets for arthroplasty patients. Universal decolonization is preferred over targeted decolonization due to improved adherence and outcomes.",
+        citations: [
+          { text: "American Academy of Orthopaedic Surgeons / International Consensus Meeting on Musculoskeletal Infection. 2018.", url: "https://www.aaos.org/quality/quality-programs/hip-and-knee-replacement/" },
+          { text: "American Association of Hip and Knee Surgeons. 2022 VTE Prevention Guidelines.", url: "https://www.aahks.org/care-for-hips-knees/do-i-need-a-joint-replacement/thrombosis-prevention/" },
+        ],
+      },
     });
   }
 
@@ -3315,6 +3586,14 @@ function generatePlan(d) {
         dos: "Plan MINS surveillance: hs-cTn at 6–12 h, POD 1, POD 2. Postop ICU/step-down for monitoring.",
         readiness: "Workup complete. MINS surveillance ordered. If MINS detected: ASA + statin; consider dabigatran 110 mg BID (MANAGE); cardiology ≤30 d.",
       }, "CARP NEJM 2004; MANAGE Lancet 2018"),
+      learnMore: {
+        why: "Vascular surgery carries the highest perioperative MACE risk of any noncardiac surgery. Despite this, the CARP trial definitively demonstrated that preoperative coronary revascularization does NOT improve outcomes — the priority is medical optimization and postoperative MINS surveillance. Myocardial injury after noncardiac surgery (MINS) occurs in 8–18% of vascular patients and is detected only by hs-troponin monitoring.",
+        evidence: "CARP (NEJM 2004, n=510) showed that preoperative revascularization before vascular surgery did not reduce long-term mortality or MI. MANAGE (Lancet 2018) demonstrated that dabigatran reduces MACE in patients who develop MINS.",
+        citations: [
+          { text: "McFalls EO et al. Coronary-Artery Revascularization before Elective Major Vascular Surgery (CARP). NEJM. 2004;351:2795–2804.", url: "https://pubmed.ncbi.nlm.nih.gov/15548778/" },
+          { text: "Devereaux PJ et al. Dabigatran in patients with myocardial injury after non-cardiac surgery (MANAGE). Lancet. 2018;391:2325–34.", url: "https://pubmed.ncbi.nlm.nih.gov/30025699/" },
+        ],
+      },
     });
   }
 
@@ -3332,6 +3611,14 @@ function generatePlan(d) {
         dos: hfrefContinue ? "CONTINUE through surgery." : "Hold morning of surgery. Continue all other antihypertensives.",
         readiness: "RESTART within 48 h postop. CRITICAL: 25% never restarted — document restart order.",
       }, "STOP-or-NOT JAMA 2024; POISE-3 NEJM 2022"),
+      learnMore: {
+        why: "ACEi/ARB block the renin-angiotensin system, which becomes critically important for maintaining BP under anesthetic vasodilation — their continuation risks refractory intraoperative hypotension in hypertension-only patients (STOP-or-NOT). However, in HFrEF, ACEi/ARB are GDMT and should be continued. A critical safety gap: 25% of patients whose ACEi/ARB are held perioperatively never have them restarted — leaving them off GDMT long-term.",
+        evidence: "STOP-or-NOT (JAMA 2024) and POISE-3 (NEJM 2022) provide the definitive evidence base for ACEi/ARB perioperative management, establishing that holding in HTN-only patients (not HFrEF) reduces intraoperative hypotension without increasing MACE.",
+        citations: [
+          { text: "STOP-or-NOT Trial. Continuation vs. Discontinuation of ACE Inhibitors/ARBs Before Surgery. JAMA. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
+          { text: "Sessler DI et al. Perioperative Angiotensin-Converting–Enzyme Inhibitors (POISE-3). NEJM. 2022;386:1999–2010.", url: "https://pubmed.ncbi.nlm.nih.gov/35443108/" },
+        ],
+      },
     });
   }
 
@@ -3357,6 +3644,14 @@ function generatePlan(d) {
         dos: "Reconcile timing with ASRA 5th Ed neuraxial intervals. IPC in OR for all patients.",
         readiness: "Caprini documented. Pharm + mech ordered per tier. Duration per tier.",
       }, "Pannucci Mayo Clin Proc 2020; CHEST 2012"),
+      learnMore: {
+        why: "VTE (DVT/PE) is the most common preventable cause of hospital death. The Caprini score stratifies surgical patients into 5 risk tiers — from minimal (early ambulation only) to very high (combined pharmacologic + mechanical + extended prophylaxis ≤30 days). IPC devices are recommended for ALL patients intraoperatively regardless of pharmacologic status. Timing of pharmacologic prophylaxis must be coordinated with ASRA 5th Ed neuraxial anesthesia intervals.",
+        evidence: "Pannucci et al. (Mayo Clin Proc 2020) validate the Caprini risk assessment model in surgical patients. CHEST 2012 guidelines established pharmacologic plus mechanical prophylaxis as superior to either alone for high-risk patients.",
+        citations: [
+          { text: "Pannucci CJ et al. Validation of the Caprini Risk Assessment Model in Academic Surgical Patients. Ann Surg. 2011;253:1053–1058.", url: "https://pubmed.ncbi.nlm.nih.gov/21178766/" },
+          { text: "Guyatt GH et al. Antithrombotic Therapy and Prevention of Thrombosis, 9th ed. CHEST. 2012;141(2 Suppl):7S–47S.", url: "https://pubmed.ncbi.nlm.nih.gov/22315267/" },
+        ],
+      },
     });
   }
 
@@ -3369,6 +3664,13 @@ function generatePlan(d) {
         dos: "Bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids, pain control. BIS 40–60. AVOID benzos/anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
         readiness: "Bundle orders active. CAM/4AT q8–12 h ×72 h postop.",
       }, "Aldecoa Eur J Anaesthesiol 2024;41:81–108"),
+      learnMore: {
+        why: "Postoperative delirium (POD) affects 15–50% of surgical patients ≥65 and is associated with prolonged ICU stay, cognitive decline, and increased 1-year mortality. Benzodiazepines and anticholinergics are the strongest pharmacologic precipitants and must be avoided. BIS monitoring targeting 40–60 reduces POD by limiting anesthetic overdose. Dexmedetomidine provides sedation with far lower delirium risk than benzodiazepines.",
+        evidence: "Aldecoa et al. (Eur J Anaesthesiol 2024;41:81–108) provides the ESAIC evidence-based guideline on postoperative delirium, validating the multicomponent prevention bundle and specific pharmacologic recommendations including BIS targets and dexmedetomidine.",
+        citations: [
+          { text: "Aldecoa C et al. European Society of Anaesthesiology and Intensive Care Evidence-Based and Consensus-Based Guideline on Postoperative Delirium. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37916500/" },
+        ],
+      },
     });
   }
 
@@ -3939,37 +4241,85 @@ function PatientCard({ rec }) {
 }
 
 function PlanCard({ rec, color }) {
+  const [showLearnMore, setShowLearnMore] = useState(false);
   const priorityColors = { high: SR.danger, medium: SR.warning, low: SR.success };
   const priorityLabels = { high: "HIGH", medium: "MED", low: "LOW" };
+  const lm = rec.learnMore;
   return (
-    <div style={{ border: `1px solid ${SR.borderLight}`, borderLeft: `4px solid ${color}`, borderRadius: "10px", padding: "16px 18px", marginBottom: "12px", background: SR.white, boxShadow: SR.cardShadow }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "10px", fontWeight: 700, color: SR.white, background: priorityColors[rec.priority], padding: "2px 10px", borderRadius: "10px", fontFamily: SR.font, letterSpacing: "0.3px" }}>
-            {priorityLabels[rec.priority]}
-          </span>
-          <span style={{ fontSize: "11px", fontWeight: 600, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: SR.font }}>{rec.domain}</span>
+    <div style={{ border: `1px solid ${SR.borderLight}`, borderLeft: `4px solid ${color}`, borderRadius: "10px", marginBottom: "12px", background: SR.white, boxShadow: SR.cardShadow, overflow: "hidden" }}>
+      <div style={{ padding: "16px 18px 12px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: SR.white, background: priorityColors[rec.priority], padding: "2px 10px", borderRadius: "10px", fontFamily: SR.font, letterSpacing: "0.3px" }}>
+              {priorityLabels[rec.priority]}
+            </span>
+            <span style={{ fontSize: "11px", fontWeight: 600, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.5px", fontFamily: SR.font }}>{rec.domain}</span>
+          </div>
         </div>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: SR.text, marginBottom: "6px", fontFamily: SR.font }}>{rec.title}</div>
+        <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>
+          {rec.detail.includes("\n")
+            ? rec.detail.split("\n").map((line, i) => {
+                const colonIdx = line.indexOf(":");
+                const hasLabel = colonIdx > 0 && colonIdx < 24;
+                return (
+                  <div key={i} style={{ marginBottom: "4px" }}>
+                    {hasLabel ? (
+                      <>
+                        <span style={{ fontWeight: 700, color: SR.text }}>{line.slice(0, colonIdx + 1)}</span>
+                        {line.slice(colonIdx + 1)}
+                      </>
+                    ) : line}
+                  </div>
+                );
+              })
+            : rec.detail}
+        </div>
+        {lm && (
+          <button onClick={() => setShowLearnMore(!showLearnMore)} style={{
+            background: "none", border: "none", cursor: "pointer", padding: "6px 0 0",
+            fontSize: "12px", fontWeight: 600, color: SR.navy, fontFamily: SR.font,
+            display: "inline-flex", alignItems: "center", gap: "5px", marginTop: "4px",
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke={SR.navy} strokeWidth="2"/>
+              <path d="M12 8v1M12 11v5" stroke={SR.navy} strokeWidth="2.2" strokeLinecap="round"/>
+            </svg>
+            {showLearnMore ? "Hide evidence ▲" : "View guideline ▼"}
+          </button>
+        )}
       </div>
-      <div style={{ fontSize: "14px", fontWeight: 700, color: SR.text, marginBottom: "6px", fontFamily: SR.font }}>{rec.title}</div>
-      <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, fontFamily: SR.font }}>
-        {rec.detail.includes("\n")
-          ? rec.detail.split("\n").map((line, i) => {
-              const colonIdx = line.indexOf(":");
-              const hasLabel = colonIdx > 0 && colonIdx < 24;
-              return (
-                <div key={i} style={{ marginBottom: "4px" }}>
-                  {hasLabel ? (
-                    <>
-                      <span style={{ fontWeight: 700, color: SR.text }}>{line.slice(0, colonIdx + 1)}</span>
-                      {line.slice(colonIdx + 1)}
-                    </>
-                  ) : line}
-                </div>
-              );
-            })
-          : rec.detail}
-      </div>
+      {lm && showLearnMore && (
+        <div style={{
+          margin: "0 16px 16px",
+          background: SR.tealLight, borderRadius: "10px",
+          border: `1px solid ${SR.teal}22`,
+          padding: "16px 18px",
+        }}>
+          <div style={{ marginBottom: "12px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Clinical Rationale</div>
+            <p style={{ fontSize: "13px", color: SR.text, lineHeight: 1.65, margin: 0, fontFamily: SR.font }}>{lm.why}</p>
+          </div>
+          <div style={{ marginBottom: "12px" }}>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>What the evidence shows</div>
+            <p style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.65, margin: 0, fontFamily: SR.font }}>{lm.evidence}</p>
+          </div>
+          {lm.citations && lm.citations.length > 0 && (
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: SR.navy, fontFamily: SR.font, marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Guideline Sources</div>
+              <ol style={{ margin: 0, paddingLeft: "18px" }}>
+                {lm.citations.map((c, i) => (
+                  <li key={i} style={{ fontSize: "11px", color: SR.textSecondary, lineHeight: 1.6, marginBottom: "4px", fontFamily: SR.font }}>
+                    {c.url ? (
+                      <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: SR.tealDark, textDecoration: "underline", textDecorationColor: `${SR.teal}55` }}>{c.text}</a>
+                    ) : <span>{c.text}</span>}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
