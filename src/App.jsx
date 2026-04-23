@@ -1404,16 +1404,59 @@ function StepMedical({ data, update }) {
           )}
 
           {hasDiabetes && (
-            <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="Last HbA1c (%)" hint="Target ≤ 8.5% for elective surgery; defer if > 9.0%">
-                <Input type="number" value={data.a1cValue || ""} onChange={v => update("a1cValue", v)} placeholder="e.g. 7.8" min="4" max="20" step="0.1" />
+            <>
+              <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <Field label="Last HbA1c (%)" hint="Tier 1 <7 · Tier 2 7–8.5 · Tier 3 8.5–10 (delay) · Tier 4 >10 (strong delay)">
+                  <Input type="number" value={data.a1cValue || ""} onChange={v => update("a1cValue", v)} placeholder="e.g. 7.8" min="4" max="20" step="0.1" />
+                </Field>
+                <Field label="Diabetes type">
+                  <Select value={data.dmType || ""} onChange={v => update("dmType", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "T1DM", label: "Type 1 (T1DM)" }, { value: "T2DM", label: "Type 2 (T2DM)" },
+                  ]} />
+                </Field>
+              </div>
+              <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <Field label="Diabetes duration">
+                  <Select value={data.dmDurationYears || ""} onChange={v => update("dmDurationYears", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "lt5", label: "< 5 years" }, { value: "5-10", label: "5–10 years" }, { value: "gt10", label: "> 10 years" },
+                  ]} />
+                </Field>
+                <Field label="Insulin use">
+                  <Select value={data.insulinType || ""} onChange={v => update("insulinType", v)} options={[
+                    { value: "", label: "Unknown / not on insulin" }, { value: "none", label: "Not on insulin" }, { value: "basal", label: "Basal only" }, { value: "basal-bolus", label: "Basal-bolus" }, { value: "pump", label: "Insulin pump" }, { value: "premixed", label: "Premixed" },
+                  ]} />
+                </Field>
+              </div>
+              {(data.insulinType === "basal" || data.insulinType === "basal-bolus" || data.insulinType === "pump" || data.insulinType === "premixed") && (
+                <Field label="Total daily insulin dose (U/day)" hint="> 80 U + major/cardiac surgery → IV insulin indication">
+                  <Input type="number" value={data.insulinTDD || ""} onChange={v => update("insulinTDD", v)} placeholder="e.g. 45" min="0" max="500" />
+                </Field>
+              )}
+              <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <Field label="CGM use">
+                  <Select value={data.cgmUse || ""} onChange={v => update("cgmUse", v)} options={[
+                    { value: "", label: "Unknown" }, { value: "yes", label: "Actively using" }, { value: "past", label: "Previously used" }, { value: "no", label: "No" },
+                  ]} />
+                </Field>
+                {data.cgmUse === "yes" && (
+                  <Field label="Time-in-range (%)" hint="Goal ≥ 70%">
+                    <Input type="number" value={data.timeInRange || ""} onChange={v => update("timeInRange", v)} placeholder="e.g. 65" min="0" max="100" />
+                  </Field>
+                )}
+              </div>
+              <Field label="Hypoglycemia & GI risk factors (select all that apply)">
+                <MultiChip
+                  options={[
+                    "Hypoglycemia unawareness",
+                    "Severe hypo episode in past 12 months",
+                    "Gastroparesis",
+                    ...(data.dmType === "T1DM" ? ["Prior DKA admission"] : []),
+                  ]}
+                  selected={data.dmRiskFactors || []}
+                  onChange={v => update("dmRiskFactors", v)}
+                />
               </Field>
-              <Field label="Insulin use">
-                <Select value={data.insulinType || ""} onChange={v => update("insulinType", v)} options={[
-                  { value: "", label: "Unknown / not on insulin" }, { value: "none", label: "Not on insulin" }, { value: "basal", label: "Basal only" }, { value: "basal-bolus", label: "Basal-bolus" }, { value: "pump", label: "Insulin pump" },
-                ]} />
-              </Field>
-            </div>
+            </>
           )}
 
           {hasPheo && (
@@ -1450,9 +1493,9 @@ function StepMedical({ data, update }) {
             </div>
           )}
 
-          {(hasCKD || hasDialysis) && (
+          {(hasCKD || hasDialysis || hasDiabetes || showGeriatric) && (
             <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="eGFR (mL/min/1.73m²)" hint="Drives DOAC hold timing, drug avoidance">
+              <Field label="eGFR (mL/min/1.73m²)" hint="Drives DOAC/DPP-4 dose, metformin hold, drug avoidance">
                 <Input type="number" value={data.egfrValue || ""} onChange={v => update("egfrValue", v)} placeholder="e.g. 45" min="0" max="150" />
               </Field>
               {hasDialysis && (
@@ -1593,7 +1636,7 @@ function StepMedications({ data, update }) {
   const medGroups = [
     { key: "cardioMeds", label: "Cardiovascular", items: ["ACE inhibitor", "ARB", "Beta-blocker", "Statin", "Diuretic (Lasix/HCTZ)", "Digoxin", "Calcium channel blocker"] },
     { key: "anticoag", label: "Anticoagulation / Antiplatelet", items: ["Warfarin", "Apixaban (Eliquis)", "Rivaroxaban (Xarelto)", "Dabigatran (Pradaxa)", "Enoxaparin (LMWH)", "Aspirin", "Clopidogrel (Plavix)", "Ticagrelor"] },
-    { key: "diabetesMeds", label: "Diabetes / Metabolic", items: ["GLP-1 RA (semaglutide/Ozempic)", "GLP-1 RA (liraglutide/Victoza)", "Tirzepatide (Mounjaro)", "SGLT2 inhibitor (empagliflozin/Jardiance)", "SGLT2 inhibitor (dapagliflozin/Farxiga)", "Metformin", "Insulin (basal)", "Insulin (bolus/pump)"] },
+    { key: "diabetesMeds", label: "Diabetes / Metabolic", items: ["GLP-1 RA (semaglutide/Ozempic)", "GLP-1 RA (liraglutide/Victoza)", "Tirzepatide (Mounjaro)", "SGLT2 inhibitor (empagliflozin/Jardiance)", "SGLT2 inhibitor (dapagliflozin/Farxiga)", "SGLT2 inhibitor (canagliflozin/Invokana)", "SGLT2 inhibitor (ertugliflozin/Steglatro)", "Metformin", "Sulfonylurea (glipizide)", "Sulfonylurea (glimepiride)", "Sulfonylurea (glyburide)", "DPP-4 inhibitor (sitagliptin/linagliptin/saxagliptin)", "Thiazolidinedione (pioglitazone)", "Insulin (basal)", "Insulin (bolus/pump)", "Insulin (premixed)"] },
     { key: "painMeds", label: "Pain / Substance Use", items: ["Buprenorphine (Suboxone/Subutex)", "Methadone", "Naltrexone (oral)", "Naltrexone (XR/Vivitrol)", "Chronic opioids", "Marijuana (medical/recreational)", "Other recreational drugs"] },
     { key: "otherMeds", label: "Other", items: ["Antiepileptics", "Biologics/DMARDs", "Immunotherapy/checkpoint inhibitors", "Corticosteroids"] },
   ];
@@ -3045,36 +3088,149 @@ function generatePlan(d) {
   // SECTION C — ENDOCRINE & METABOLIC (Pathways 12–16)
   // ───────────────────────────────────────────────
 
-  // Pathway 12: Diabetes
+  // Pathway 12: Diabetes — HbA1c-tier driven
   if (isDiabetic) {
-    const a1cLine = a1cNum !== null
-      ? (a1cNum > 9.0 ? `A1C ${a1cNum}% — EXCEEDS 9.0%: DEFER elective surgery.`
-        : a1cNum > 8.5 ? `A1C ${a1cNum}% — above 8.5% target; optimize before elective.`
-        : `A1C ${a1cNum}% — within target.`)
-      : "Order A1C if none in 90 d. Target ≤8.5% for elective; defer if >9.0%.";
+    const dmType = d.dmType || "";
+    const dmRiskFactors = d.dmRiskFactors || [];
+    const hasGastroparesis = dmRiskFactors.includes("Gastroparesis");
+    const hasHypoUnawareness = dmRiskFactors.includes("Hypoglycemia unawareness");
+    const hasSevereHypo12mo = dmRiskFactors.includes("Severe hypo episode in past 12 months");
+    const hasDKAHistory = dmRiskFactors.includes("Prior DKA admission");
+    const insulinTDD = d.insulinTDD ? parseFloat(d.insulinTDD) : null;
+    const tdd80Plus = insulinTDD !== null && insulinTDD > 80;
+    const ageForHypo = parseInt(d.age) || 0;
+    const frailty = (d.other || []).includes("Frailty/recent falls");
+    const highHypoRisk = hasHypoUnawareness || hasSevereHypo12mo || (ageForHypo >= 70 && frailty) || (egfrNum !== null && egfrNum < 30);
+
+    // HbA1c tier (1 = well controlled, 4 = high risk)
+    const a1cTier = a1cNum === null ? null
+      : a1cNum < 7.0  ? { n: 1, label: "Tier 1 — Well Controlled",  ssi: "baseline SSI risk" }
+      : a1cNum < 8.5  ? { n: 2, label: "Tier 2 — Acceptable Risk",  ssi: "incremental SSI/AKI risk; intraop target 140–180 mg/dL" }
+      : a1cNum < 10.0 ? { n: 3, label: "Tier 3 — Elevated Risk",    ssi: "SSI OR ~2.4; DELAY elective, mandatory endocrine referral" }
+      :                 { n: 4, label: "Tier 4 — HIGH RISK",        ssi: "SSI OR ~3.0; infection rates up to 38.5%. STRONG delay recommendation. Intensive IV insulin." };
+    const tierLine = a1cTier
+      ? `A1C ${a1cNum}% — ${a1cTier.label}: ${a1cTier.ssi}.`
+      : "Order A1C if none in 90 d. Tier targets: <7 ideal · 7–8.5 acceptable · 8.5–10 delay · >10 strong delay.";
+
     const insulin = d.insulinType || "";
     let insulinLine = "No insulin use documented.";
-    if (insulin === "basal") insulinLine = "Basal insulin: reduce 20–25% evening before.";
-    else if (insulin === "basal-bolus") insulinLine = "Basal-bolus: basal −20–25%; NPH −50%; HOLD all bolus while NPO.";
-    else if (insulin === "pump") insulinLine = "Insulin pump: continue basal ≤1 missed meal. Disconnect >3 h → IV insulin with manual basal rate.";
+    if (insulin === "basal") insulinLine = dmType === "T1DM"
+      ? "T1DM Basal: NEVER withhold. 75–80% of usual evening-before dose (DKA risk within 4–6 h of cessation)."
+      : `T2DM Basal: reduce to 75–80% evening before${highHypoRisk ? " (50–75% if high hypo risk)" : ""}. NPH: 50% AM dose.`;
+    else if (insulin === "basal-bolus") insulinLine = `Basal −20–25% (−50% if high hypo risk); HOLD all bolus while NPO; resume with first full meal.`;
+    else if (insulin === "pump") insulinLine = "Pump: continue 80% basal for short procedures. For major/cardiac/disconnect >3 h: convert to IV infusion 30–60 min pre-incision with D5W co-infusion.";
+    else if (insulin === "premixed") insulinLine = "Premixed: convert to basal-only or give 50% AM dose with concurrent D5W 100–200 mL/hr.";
+
+    // IV insulin indication
+    const ivInsulinIndicated = (a1cTier && a1cTier.n === 4)
+      || surgeryTags.includes("Open chest/cardiac")
+      || (dmType === "T1DM" && (surgeryMagnitude === "major" || surgeryTags.includes("Open chest/cardiac")))
+      || (tdd80Plus && (surgeryMagnitude === "major" || surgeryTags.includes("Open chest/cardiac")));
+    const ivInsulinLine = ivInsulinIndicated
+      ? "IV INSULIN INDICATED: Yale/Vanderbilt protocol — start rate = glucose ÷ 100; target 140–180; POC q1h until 3 consecutive in-range, then q2h. Portland Protocol for cardiac: target 125–175 × ≥3 d (DOS + POD1 + POD2)."
+      : "SC insulin with POC on OR arrival, then q2–4 h if stable. Corrective insulin q4h if >180.";
+
     provider.push({
-      domain: "Endocrine", priority: "high", title: "Diabetes — Perioperative Glucose",
+      domain: "Endocrine", priority: "high", title: `Diabetes — Perioperative Glucose${a1cTier ? ` (${a1cTier.label})` : ""}`,
       detail: timedDetail({
-        ge8: a1cLine,
-        wk47: "Metformin: hold AM (24–48 h if eGFR 30–60). Sulfonylureas: hold AM. DPP-4i: continue. SGLT2i / GLP-1 RA per their pathways.",
-        wk12: insulinLine,
-        dos: "Glucose target 80–180 mg/dL (ADA 2025). Cancel if >300 + ketones >2.5. Order POC glucose on arrival.",
-        readiness: a1cNum !== null && a1cNum > 9.0 ? "NOT MET: A1C >9%." : "A1C ≤8.5%. Medication holds reconciled. Glucose plan documented.",
-      }, "ADA 2025; SAMBA Anesth Analg 2024; SPAQI J Clin Anesth 2024"),
+        ge8: `${tierLine} If Tier 3–4: endocrine referral this week. Consider CGM initiation if T2DM without one. Re-check A1C at 4-wk mark.`,
+        wk47: "Adjust therapy under prescriber. Target <8% if window allows. Sick-day rules education. Verify every diabetes med against hold matrix (see next card).",
+        wk12: `${insulinLine} Reconcile all oral agents. Confirm IV-insulin order set ready if indicated.`,
+        lt1: `Sick-day rules reinforced. ${hasSGLT2 ? "POC ketones verified <0.6 (SGLT2i hold d-3 / d-4 ertugliflozin). " : ""}Sulfonylureas evening-before dose skipped. Patient script for hypoglycemia.`,
+        dos: `${ivInsulinLine} Standard target 100–180 mg/dL · cardiac 125–175 (Portland) · ambulatory 100–250 (SAMBA). ${dmType === "T1DM" ? "T1DM NPO: D5W 100–200 mL/hr concurrent to prevent starvation ketosis. " : ""}Cancel elective if random >300 or β-OHB >1.5. Treat <70 mg/dL with D50W 50 mL IV (or 15 g PO if awake).`,
+        readiness: a1cTier && a1cTier.n >= 3
+          ? `NOT MET: Tier ${a1cTier.n} — delay elective; endocrine referral mandatory.`
+          : `Tier ${a1cTier ? a1cTier.n : "?"} readiness: hold matrix reconciled · hypo plan documented${ivInsulinIndicated ? " · IV-insulin order set active" : ""}${hasSGLT2 ? " · ketones <0.6 verified" : ""}.`,
+      }, "ADA Standards of Care 2026; SAMBA Anesth Analg 2024; Endocrine Society 2022; JBDS/CPOC 2023"),
       learnMore: {
-        why: "Perioperative hyperglycemia (>180 mg/dL) is independently associated with surgical site infection, impaired wound healing, and increased 30-day mortality. HbA1c >9.0% signals chronically uncontrolled diabetes — elective surgery should be deferred. ADA 2025 targets 80–180 mg/dL intraoperatively; tighter targets (140–180 mg/dL) apply in the ICU. Sulfonylureas and insulin boluses while NPO carry significant hypoglycemia risk.",
-        evidence: "ADA Standards of Medical Care in Diabetes 2025 (Diabetes Care Supplement 1) establishes perioperative glucose targets and medication management protocols. SAMBA (Anesth Analg 2024) and SPAQI (J Clin Anesth 2024) provide anesthesia society-specific perioperative glycemic management consensus recommendations.",
+        why: "Perioperative hyperglycemia (>180 mg/dL) is independently associated with surgical site infection, impaired wound healing, and increased 30-day mortality. HbA1c tiering stratifies SSI risk: Tier 3 carries ~2.4× odds, Tier 4 ~3.0×. ADA 2026 targets 100–180 mg/dL intraop; Portland Protocol targets 125–175 for cardiac surgery and has shown 50% reduction in CABG mortality when achieved. T1DM basal insulin must never be withheld — DKA develops within 4–6 h of cessation.",
+        evidence: "ADA Standards of Medical Care in Diabetes 2026 establishes perioperative glucose targets and medication management protocols. The Portland Diabetic Project (Furnary et al., STS) demonstrates that maintaining glucose 125–175 in cardiac surgery reduces deep sternal wound infection (1.3% at 100–150 vs 6.7% at 250–300). SAMBA 2024 and JBDS/CPOC 2023 provide anesthesia- and diabetology-society-specific perioperative guidance. NICE-SUGAR showed intensive 80–110 targets increased mortality — 140–180 is the intraop standard.",
         citations: [
-          { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2025. Diabetes Care. 2025;48(Suppl 1).", url: "https://diabetesjournals.org/care/issue/48/Supplement_1" },
-          { text: "Joshi GP et al. Perioperative Glucose Management for Patients Undergoing Ambulatory Surgery. Anesth Analg. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
+          { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2026. Diabetes Care. 2026;49(Suppl 1).", url: "https://diabetesjournals.org/care" },
+          { text: "Joshi GP et al. SAMBA Consensus on Perioperative Glucose Management. Anesth Analg. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
+          { text: "Furnary AP et al. Continuous insulin infusion reduces mortality in diabetics after CABG. J Thorac Cardiovasc Surg. 2003.", url: "https://pubmed.ncbi.nlm.nih.gov/12928661/" },
+          { text: "Dhatariya K et al. JBDS/CPOC Perioperative Diabetes Guidelines. Diabet Med. 2023.", url: "https://onlinelibrary.wiley.com/journal/14645491" },
         ],
       },
     });
+
+    // ── Medication Hold Matrix (new card) ────────────────────────────────────
+    const holdLines = [];
+    if (diabetesMeds.includes("Metformin")) {
+      const egfrMsg = egfrNum !== null && egfrNum < 30 ? " · eGFR <30: PERMANENT STOP (not just periop hold)" : egfrNum !== null && egfrNum < 60 ? " · iodinated contrast: hold 48 h pre+post" : "";
+      holdLines.push(`METFORMIN: hold AM of surgery · restart 24–48 h postop after eating${egfrMsg}.`);
+    }
+    if (hasSGLT2) {
+      const ertu = diabetesMeds.some(m => m.includes("ertugliflozin"));
+      holdLines.push(`SGLT2i: hold ≥${ertu ? "4 d (ertugliflozin)" : "3 d"} · restart only when eating AND ketones <0.6 · HF exception: shared decision.`);
+    }
+    if (hasGLP1) {
+      const weeklyAgent = diabetesMeds.some(m => m.includes("semaglutide") || m.includes("Tirzepatide"));
+      const glpRisk = d.glp1Phase === "yes" || d.glp1GI === "active" || hasGastroparesis;
+      holdLines.push(`GLP-1 RA: ${glpRisk ? `HIGH RISK (escalation/GI/gastroparesis) — hold ${weeklyAgent ? "7 d" : "DOS"}; liquid diet 24 h; gastric US; RSI plan` : "CONTINUE per 2024 multi-society guidance"}.`);
+    }
+    const sulfs = diabetesMeds.filter(m => m.startsWith("Sulfonylurea"));
+    if (sulfs.length > 0) {
+      const gly = sulfs.some(m => m.includes("glyburide"));
+      holdLines.push(`SULFONYLUREA: hold AM of surgery · resume with first full meal${gly ? " · GLYBURIDE flag: long half-life + active metabolites + renal clearance → recommend substitution (glipizide/glimepiride)" : ""}.`);
+    }
+    if (diabetesMeds.some(m => m.includes("DPP-4"))) {
+      const egfrMsg = egfrNum !== null && egfrNum < 50 ? " · sitagliptin: dose-adjust for eGFR <50" : "";
+      holdLines.push(`DPP-4i: CONTINUE through surgery (glucose-dependent, minimal hypo risk)${egfrMsg} · saxagliptin/alogliptin: HF caution.`);
+    }
+    if (diabetesMeds.some(m => m.includes("Thiazolidinedione"))) {
+      holdLines.push(`TZD (pioglitazone): continue unless decompensated HF · fluid-retention warning.`);
+    }
+    if (insulin === "basal" || insulin === "basal-bolus") {
+      holdLines.push(`INSULIN BASAL: ${dmType === "T1DM" ? "NEVER withhold; 75–80% evening-before dose" : `75–80% evening before${highHypoRisk ? " (50–75% if high hypo risk)" : ""}`}. NPH: 50% AM.`);
+      if (insulin === "basal-bolus") holdLines.push(`INSULIN BOLUS: HOLD while NPO; resume with first full meal.`);
+    }
+    if (insulin === "pump") {
+      holdLines.push(`INSULIN PUMP: 80% basal for short · IV conversion 30–60 min pre-incision for major/cardiac/disconnect >3 h · IV-to-SC overlap 2–4 h postop.`);
+    }
+    if (insulin === "premixed") {
+      holdLines.push(`INSULIN PREMIXED: convert to basal-only OR 50% AM dose with concurrent D5W 100–200 mL/hr.`);
+    }
+    if (holdLines.length > 0) {
+      provider.push({
+        domain: "Medications", priority: "high", title: "Diabetes Medication Hold Matrix",
+        detail: holdLines.join("\n"),
+        learnMore: {
+          why: "Each diabetes drug class has distinct pharmacokinetics and perioperative risks. Generic 'hold all diabetes meds' under-treats continuation candidates (DPP-4i, continued-GLP-1) and over-treats stop candidates (glyburide's long half-life, SGLT2i euDKA window). The matrix captures agent-specific decisions with renal dose-adjustments and restart criteria.",
+          evidence: "2024 multi-society GLP-1 guidance (ADA/ASA/ASGE/ASMBS) updates blanket 7-day hold to risk-factor-gated continuation. ADA 2026, SAMBA 2024, and JBDS/CPOC 2023 provide the drug-class matrix. Glyburide carries the highest periop hypoglycemia risk of the sulfonylureas due to long half-life, active metabolites, and renal clearance.",
+          citations: [
+            { text: "Multi-Society Clinical Practice Guidance on Perioperative GLP-1 RA Management. Surg Endosc. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39688735/" },
+            { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2026.", url: "https://diabetesjournals.org/care" },
+            { text: "Dhatariya K et al. JBDS/CPOC Perioperative Diabetes Guidelines. Diabet Med. 2023.", url: "https://onlinelibrary.wiley.com/journal/14645491" },
+          ],
+        },
+      });
+    }
+
+    // ── Module 12b: Hypoglycemia Risk card ────────────────────────────────────
+    if (highHypoRisk) {
+      provider.push({
+        domain: "Endocrine", priority: "high", title: "High Hypoglycemia Risk — Enhanced Monitoring",
+        detail: timedDetail({
+          wk47: `Risk factors: ${[hasHypoUnawareness && "unawareness", hasSevereHypo12mo && "severe hypo <12 mo", (ageForHypo >= 70 && frailty) && "elderly + frailty", (egfrNum !== null && egfrNum < 30) && `eGFR ${egfrNum}`].filter(Boolean).join(" · ")}. Reduce TDD to 0.3 U/kg/day. Set alarms on CGM if available.`,
+          wk12: "Patient education: 15-15 rule for lows (15 g fast carb → recheck 15 min → repeat). Glucagon kit at home. Family/caregiver trained.",
+          dos: "POC q2h (not q4h) · D50W 50 mL syringe at bedside · reduce corrective doses 50% · target 120–180 (upper band of standard target) · avoid tight intraop control.",
+          readiness: "Hypo plan documented · bedside D50W confirmed · CGM alarms set if applicable · reduced insulin doses reconciled.",
+        }, "JBDS/CPOC 2023; ADA 2026"),
+      });
+    }
+
+    // ── Module 12b: Steroid-Induced Hyperglycemia ────────────────────────────
+    if (hasChronicSteroid && isDiabetic) {
+      provider.push({
+        domain: "Endocrine", priority: "medium", title: "Steroid-Induced Hyperglycemia Management",
+        detail: timedDetail({
+          wk12: "Anticipate 20–40% insulin uptitration when steroid coverage active. Prednisone/methylprednisolone peak PM; dexamethasone sustained × 72 h.",
+          dos: "POC glucose q4–6 h × 72 h postop if stress-dose steroids given. Correctional insulin dose may need 30–50% increase.",
+          readiness: "Postop POC q4–6 h × 72 h plan active · expanded insulin sliding scale at bedside · endocrine on call.",
+        }, "Endocrine Society 2022"),
+      });
+    }
   }
 
   // Pathway 13: GLP-1 RA
