@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "SurgeryReady (root)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "surgeryready-website (preview)",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--root", "surgeryready-website", "--port", "5174"],
+      "port": 5174
+    }
+  ]
+}

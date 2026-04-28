@@ -436,7 +436,7 @@ function Hero({ onNavigate }) {
           textAlign: "center", fontSize: "13px", color: BRAND.muted, fontFamily: FONT,
           marginTop: "32px",
         }}>
-          Built by anesthesiologists and surgeons. Evidence-based. Free to use.
+          Built by anesthesiologists and surgeons. Evidence-based.
         </p>
       </div>
     </section>
@@ -4960,6 +4960,9 @@ function PreOpPage() {
   const [planId, setPlanId] = useState(null);
   const [resumeData, setResumeData] = useState(null); // { data, plan, progress, planId }
   const [loadingSession, setLoadingSession] = useState(!!supabase);
+  const [generating, setGenerating] = useState(false);
+  const [motivationalMsgIdx, setMotivationalMsgIdx] = useState(0);
+  const msgIntervalRef = useRef(null);
   const saveTimerRef = useRef(null);
 
   // Listen for auth state changes
@@ -5002,6 +5005,21 @@ function PreOpPage() {
     return () => clearTimeout(saveTimerRef.current);
   }, [progress, planId, session]);
 
+  // Inject animation keyframes once — keeps the progress bar animation stable
+  // across re-renders caused by motivational message cycling
+  useEffect(() => {
+    const el = document.createElement('style');
+    el.id = 'sr-gen-keyframes';
+    el.textContent = `
+      @keyframes srSpin { to { transform: rotate(360deg); } }
+      @keyframes srSpinR { to { transform: rotate(-360deg); } }
+      @keyframes srFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes srProgress { from { width: 0%; } to { width: 100%; } }
+    `;
+    if (!document.getElementById('sr-gen-keyframes')) document.head.appendChild(el);
+    return () => document.getElementById('sr-gen-keyframes')?.remove();
+  }, []);
+
   const [demoLoaded, setDemoLoaded] = useState(null);
   const loadDemo = useCallback((demoData) => {
     setData(demoData);
@@ -5015,20 +5033,35 @@ function PreOpPage() {
 
   const goNext = () => { if (step < STEPS.length - 1) setStep(step + 1); };
   const goBack = () => { if (step > 0) setStep(step - 1); };
+  const MOTIVATIONAL_MESSAGES = [
+    "Every step you take now is a step toward a smoother recovery.",
+    "Preparation is the most powerful thing you can do before surgery.",
+    "You're already ahead — most patients never do this.",
+    "Your body responds to what you give it. This plan will show you how.",
+    "Building your personalized readiness protocol...",
+  ];
   const generate = () => {
-    const newPlan = generatePlan(data);
-    track("assessment_completed", { role: data.userRole, riskLevel: newPlan.riskLevel });
-    setPlan(newPlan);
-    setProgress(initProgress(newPlan));
-    setMode(null); // show choice screen
+    setGenerating(true);
+    setMotivationalMsgIdx(0);
     window.scrollTo(0, 0);
-    setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
-    // Save to Supabase if authenticated
-    if (session) {
-      savePlanToSupabase(session.user.id, data, newPlan).then(id => {
-        if (id) setPlanId(id);
-      });
-    }
+    msgIntervalRef.current = setInterval(() => {
+      setMotivationalMsgIdx(i => (i + 1) % MOTIVATIONAL_MESSAGES.length);
+    }, 5000);
+    setTimeout(() => {
+      clearInterval(msgIntervalRef.current);
+      const newPlan = generatePlan(data);
+      track("assessment_completed", { role: data.userRole, riskLevel: newPlan.riskLevel });
+      setPlan(newPlan);
+      setProgress(initProgress(newPlan));
+      setMode(null);
+      setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
+      if (session) {
+        savePlanToSupabase(session.user.id, data, newPlan).then(id => {
+          if (id) setPlanId(id);
+        });
+      }
+      setGenerating(false);
+    }, 20000);
   };
   const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setProgress(null); setPlanId(null); setResumeData(null); };
   const handleResume = () => {
@@ -5098,6 +5131,71 @@ function PreOpPage() {
     <StepFitness data={data} update={update} />,
     <StepNutrition data={data} update={update} />,
   ];
+
+  // ── GENERATING ANIMATION ──
+  if (generating) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: `linear-gradient(160deg, ${SR.navy} 0%, #0f4a6e 50%, ${SR.tealDark} 100%)`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontFamily: SR.font,
+      }}>
+        <div style={{
+          textAlign: "center", padding: "48px 32px", maxWidth: "480px",
+          animation: "srFadeIn 0.5s ease both",
+        }}>
+          <div style={{
+            width: 80, height: 80, margin: "0 auto 40px",
+            borderRadius: "50%",
+            border: "3px solid rgba(255,255,255,0.15)",
+            borderTopColor: "#2ECC9B",
+            animation: "srSpin 1.2s linear infinite",
+            position: "relative",
+          }}>
+            <div style={{
+              position: "absolute", inset: 10,
+              borderRadius: "50%",
+              border: "2px solid rgba(255,255,255,0.08)",
+              borderTopColor: "rgba(255,255,255,0.4)",
+              animation: "srSpinR 0.8s linear infinite",
+            }} />
+          </div>
+          <h2 style={{
+            fontSize: "22px", fontWeight: 700, color: SR.white,
+            marginBottom: "16px", lineHeight: 1.3,
+          }}>
+            Building your readiness plan
+          </h2>
+          <p key={motivationalMsgIdx} style={{
+            fontSize: "15px", color: "rgba(255,255,255,0.75)",
+            marginBottom: "40px", lineHeight: 1.6, minHeight: "50px",
+            animation: "srFadeIn 0.4s ease both",
+          }}>
+            {[
+              "Every step you take now is a step toward a smoother recovery.",
+              "Preparation is the most powerful thing you can do before surgery.",
+              "You're already ahead — most patients never do this.",
+              "Your body responds to what you give it. This plan will show you how.",
+              "Building your personalized readiness protocol...",
+            ][motivationalMsgIdx]}
+          </p>
+          <div style={{
+            height: 3, borderRadius: 2,
+            background: "rgba(255,255,255,0.12)",
+            overflow: "hidden",
+          }}>
+            <div style={{
+              height: "100%",
+              background: "linear-gradient(90deg, #2ECC9B, rgba(255,255,255,0.6))",
+              borderRadius: 2,
+              animation: "srProgress 20s ease-in-out forwards",
+            }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ── WELCOME BACK / RESUME ──
   if (!plan && resumeData && !loadingSession) {
