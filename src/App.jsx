@@ -859,9 +859,13 @@ function planHash(data) {
 function recKey(rec) { return `${rec.domain}::${rec.title}`; }
 
 const VALUE_LOG_CONFIG = {
-  "Exercise": { label: "Minutes of activity", unit: "min", placeholder: "e.g., 30" },
-  "Nutrition": { label: "Grams of protein", unit: "g", placeholder: "e.g., 90" },
-  "Self-Tracking": { label: "HRV reading", unit: "ms", placeholder: "e.g., 45" },
+  "Exercise": { label: "Minutes of activity", unit: "min", placeholder: "e.g., 30", hint: "Target: 150+ min/week of moderate activity (500+ min/week pre-op maximizes benefit)" },
+  "Nutrition": { label: "Grams of protein (daily total)", unit: "g", placeholder: "e.g., 90", hint: "Spread across 3–4 meals: 25–40g per meal (35–40g if age 65+, to overcome anabolic resistance)" },
+  "Self-Tracking": {
+    label: "HRV (RMSSD)", unit: "ms", placeholder: "e.g., 45",
+    hint: "RMSSD is an independent protective factor for postoperative complications (2025, OR 0.812). Trend upward = improving autonomic reserve.",
+    secondary: { label: "Grip strength", unit: "kg", placeholder: "e.g., 35", hint: "Target: men >27 kg, women >16 kg (EWGSOP2 sarcopenia threshold). Per 5 kg below normal, mortality risk rises 16% (PURE study, Lancet 2015)." },
+  },
   "Anemia": { label: "Hemoglobin", unit: "g/dL", placeholder: "e.g., 12.5" },
   "Stress & Sleep": { label: "Hours of sleep", unit: "hrs", placeholder: "e.g., 7.5" },
 };
@@ -2356,8 +2360,9 @@ function generatePlan(d) {
         target: { label: "500+ total minutes before surgery", desc: "Track every session — the minutes add up and the evidence is clear: more prehab = faster recovery." },
         learnMore: {
           why: "Exercise triggers hormesis — a controlled biological stress that forces your body to adapt, rebuild, and grow more resilient. Prehabilitation increases cardiorespiratory reserve (VO2max), builds muscle mass, activates heat shock proteins that protect tissues under surgical stress, and stimulates mitochondrial biogenesis. Each session creates measurable adaptations that directly improve your tolerance of the surgical insult.",
-          evidence: "A 2023 JAMA Network Open systematic review of prehabilitation across orthopedic surgical populations found significant improvements in preoperative function, muscle strength, and quality of life, with postoperative benefits extending to 6 weeks (knee replacement) and 6 months (lumbar surgery). Critically, prehabilitation doses exceeding 500 total minutes significantly reduced the need for postoperative rehabilitation — lower doses did not reach this threshold. HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity continuous training. A separate meta-analysis of 10 RCTs confirmed protective benefits against all-cause complications in upper abdominal surgery.",
+          evidence: "A 2025 BMJ network meta-analysis — the most comprehensive to date, incorporating 186 RCTs with 15,684 patients — found physical training alone was associated with a 50% reduction in postoperative complications (OR 0.50), and physical training combined with psychosocial support reduced hospital length of stay by 2.44 days. A 2023 JAMA Network Open systematic review across orthopedic populations confirmed significant improvements in function, muscle strength, and quality of life, with postoperative benefits extending to 6 weeks (knee replacement) and 6 months (lumbar surgery). Prehabilitation doses exceeding 500 total minutes significantly reduced postoperative rehabilitation needs — lower doses did not reach this threshold. HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity training.",
           citations: [
+            { text: "McIsaac DM, et al. Prehabilitation for adults with cancer or non-cancer conditions: systematic review and network meta-analysis. BMJ. 2025.", url: "" },
             { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
             { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
             { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
@@ -2376,8 +2381,9 @@ function generatePlan(d) {
         target: { label: "500+ total prehabilitation minutes", desc: "You're already moving — now let's make those sessions count more." },
         learnMore: {
           why: "Exercise is the single most evidence-backed intervention in surgical preparation. Your cardiorespiratory fitness (VO2max) is one of the strongest predictors of postoperative outcomes — and it is modifiable even in weeks. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Resistance training builds the muscle reserves that buffer the inevitable catabolism of surgical recovery.",
-          evidence: "A 2023 JAMA Network Open systematic review confirmed prehabilitation improved function, strength, and quality of life across orthopedic surgical populations. Prehabilitation exceeding 500 total minutes significantly reduced postoperative rehabilitation needs — lower doses did not reach this threshold. A meta-analysis of abdominal cancer surgery patients showed prehabilitation improved walking distance by 33 meters and reduced hospital length of stay by 3.68 days.",
+          evidence: "A 2025 BMJ network meta-analysis incorporating 186 RCTs with 15,684 patients found physical training alone was associated with a 50% reduction in postoperative complications (OR 0.50). A 2023 JAMA Network Open systematic review confirmed prehabilitation improved function, strength, and quality of life across orthopedic surgical populations — with postoperative benefits at 6 weeks (knee replacement) and 6 months (lumbar surgery). Prehabilitation exceeding 500 total minutes significantly reduced postoperative rehabilitation needs — lower doses did not reach this threshold. A meta-analysis of abdominal cancer surgery patients showed prehabilitation improved walking distance by 33 meters and reduced hospital stay by 3.68 days.",
           citations: [
+            { text: "McIsaac DM, et al. Prehabilitation for adults with cancer or non-cancer conditions: systematic review and network meta-analysis. BMJ. 2025.", url: "" },
             { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
             { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
             { text: "Assessing cardiorespiratory fitness in clinical settings. Prog Cardiovasc Dis. 2024.", url: "https://www.sciencedirect.com/science/article/abs/pii/S0033062024000306" },
@@ -2457,21 +2463,23 @@ function generatePlan(d) {
 
   // ── PATIENT TRACK: NUTRITION ──
   const proteinTarget = (weightKg * 1.5).toFixed(0);
+  const perMealTarget = age >= 65 ? "35–40g" : "25–40g";
   patient.push({
     domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg)`,
-    detail: `Current weight ~${weightKg.toFixed(0)} kg → target 1.2–2.0 g/kg/day. Aim for ${proteinTarget}g as the middle of the range. Distribute across 3–4 meals. Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein. If current intake is low, increase gradually over 1 week.`,
+    detail: `Current weight ~${weightKg.toFixed(0)} kg → target 1.2–2.0 g/kg/day. Aim for ${proteinTarget}g as the middle of the range. Distribute across 3–4 meals (${perMealTarget} per meal${age >= 65 ? " — older adults need the higher end due to anabolic resistance" : ""}). Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein isolate. If current intake is low, increase gradually over 1 week.`,
     steps: [
-      { title: `Spread ${proteinTarget}g across 3–4 meals`, desc: `Protein synthesis is maximized in 25–40g doses per meal. Skipping meals means losing critical muscle-building windows that protect you during recovery. Plan every meal around a protein anchor.`, icon: "protein", timing: "Every meal, every day" },
-      { title: "Prioritize high-quality sources", desc: "Best sources by protein density: chicken breast (31g/100g), Greek yogurt (17g/cup), eggs (6g each), salmon (25g/100g cooked), lentils (18g/cup), cottage cheese (14g/half cup), whey protein (25g/scoop).", icon: "protein", timing: "Daily" },
-      { title: "Supplement if food alone isn't enough", desc: `If hitting ${proteinTarget}g from food is difficult, add a whey or plant-based protein shake. Take post-exercise or between meals. This is one of the most evidence-backed interventions for surgical preparation.`, icon: "protein", timing: "Post-exercise or between meals" },
+      { title: `Spread ${proteinTarget}g across 3–4 meals`, desc: `Protein synthesis requires ${perMealTarget} of high-quality protein per meal to activate the mTOR muscle-building pathway.${age >= 65 ? " At 65+, aging blunts this response (anabolic resistance) — you need 35–40g per meal, not just 25g, to reliably trigger protein synthesis." : ""} Skipping meals means losing critical muscle-building windows that protect you during recovery. Plan every meal around a protein anchor.`, icon: "protein", timing: "Every meal, every day" },
+      { title: "Prioritize high-quality sources", desc: "Best sources by protein density: chicken breast (31g/100g), Greek yogurt (17g/cup), eggs (6g each), salmon (25g/100g cooked), lentils (18g/cup), cottage cheese (14g/half cup), whey protein isolate (25g/scoop, ~2.7g leucine).", icon: "protein", timing: "Daily" },
+      { title: "Supplement if food alone isn't enough", desc: `If hitting ${proteinTarget}g from food is difficult, add a protein supplement. Whey protein isolate is the highest-quality option: it contains ~2.7g of leucine per 25g dose — leucine is the key amino acid that activates the mTOR anabolic signaling cascade, and you need at least 2.5g per dose to reliably trigger it. Take post-exercise or between meals.`, icon: "protein", timing: "Post-exercise or between meals" },
     ],
-    target: { label: `${proteinTarget}g protein every day`, desc: `~${Math.round(parseFloat(proteinTarget) / 4)}g per meal · start immediately and maintain through the morning before surgery` },
+    target: { label: `${proteinTarget}g protein every day`, desc: `${perMealTarget} per meal · start immediately and maintain through the morning before surgery` },
     learnMore: {
-      why: "Surgery triggers accelerated protein catabolism — without adequate protein reserves before surgery, your body breaks down muscle to fuel the stress response, the inflammatory cascade, and wound repair. Preloading protein means your body has the raw material to maintain immune function, support tissue healing, and preserve the muscle you will need during recovery. Protein synthesis occurs in 25–40g per-meal doses; spreading intake across 3–4 meals is more effective than front- or back-loading.",
-      evidence: "ESPEN (European Society for Clinical Nutrition and Metabolism) guidelines establish 1.2–2.0 g/kg/day as the perioperative protein target. Higher preoperative protein intake is associated with reduced complications and better functional recovery, particularly in older adults undergoing major surgery. Between 30–50% of surgical patients have some degree of nutritional risk, frequently unrecognized — sarcopenia can exist even in apparently well-nourished patients and is a powerful independent predictor of postoperative complications.",
+      why: "Surgery triggers accelerated protein catabolism — without adequate protein reserves before surgery, your body breaks down muscle to fuel the stress response, the inflammatory cascade, and wound repair. Preloading protein means your body has the raw material to maintain immune function, support tissue healing, and preserve the muscle you will need during recovery. Protein synthesis occurs in discrete per-meal doses, not from total daily intake alone; spreading intake across 3–4 meals with adequate leucine per dose is essential to activate mTOR-driven protein synthesis.",
+      evidence: "ESPEN guidelines (2017, updated 2025) establish 1.2–2.0 g/kg/day as the perioperative protein target — the 2025 update specifically integrates frailty and sarcopenia assessment into nutritional risk evaluation. A critical principle often omitted from clinical guidance: protein must be distributed across meals at 25–40g per dose (35–40g in older or sarcopenic adults due to anabolic resistance — a blunted mTOR response requiring a higher leucine stimulus). Whey protein isolate ranks highest for surgical use: its ~2.7g leucine per 25g dose reliably meets the 2.5g leucine threshold for mTOR activation. Between 30–50% of surgical patients have some degree of nutritional risk, frequently unrecognized — sarcopenia can exist even in apparently well-nourished patients with normal albumin and BMI, and is a powerful independent predictor of postoperative complications.",
       citations: [
-        { text: "Weimann A, et al. ESPEN guideline: Clinical nutrition in surgery. Clin Nutr. 2017;36(3):623–650.", url: "" },
+        { text: "Weimann A, et al. ESPEN guideline: Clinical nutrition in surgery — Update 2025. Clin Nutr. 2025.", url: "" },
         { text: "Cruz-Jentoft AJ, et al. Sarcopenia: revised European consensus on definition and diagnosis. Age Ageing. 2019;48(1):16–31.", url: "" },
+        { text: "Hirsch KR, et al. Protein-based nutritional support as a therapeutic strategy for skeletal muscle loss in orthopedic surgery. Nutrients. 2021;13(2):430.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC7912782/" },
         { text: "Deutz NE, et al. Protein intake and exercise for optimal muscle function with aging. Clin Nutr. 2014;33(6):929–936.", url: "" },
         { text: "Correia & Waitzberg. Impact of malnutrition on morbidity, mortality, LOS, and costs. Curr Opin Clin Nutr Metab Care. 2003;6(5):519–523.", url: "" },
       ],
@@ -2510,9 +2518,10 @@ function generatePlan(d) {
     patient.push({ domain: "Metabolic Prep", priority: "medium", title: "Consider Strategic Intermittent Fasting", detail: "If not already practicing: consider 14:10 or 16:8 time-restricted eating starting 3+ weeks before surgery. This activates AMPK/SIRT1/autophagy pathways that precondition cells against surgical stress. STOP fasting 3 days before surgery and switch to carbohydrate loading. NOTE: This is a directional recommendation based on strong preclinical evidence; human surgical RCTs are still emerging.",
       learnMore: {
         why: "When you fast, the AMP/ATP ratio in cells rises, activating AMPK (AMP-activated protein kinase). AMPK triggers autophagy — your body's cellular housekeeping system, which degrades damaged organelles and misfolded proteins. Each cell enters surgery in a 'cleaner,' more stress-resistant state. Simultaneously, SIRT1 (a cellular longevity enzyme) is activated, stimulating mitochondrial biogenesis. The resulting ketone beta-hydroxybutyrate directly inhibits the NLRP3 inflammasome, reducing the inflammatory cytokine surge that accompanies surgical injury.",
-        evidence: "Mitchell et al. (2010) demonstrated that 2–4 weeks of 30% dietary restriction or brief water-only fasting protected kidneys and liver against ischemia-reperfusion injury, with protection emerging within 1 day and extending across organs. Rickenbacher et al. (2014) showed 1-day fasting protected the liver through SIRT1-mediated downregulation of HMGB1 — a potent inflammatory cytokine — via autophagy. Godar et al. (2015) found intermittent fasting over 6 weeks markedly reduced myocardial infarct size through repetitive autophagy stimulation. A key distinction: strategic intermittent fasting activates protective pathways; prolonged starvation worsens catabolism — the two are biologically different.",
+        evidence: "The preclinical evidence for fasting as metabolic preconditioning is strong: Mitchell et al. (2010) demonstrated 2–4 weeks of 30% dietary restriction or brief fasting protected kidneys and liver against ischemia-reperfusion injury, with protection emerging within 1 day. Rickenbacher et al. (2014) showed SIRT1-mediated HMGB1 downregulation as the hepatic protective mechanism. The first human RCT to show improved surgical outcomes from dietary preconditioning: Jongbloed et al. (2020, n=35 kidney donors) — 5-day protein-calorie restriction produced significantly better graft function from post-op day 2 through 1 month, with lower incidence of slow graft function and acute rejection. The human clinical evidence base remains at the feasibility stage (largest RCT: n=82); no major guideline yet endorses this as standard practice. A key distinction: strategic intermittent fasting activates protective pathways; prolonged starvation worsens catabolism — the two are biologically different.",
         citations: [
           { text: "Mitchell JR, et al. Short-term dietary restriction and fasting precondition against ischemia reperfusion injury in mice. Aging Cell. 2010;9(1):40–53.", url: "https://pubmed.ncbi.nlm.nih.gov/19878145/" },
+          { text: "Jongbloed F, et al. Protein and calorie restriction may improve outcomes in living kidney donors and recipients. Transplantation. 2020;104(12):2576–2584. PMID 32652516.", url: "https://pubmed.ncbi.nlm.nih.gov/32652516/" },
           { text: "Rickenbacher A, et al. Fasting protects liver from ischemic injury through Sirt1-mediated downregulation of HMGB1. J Hepatol. 2014;61(2):301–308.", url: "" },
           { text: "Godar RJ, et al. Repetitive stimulation of autophagy-lysosome machinery by intermittent fasting preconditions the myocardium. Autophagy. 2015;11(9):1537–1560.", url: "" },
           { text: "Robertson LT, Mitchell JR. Is overnight fasting before surgery too much or not enough? GeroScience. 2017;39(5-6):543–556.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5722208/" },
@@ -2539,11 +2548,12 @@ function generatePlan(d) {
     if (currentThermal.includes("None") || currentThermal.length === 0) {
       patient.push({ domain: "Thermal", priority: "low", title: "Consider Gradual Thermal Conditioning", detail: "If accessible and cleared by physician: begin with short sauna sessions (10 min at moderate temperature) or cool (not ice cold) water exposure. Build gradually over weeks. Aim for 4+ sauna sessions per week >19 minutes for maximum benefit. Heat exposure upregulates HSPs and Nrf2 pathways; cold trains autonomic flexibility. This is an emerging area — no surgical outcome RCTs exist yet.",
         learnMore: {
-          why: "Heat exposure dramatically increases expression of heat shock proteins (HSP70, HSP90) — molecular chaperones that stabilize proteins under stress, protect against ischemia-reperfusion injury, and slow muscle atrophy. Cold water immersion (≤15°C) triggers a surge in norepinephrine (up to 530% above baseline) and trains the autonomic nervous system to rapidly toggle between sympathetic and parasympathetic activation — precisely the flexibility that determines how well you tolerate surgical stress and anesthesia induction. Contrast therapy (alternating heat and cold) maximally exercises the vasomotor system.",
+          why: "Heat exposure dramatically increases expression of heat shock proteins (HSP70, HSP90) — molecular chaperones that stabilize proteins under stress, protect against ischemia-reperfusion injury, and slow muscle atrophy. Cold water immersion (≤15°C) triggers a surge in norepinephrine (up to 530% above baseline) and trains the autonomic nervous system to rapidly toggle between sympathetic and parasympathetic activation — precisely the flexibility that determines how well you tolerate surgical stress and anesthesia induction. Contrast therapy (alternating heat and cold) maximally exercises the vasomotor system. There is also a direct molecular link between fasting and heat conditioning: SIRT1 — activated by fasting and caloric restriction via elevated NAD+ — maintains HSF1 (Heat Shock Factor 1) in its active, DNA-binding state, prolonging HSP70 expression during heat exposure. If you are also practicing intermittent fasting during preparation, your heat shock response is biologically potentiated — the two stressors amplify each other.",
           evidence: "The KIHD cohort study of 2,315 Finnish men followed for 20.7 years found sauna use 4–7 times per week was associated with 40% reduced all-cause mortality, 50% reduced fatal cardiovascular disease, and 63% reduced sudden cardiac death — with dose-response for both frequency (4–7x/week vs. once/week) and session duration (>19 min provided substantially greater protection than <11 min). A 2025 systematic review and meta-analysis of 11 RCTs (3,177 participants) confirmed cold water immersion produces significant acute inflammatory signaling followed by significant stress reduction at 12 hours (SMD: −1.00), improved quality of life, and 29% reduced sickness absence. Important caveat: no RCT has directly tested thermal conditioning as a preoperative intervention.",
           citations: [
             { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
             { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
+            { text: "Westerheide SD, et al. Stress-inducible regulation of heat shock factor 1 by the deacetylase SIRT1. Science. 2009;323(5917):1063–1066. PMC3429349.", url: "" },
             { text: "Effects of cold-water immersion on health and wellbeing: systematic review and meta-analysis. PLOS ONE. 2025;20(1):e0317615.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11778651/" },
             { text: "Cold-water immersion: neurohormesis and implications for clinical neurosciences. J Neuropsych Clin Neurosci. 2024.", url: "https://psychiatryonline.org/doi/full/10.1176/appi.neuropsych.20240053" },
           ],
@@ -2552,11 +2562,12 @@ function generatePlan(d) {
     } else {
       patient.push({ domain: "Thermal", priority: "low", title: "Continue Thermal Conditioning", detail: "Continue your current sauna/cold exposure practice through preparation. Aim for sauna 4+ times per week at >19 minutes per session for maximum benefit. Reduce intensity in the final 3 days before surgery. Evidence supports HSP upregulation (heat) and autonomic flexibility training (cold) as relevant to surgical stress tolerance.",
         learnMore: {
-          why: "Your existing thermal practice is already building the biological foundation for surgical resilience. Heat shock proteins (HSPs) generated through sauna act as molecular chaperones — stabilizing proteins under the extreme stress of surgery, protecting against ischemia-reperfusion injury, and slowing muscle atrophy. Cold exposure trains your autonomic nervous system's ability to rapidly toggle between activation states, building the flexibility that anesthesia and surgical stress demand. Reducing intensity in the final 3 days prevents cumulative fatigue from affecting your arrival state.",
+          why: "Your existing thermal practice is already building the biological foundation for surgical resilience. Heat shock proteins (HSPs) generated through sauna act as molecular chaperones — stabilizing proteins under the extreme stress of surgery, protecting against ischemia-reperfusion injury, and slowing muscle atrophy. Cold exposure trains your autonomic nervous system's ability to rapidly toggle between activation states, building the flexibility that anesthesia and surgical stress demand. Reducing intensity in the final 3 days prevents cumulative fatigue from affecting your arrival state. There is also a direct molecular link between fasting and your heat conditioning: SIRT1 — activated by fasting and caloric restriction via elevated NAD+ — maintains HSF1 (Heat Shock Factor 1) in its active, DNA-binding state, prolonging HSP70 expression during heat exposure. If you are also practicing intermittent fasting, your heat shock response is biologically potentiated — the two stressors amplify each other.",
           evidence: "The KIHD cohort study found a clear dose-response: 4–7 sauna sessions per week of >19 minutes each provided substantially greater protection than shorter or less frequent sessions (40% reduction in all-cause mortality). Heat exposure additionally produces cardiovascular conditioning that mimics moderate exercise — raising heart rate to 100–150 bpm, increasing cardiac output, and expanding plasma volume. Trained individuals show lower inflammatory responses to subsequent heat exposure, meaning your body is mounting more efficient stress responses.",
           citations: [
             { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
             { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
+            { text: "Westerheide SD, et al. Stress-inducible regulation of heat shock factor 1 by the deacetylase SIRT1. Science. 2009;323(5917):1063–1066. PMC3429349.", url: "" },
             { text: "Lee E, et al. Effects of regular sauna bathing with exercise on cardiovascular function: RCT. Am J Physiol. 2022.", url: "https://journals.physiology.org/doi/full/10.1152/ajpregu.00076.2022" },
           ],
         },
@@ -2614,23 +2625,25 @@ function generatePlan(d) {
     patient.push({ domain: "Self-Tracking", priority: "medium", title: "Track HRV Trend", detail: hrvDetail,
       learnMore: {
         why: "HRV (heart rate variability) measures the variation in milliseconds between consecutive heartbeats and reflects how well your autonomic nervous system adapts to demands. Higher HRV means your nervous system can shift efficiently between sympathetic (stress response) and parasympathetic (recovery) activation — exactly the adaptability that determines how well you tolerate anesthesia induction, hemodynamic shifts during surgery, and the recovery period.",
-        evidence: "A 2022 systematic review of 63 studies established preoperative HRV as clinically relevant for predicting perioperative outcomes. Lower RMSSD and HF power independently predicted postoperative pneumonia in lung cancer surgery patients. DFA α1 predicted postoperative atrial fibrillation. Lower total power predicted intraoperative hypotension under general anesthesia. HRV remains depressed for up to 28 days after cardiac surgery (CABG) — making preoperative autonomic reserve a critical buffer. HRV is modifiable through aerobic exercise, sleep optimization, and breathing practice.",
+        evidence: "A 2022 systematic review of 63 studies established preoperative HRV as clinically relevant for predicting perioperative outcomes. The most specific surgical finding to date: a 2025 study of 257 lung cancer surgery patients found preoperative RMSSD was an independent protective factor against postoperative pneumonia (OR 0.812, p=0.001) — approximately 19% lower pneumonia risk per unit increase in RMSSD. HF power was also independently protective (OR 0.990, p=0.002). DFA α1 (measured the day before surgery) predicted postoperative atrial fibrillation. Lower total power predicted intraoperative hypotension under general anesthesia. HRV remains depressed for up to 28 days after cardiac surgery — making preoperative autonomic reserve a critical buffer. HRV is modifiable through aerobic exercise, sleep optimization, and breathing practice.",
         citations: [
-          { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review. J Clin Monit Comput. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
-          { text: "Preoperative HRV predicts postoperative pneumonia in lung cancer surgery. PMC. 2025.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11883988/" },
+          { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review (63 studies). J Clin Monit Comput. 2022;36:947–960. PMID 35092527.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
+          { text: "Preoperative RMSSD independently predicts postoperative pneumonia in lung cancer surgery (n=257). PMC. 2025. PMC11883988.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11883988/" },
           { text: "Perioperative HRV in major urologic surgery. Sci Rep. 2024.", url: "https://www.nature.com/articles/s41598-024-62930-2" },
         ],
       },
     });
   }
-  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength (if dynamometer available), walking endurance (timed walk), energy level (1–10), sleep quality (1–10), protein intake adherence. These create accountability and show measurable progress.",
+  patient.push({ domain: "Self-Tracking", priority: "low", title: "Weekly Readiness Check-In", detail: "Track weekly: grip strength (target: men >27 kg, women >16 kg per EWGSOP2 sarcopenia thresholds), walking endurance (timed walk), energy level (1–10), sleep quality (1–10), protein intake adherence. These create accountability and show measurable progress — a rising grip strength trend is direct evidence your preparation is working.",
     learnMore: {
-      why: "Grip strength is one of the most validated biomarkers in surgical medicine — consistently associated with postoperative complications, hospital length of stay, discharge disposition, and overall mortality. Cardiorespiratory fitness (estimated from walking endurance) is among the strongest single predictors of surgical outcomes. Tracking these weekly gives you objective evidence that your preparation is working — and early warning if something isn't.",
-      evidence: "The AHA advocates cardiorespiratory fitness as a clinical vital sign. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Grip strength is validated across surgical specialties as predicting complications and LOS. A 2024 study confirmed VO2max negatively correlates with frailty scores (r = −0.40, p = 0.03). Wearable device data integrated into frailty indices improved predictive accuracy to 81%.",
+      why: "Grip strength is one of the most validated biomarkers in surgical medicine — consistently associated with postoperative complications, hospital length of stay, discharge disposition, and overall mortality. The EWGSOP2 (European Working Group on Sarcopenia) defines clinically significant muscle weakness as grip strength below 27 kg in men and 16 kg in women — below these thresholds indicates sarcopenia-level impairment that warrants targeted protein and resistance training intervention. Cardiorespiratory fitness (estimated from walking endurance) is among the strongest single predictors of surgical outcomes. Tracking these weekly gives you objective evidence that your preparation is working — and early warning if something isn't.",
+      evidence: "The PURE study (Leong et al., Lancet 2015, n=139,691 across 17 countries) found grip strength is a stronger predictor of all-cause mortality than systolic blood pressure: per 5 kg reduction in grip strength, all-cause mortality HR was 1.16 (1.13–1.20) and cardiovascular mortality HR was 1.17. This is the single most compelling data point for why muscle strength matters. In surgical-specific data: esophageal cancer surgery patients with weak grip had 1-year mortality of 46% vs. 7% with normal grip (Salo et al., 2021, p<0.001). The AHA advocates cardiorespiratory fitness as a clinical vital sign: each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events.",
       citations: [
+        { text: "Leong DP, et al. Prognostic value of grip weakness: findings from the Prospective Urban Rural Epidemiology (PURE) study. Lancet. 2015;386(9990):266–273. PMID 25982160.", url: "" },
+        { text: "Cruz-Jentoft AJ, et al. Sarcopenia: revised European consensus (EWGSOP2) — cutoffs men <27 kg, women <16 kg. Age Ageing. 2019;48(1):16–31.", url: "" },
+        { text: "Salo J, et al. Grip strength in esophageal cancer surgery: 1-year mortality 46% vs. 7%. J Gastrointest Surg. 2021. PMID 34729696.", url: "" },
         { text: "VO2max, 6-minute walk, and muscle strength correlate with frailty in US veterans. Front Physiol. 2024.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11427282/" },
         { text: "Grip strength: an indispensable biomarker for older adults. PMC. 2019.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
-        { text: "Wearable-derived frailty prediction model. PMC. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9798526/" },
       ],
     },
   });
@@ -4564,22 +4577,39 @@ function CheckableItem({ title, desc, timing, done, doneAt, onToggle }) {
 
 function ValueLogger({ config, values, onLog }) {
   const [val, setVal] = useState("");
+  const [val2, setVal2] = useState("");
+
   const handleLog = () => {
     const num = parseFloat(val);
     if (isNaN(num) || num <= 0) return;
-    onLog({ date: new Date().toISOString().split("T")[0], value: num, unit: config.unit });
+    const entry = { date: new Date().toISOString().split("T")[0], value: num, unit: config.unit };
+    if (config.secondary) entry.type = "primary";
+    onLog(entry);
     setVal("");
   };
-  const recent = (values || []).slice(-5).reverse();
-  return (
-    <div style={{ padding: "8px 0 4px 34px" }}>
+
+  const handleLog2 = () => {
+    const num = parseFloat(val2);
+    if (isNaN(num) || num <= 0) return;
+    onLog({ date: new Date().toISOString().split("T")[0], value: num, unit: config.secondary.unit, type: "secondary" });
+    setVal2("");
+  };
+
+  const all = values || [];
+  const recent = config.secondary
+    ? all.filter(v => v.type === "primary" || !v.type).slice(-5).reverse()
+    : all.slice(-5).reverse();
+  const recent2 = config.secondary ? all.filter(v => v.type === "secondary").slice(-5).reverse() : [];
+
+  const renderLogRow = (label, unit, placeholder, hint, inputVal, setInputVal, onLogFn, recentVals) => (
+    <div style={{ marginBottom: "6px" }}>
       <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontSize: "11px", color: SR.textSecondary, fontFamily: SR.font, whiteSpace: "nowrap" }}>
-          {config.label}:
+          {label}:
         </span>
-        <input type="number" value={val} onChange={e => setVal(e.target.value)}
-          placeholder={config.placeholder}
-          onKeyDown={e => { if (e.key === "Enter") handleLog(); }}
+        <input type="number" value={inputVal} onChange={e => setInputVal(e.target.value)}
+          placeholder={placeholder}
+          onKeyDown={e => { if (e.key === "Enter") onLogFn(); }}
           style={{
             width: "90px", padding: "5px 8px", borderRadius: "6px", fontSize: "13px",
             border: `1.5px solid ${SR.border}`, fontFamily: SR.font, outline: "none",
@@ -4587,16 +4617,21 @@ function ValueLogger({ config, values, onLog }) {
           onFocus={e => { e.target.style.borderColor = SR.teal; }}
           onBlur={e => { e.target.style.borderColor = SR.border; }}
         />
-        <span style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>{config.unit}</span>
-        <button onClick={handleLog} style={{
+        <span style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>{unit}</span>
+        <button onClick={onLogFn} style={{
           padding: "5px 14px", borderRadius: "6px", fontSize: "12px", fontWeight: 600,
           background: SR.teal, color: SR.white, border: "none", cursor: "pointer",
           fontFamily: SR.font,
         }}>Log</button>
       </div>
-      {recent.length > 0 && (
-        <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap" }}>
-          {recent.map((entry, i) => (
+      {hint && (
+        <div style={{ fontSize: "10px", color: SR.muted, fontFamily: SR.font, marginTop: "3px", fontStyle: "italic", lineHeight: 1.4 }}>
+          {hint}
+        </div>
+      )}
+      {recentVals.length > 0 && (
+        <div style={{ display: "flex", gap: "6px", marginTop: "4px", flexWrap: "wrap" }}>
+          {recentVals.map((entry, i) => (
             <span key={i} style={{
               fontSize: "10px", color: SR.textSecondary, background: SR.offWhite,
               padding: "2px 8px", borderRadius: "4px", fontFamily: SR.font,
@@ -4605,6 +4640,16 @@ function ValueLogger({ config, values, onLog }) {
             </span>
           ))}
         </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div style={{ padding: "8px 0 4px 34px" }}>
+      {renderLogRow(config.label, config.unit, config.placeholder, config.hint, val, setVal, handleLog, recent)}
+      {config.secondary && renderLogRow(
+        config.secondary.label, config.secondary.unit, config.secondary.placeholder,
+        config.secondary.hint, val2, setVal2, handleLog2, recent2
       )}
     </div>
   );
