@@ -106,7 +106,7 @@ const DEMO_PATIENTS = {
     endocrine: ["Type 2 Diabetes"],
     other: ["Anemia", "Active cancer/receiving chemotherapy", "CKD (chronic kidney disease)", "Frailty/falls risk"],
     a1cValue: "7.2", egfrValue: "38", ferritinValue: "8", tsatValue: "12",
-    chemoWeeksAgo: "3", cfsScore: "5",
+    chemoWeeksAgo: "3", raiScore: "48",
     smokingStatus: "current", cigPerDay: "10", alcoholUse: "none",
     hemoglobin: "9.2", ironDeficiency: "yes",
     cardioMeds: ["Beta-blocker", "Statin", "ACE inhibitor"],
@@ -1283,6 +1283,8 @@ function StepSurgery({ data, update }) {
 }
 
 function StepMedical({ data, update }) {
+  const [showRAI, setShowRAI] = useState(false);
+  const [showMiniCog, setShowMiniCog] = useState(false);
   const categories = [
     { key: "cardiac", label: "Cardiovascular", items: ["CAD/Angina", "CHF", "HFrEF", "HFpEF", "Valvular disease", "Severe aortic stenosis (symptomatic)", "Severe aortic stenosis (asymptomatic)", "Mechanical valve", "Arrhythmia/AF", "Atrial fibrillation / flutter", "Pacemaker/AICD", "Cardiomyopathy/HCM", "Pulmonary hypertension", "Prior MI (within 6 months)", "Prior PCI/stent", "Peripheral vascular disease", "Prior stroke", "Uncontrolled HTN (DBP >110)"] },
     { key: "respiratory", label: "Respiratory", items: ["COPD/Emphysema", "Asthma", "OSA (diagnosed)", "OSA (suspected/STOP-BANG ≥3)", "Unexplained dyspnea"] },
@@ -1321,6 +1323,8 @@ function StepMedical({ data, update }) {
 
   return (
     <>
+      {showRAI && <RAIModal age={parseInt(data.age) || 0} onClose={() => setShowRAI(false)} onApply={v => { update("raiScore", v); setShowRAI(false); }} />}
+      {showMiniCog && <MiniCogModal onClose={() => setShowMiniCog(false)} onApply={v => { update("miniCogNormal", v); setShowMiniCog(false); }} />}
       {categories.map(cat => (
         <Field key={cat.key} label={cat.label}>
           <MultiChip options={cat.items} selected={data[cat.key] || []} onChange={v => update(cat.key, v)} />
@@ -1559,13 +1563,15 @@ function StepMedical({ data, update }) {
 
           {showGeriatric && (
             <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="Clinical Frailty Scale (CFS 1–9)" hint="≥5 prompts geriatric assessment; ≥7 goals-of-care">
-                <Input type="number" value={data.cfsScore || ""} onChange={v => update("cfsScore", v)} placeholder="1–9" min="1" max="9" />
+              <Field label="Risk Analysis Index (RAI)" hint="≥21 frailty assessment; ≥40 goals-of-care">
+                <Input type="number" value={data.raiScore || ""} onChange={v => update("raiScore", v)} placeholder="0–81" min="0" max="81" />
+                <InfoButton label="Calculate RAI" onClick={() => setShowRAI(true)} />
               </Field>
               <Field label="Mini-Cog / MoCA screen">
                 <Select value={data.miniCogNormal || ""} onChange={v => update("miniCogNormal", v)} options={[
                   { value: "", label: "Not done" }, { value: "yes", label: "Normal" }, { value: "no", label: "Abnormal (delirium risk)" },
                 ]} />
+                <InfoButton label="Score Mini-Cog" onClick={() => setShowMiniCog(true)} />
               </Field>
             </div>
           )}
@@ -1797,6 +1803,412 @@ function DASIModal({ onClose, onApply }) {
               fontFamily: SR.font, transition: "all 0.2s",
             }}>
             {allDone ? `Apply Score (${score.toFixed(1)}) to My Plan →` : `Answer all 12 questions to apply`}
+          </button>
+          <button onClick={onClose} style={{ marginTop: "8px", width: "100%", padding: "10px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted, fontSize: "13px", cursor: "pointer", fontFamily: SR.font }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── RAI MODAL ───
+function RAIModal({ age, onClose, onApply }) {
+  const [answers, setAnswers] = useState({});
+  const set = (k, v) => setAnswers(p => ({ ...p, [k]: v }));
+
+  // Age × Cancer interaction lookup: [minAge, noCanScore, withCanScore]
+  const AGE_TABLE = [
+    [0,0,28],[20,1,29],[25,4,29],[30,6,30],[35,8,30],[40,10,31],[45,12,31],
+    [50,14,32],[55,16,32],[60,18,33],[65,20,34],[70,22,34],[75,24,35],
+    [80,26,35],[85,28,36],[90,30,36],[95,32,37],[100,34,37],
+  ];
+  let ageBase = 0, ageCancer = 28;
+  for (const [min, noc, wc] of AGE_TABLE) { if (age >= min) { ageBase = noc; ageCancer = wc; } }
+  const ageCancerScore = answers.cancer === "yes" ? ageCancer : ageBase;
+
+  const fixedScore =
+    (answers.sex === "male" ? 3 : 0) +
+    (answers.facility === "yes" ? 1 : 0) +
+    (answers.renal === "yes" ? 8 : 0) +
+    (answers.chf === "yes" ? 5 : 0) +
+    (answers.dyspnea === "yes" ? 3 : 0) +
+    (answers.wtloss === "yes" ? 4 : 0) +
+    (answers.appetite === "yes" ? 4 : 0);
+
+  const adlRaw = (answers.mobility ?? 0) + (answers.eating ?? 0) + (answers.toileting ?? 0) + (answers.hygiene ?? 0);
+  const hasCog = answers.cognition === "yes";
+  const adlScore = hasCog ? Math.round(5 + adlRaw * (11 / 16)) : Math.round(adlRaw * (14 / 16));
+  const total = ageCancerScore + fixedScore + adlScore;
+
+  const USER_KEYS = ["sex","facility","cancer","renal","chf","dyspnea","wtloss","appetite","cognition","mobility","eating","toileting","hygiene"];
+  const answered = USER_KEYS.filter(k => answers[k] !== undefined).length;
+  const allDone = answered === 13;
+
+  const tier = total >= 45 ? { label: "Very Frail", text: "Goals-of-care discussion warranted", lo: "#FCA5A5" }
+             : total >= 37 ? { label: "Frail", text: "Geriatric assessment indicated", lo: "#FDE68A" }
+             : total >= 30 ? { label: "Normal risk", text: "Elevated awareness", lo: "rgba(255,255,255,0.75)" }
+             : { label: "Robust", text: "No frailty intervention triggered", lo: "#6EE7C7" };
+
+  // Yes/No card helper (called as function, not JSX component)
+  const yn = (id, label, hint, pts) => (
+    <div style={{
+      padding: "12px 16px", borderRadius: "12px", marginBottom: "8px",
+      border: `1.5px solid ${answers[id] !== undefined ? SR.teal : SR.borderLight}`,
+      background: answers[id] === "yes" ? SR.tealLight : answers[id] === "no" ? SR.bg : SR.white,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: "13px", color: SR.text, lineHeight: 1.5, fontFamily: SR.font }}>{label}</div>
+          {hint && <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font, marginTop: "1px" }}>{hint}</div>}
+        </div>
+        <div style={{ display: "flex", gap: "5px", flexShrink: 0, alignItems: "center" }}>
+          {answers[id] === "yes" && pts && <span style={{ fontSize: "11px", fontWeight: 700, color: SR.teal, fontFamily: SR.font }}>+{pts}</span>}
+          {["yes", "no"].map(v => (
+            <button key={v} onClick={() => set(id, v)} style={{
+              padding: "5px 12px", borderRadius: "7px",
+              border: `1.5px solid ${answers[id] === v ? (v === "yes" ? SR.teal : SR.danger) : SR.border}`,
+              background: answers[id] === v ? (v === "yes" ? SR.teal : SR.danger) : SR.white,
+              color: answers[id] === v ? SR.white : SR.textSecondary,
+              fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font,
+            }}>{v === "yes" ? "Yes" : "No"}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ADL 0–4 row helper
+  const adl = (id, label) => {
+    const lvls = ["Independent", "Minimal / device help", "Needs assistance", "Needs major help", "Totally dependent"];
+    return (
+      <div style={{
+        padding: "12px 16px", borderRadius: "12px", marginBottom: "8px",
+        border: `1.5px solid ${answers[id] !== undefined ? SR.teal : SR.borderLight}`,
+        background: (answers[id] ?? -1) > 0 ? SR.tealLight : answers[id] === 0 ? SR.bg : SR.white,
+      }}>
+        <div style={{ fontSize: "13px", color: SR.text, fontFamily: SR.font, marginBottom: "8px" }}>{label}</div>
+        <div style={{ display: "flex", gap: "4px" }}>
+          {lvls.map((lv, i) => (
+            <button key={i} onClick={() => set(id, i)} title={lv} style={{
+              flex: 1, padding: "7px 2px", borderRadius: "7px",
+              border: `1.5px solid ${answers[id] === i ? SR.teal : SR.border}`,
+              background: answers[id] === i ? SR.teal : SR.white,
+              color: answers[id] === i ? SR.white : SR.textSecondary,
+              fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font,
+            }}>{i}</button>
+          ))}
+        </div>
+        <div style={{ fontSize: "10px", color: SR.muted, fontFamily: SR.font, marginTop: "3px" }}>0 = Independent — 4 = Totally dependent</div>
+      </div>
+    );
+  };
+
+  const secHead = (label) => (
+    <div style={{ fontSize: "11px", fontWeight: 700, color: SR.muted, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: SR.font, margin: "14px 0 8px" }}>{label}</div>
+  );
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 3000,
+      background: "rgba(27,58,92,0.65)", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "16px",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: SR.white, borderRadius: "20px", maxWidth: "600px", width: "100%",
+        maxHeight: "92vh", overflowY: "auto",
+        boxShadow: "0 24px 80px rgba(27,58,92,0.3)",
+      }}>
+        {/* Sticky header */}
+        <div style={{ padding: "24px 24px 0", position: "sticky", top: 0, background: SR.white, borderRadius: "20px 20px 0 0", zIndex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: SR.teal, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "4px", fontFamily: SR.font }}>Frailty Assessment</div>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0, fontFamily: SR.font }}>Risk Analysis Index (RAI)</h2>
+              <p style={{ fontSize: "12px", color: SR.muted, margin: "4px 0 0", fontFamily: SR.font }}>Validated perioperative frailty screen — 13 clinician-answered items + age</p>
+            </div>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${SR.border}`, background: SR.white, cursor: "pointer", color: SR.muted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", flexShrink: 0, fontFamily: SR.font }}>✕</button>
+          </div>
+          <div style={{ margin: "12px 0 0", height: 5, borderRadius: 3, background: SR.borderLight }}>
+            <div style={{ height: "100%", borderRadius: 3, background: SR.teal, width: `${(answered / 13) * 100}%`, transition: "width 0.3s" }} />
+          </div>
+          <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font, margin: "4px 0 12px" }}>{answered} of 13 answered</div>
+          <div style={{ height: 1, background: SR.borderLight, marginLeft: "-24px", marginRight: "-24px" }} />
+        </div>
+
+        <div style={{ padding: "16px 24px" }}>
+          {/* A: Demographics */}
+          {secHead("A — Demographics")}
+          {/* Age auto row */}
+          <div style={{
+            padding: "12px 16px", borderRadius: "12px", marginBottom: "8px",
+            border: `1.5px solid ${SR.tealLight}`, background: SR.tealLight,
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+          }}>
+            <div>
+              <span style={{ fontSize: "10px", fontWeight: 700, color: SR.teal, fontFamily: SR.font, marginRight: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Auto</span>
+              <span style={{ fontSize: "13px", color: SR.text, fontFamily: SR.font }}>Age {age}{answers.cancer === "yes" ? " with cancer" : ""}</span>
+            </div>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: SR.teal, fontFamily: SR.font }}>+{ageCancerScore} pts</div>
+          </div>
+          {/* Sex */}
+          <div style={{
+            padding: "12px 16px", borderRadius: "12px", marginBottom: "8px",
+            border: `1.5px solid ${answers.sex !== undefined ? SR.teal : SR.borderLight}`,
+            background: answers.sex !== undefined ? SR.tealLight : SR.white,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "13px", color: SR.text, fontFamily: SR.font }}>Sex</span>
+              <div style={{ display: "flex", gap: "5px", alignItems: "center" }}>
+                {answers.sex === "male" && <span style={{ fontSize: "11px", fontWeight: 700, color: SR.teal, fontFamily: SR.font }}>+3</span>}
+                {["male", "female"].map(v => (
+                  <button key={v} onClick={() => set("sex", v)} style={{
+                    padding: "5px 14px", borderRadius: "7px",
+                    border: `1.5px solid ${answers.sex === v ? SR.teal : SR.border}`,
+                    background: answers.sex === v ? SR.teal : SR.white,
+                    color: answers.sex === v ? SR.white : SR.textSecondary,
+                    fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font,
+                  }}>{v.charAt(0).toUpperCase() + v.slice(1)}</button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* B: Social */}
+          {secHead("B — Social")}
+          {yn("facility", "Residence — facility care", "Nursing home, SNF, or assisted living", 1)}
+
+          {/* C: Medical History */}
+          {secHead("C — Medical History")}
+          {yn("cancer", "Cancer diagnosis or treatment in the past 5 years", "Interacts with age — see score above", null)}
+          {yn("renal", "Renal failure / nephrologist visit", "Not including kidney stones", 8)}
+          {yn("chf", "Congestive heart failure (CHF)", null, 5)}
+          {yn("dyspnea", "Dyspnea at rest or with minimal activity", null, 3)}
+          {yn("wtloss", "Unintentional weight loss — 10 lbs or more in past 3 months", null, 4)}
+          {yn("appetite", "Poor appetite currently", null, 4)}
+
+          {/* D: Function & Cognition */}
+          {secHead("D — Function & Cognition")}
+          {yn("cognition", "Cognitive decline in the past 3 months", "New memory problems, confusion, or change in mental status", null)}
+          {adl("mobility", "Mobility")}
+          {adl("eating", "Eating ability")}
+          {adl("toileting", "Toileting / continence")}
+          {adl("hygiene", "Personal hygiene / grooming")}
+
+          {/* Live score card */}
+          {answered > 0 && (
+            <div style={{
+              marginTop: "8px", padding: "18px 20px", borderRadius: "14px",
+              background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+                <div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: SR.font, marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.7px" }}>
+                    {allDone ? "RAI Score" : "Score so far…"}
+                  </div>
+                  <div style={{ fontSize: "32px", fontWeight: 700, color: SR.white, fontFamily: SR.font, lineHeight: 1 }}>
+                    {total}
+                    <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 400, marginLeft: "4px" }}>/ 81</span>
+                  </div>
+                  <div style={{ fontSize: "12px", fontFamily: SR.font, marginTop: "4px", fontWeight: allDone ? 600 : 400,
+                    color: allDone ? tier.lo : "rgba(255,255,255,0.55)" }}>
+                    {allDone ? `${tier.label} — ${tier.text}` : tier.label}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: SR.font, marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.7px" }}>Thresholds</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)", fontFamily: SR.font }}>≥ 45 very frail</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)", fontFamily: SR.font }}>≥ 37 frail</div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.75)", fontFamily: SR.font }}>≥ 30 normal risk</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            disabled={!allDone}
+            onClick={() => onApply(String(total))}
+            style={{
+              marginTop: "12px", width: "100%", padding: "13px",
+              borderRadius: "10px", border: "none",
+              background: allDone ? SR.teal : SR.borderLight,
+              color: allDone ? SR.white : SR.muted,
+              fontSize: "14px", fontWeight: 700, cursor: allDone ? "pointer" : "not-allowed",
+              fontFamily: SR.font, transition: "all 0.2s",
+            }}>
+            {allDone ? `Apply RAI ${total} →` : "Answer all 13 items to apply"}
+          </button>
+          <button onClick={onClose} style={{ marginTop: "8px", width: "100%", padding: "10px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted, fontSize: "13px", cursor: "pointer", fontFamily: SR.font }}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MINI-COG MODAL ───
+function MiniCogModal({ onClose, onApply }) {
+  const [recall,  setRecall]  = useState(null);
+  const [cdtPass, setCdtPass] = useState(null);
+
+  const cdtScore   = cdtPass === true ? 2 : cdtPass === false ? 0 : null;
+  const totalScore = recall !== null && cdtScore !== null ? recall + cdtScore : null;
+  const isPositive = totalScore !== null ? totalScore <= 2 : null;
+  const allDone    = recall !== null && cdtPass !== null;
+  const stepsComplete = (recall !== null ? 1 : 0) + (cdtPass !== null ? 1 : 0);
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 3000,
+      background: "rgba(27,58,92,0.65)", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "16px",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: SR.white, borderRadius: "20px", maxWidth: "480px", width: "100%",
+        maxHeight: "92vh", overflowY: "auto",
+        boxShadow: "0 24px 80px rgba(27,58,92,0.3)",
+      }}>
+        <div style={{ padding: "24px 24px 0", position: "sticky", top: 0, background: SR.white, borderRadius: "20px 20px 0 0", zIndex: 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: SR.teal, textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: "5px", fontFamily: SR.font }}>Geriatric Assessment</div>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0, fontFamily: SR.font }}>Mini-Cog Scoring</h2>
+              <p style={{ fontSize: "12px", color: SR.muted, margin: "4px 0 0", fontFamily: SR.font }}>Clinician-administered — complete the paper test, then enter results here.</p>
+            </div>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", border: `1.5px solid ${SR.border}`, background: SR.white, cursor: "pointer", color: SR.muted, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", flexShrink: 0, fontFamily: SR.font }}>✕</button>
+          </div>
+          <div style={{ margin: "14px 0 0", height: 5, borderRadius: 3, background: SR.borderLight }}>
+            <div style={{ height: "100%", borderRadius: 3, background: SR.teal, width: `${(stepsComplete / 2) * 100}%`, transition: "width 0.3s" }} />
+          </div>
+          <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font, margin: "4px 0 14px" }}>{stepsComplete} of 2 steps completed</div>
+          <div style={{ height: 1, background: SR.borderLight, marginLeft: "-24px", marginRight: "-24px" }} />
+        </div>
+
+        <div style={{ padding: "16px 24px" }}>
+          {/* Step 1: 3-Word Recall */}
+          <div style={{
+            padding: "14px 16px", borderRadius: "12px", marginBottom: "10px",
+            border: `1.5px solid ${recall !== null ? SR.teal : SR.borderLight}`,
+            background: recall !== null ? SR.tealLight : SR.white,
+            transition: "all 0.15s",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                background: recall !== null ? SR.teal : SR.borderLight,
+                color: recall !== null ? SR.white : SR.muted,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "11px", fontWeight: 700, fontFamily: SR.font, transition: "all 0.15s",
+              }}>1</div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: SR.navy, fontFamily: SR.font }}>3-Word Registration and Recall</div>
+            </div>
+            <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+              {["Banana", "Sunrise", "Chair"].map(w => (
+                <span key={w} style={{
+                  padding: "3px 10px", borderRadius: "20px",
+                  border: `1.5px solid ${SR.teal}`, color: SR.teal,
+                  fontSize: "12px", fontWeight: 600, fontFamily: SR.font, background: SR.white,
+                }}>{w}</span>
+              ))}
+            </div>
+            <div style={{ fontSize: "12px", color: SR.textSecondary, fontFamily: SR.font, marginBottom: "10px", lineHeight: 1.4 }}>
+              After a distractor task, ask the patient to recall all 3 words.
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              {[0, 1, 2, 3].map(n => (
+                <button key={n} onClick={() => setRecall(n)} style={{
+                  flex: 1, padding: "7px 4px", borderRadius: "8px",
+                  border: `1.5px solid ${recall === n ? SR.teal : SR.border}`,
+                  background: recall === n ? SR.teal : SR.white,
+                  color: recall === n ? SR.white : SR.textSecondary,
+                  fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font, transition: "all 0.15s",
+                }}>{n} {n === 1 ? "word" : "words"}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Step 2: Clock Drawing Test */}
+          <div style={{
+            padding: "14px 16px", borderRadius: "12px", marginBottom: "10px",
+            border: `1.5px solid ${cdtPass !== null ? SR.teal : SR.borderLight}`,
+            background: cdtPass !== null ? SR.tealLight : SR.white,
+            transition: "all 0.15s",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: "50%", flexShrink: 0,
+                background: cdtPass !== null ? SR.teal : SR.borderLight,
+                color: cdtPass !== null ? SR.white : SR.muted,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "11px", fontWeight: 700, fontFamily: SR.font, transition: "all 0.15s",
+              }}>2</div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: SR.navy, fontFamily: SR.font }}>Clock Drawing Test (CDT)</div>
+            </div>
+            <div style={{ fontSize: "12px", color: SR.textSecondary, fontFamily: SR.font, marginBottom: "10px", lineHeight: 1.4 }}>
+              Ask the patient to draw a clock face showing 11:10.
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setCdtPass(true)} style={{
+                flex: 1, padding: "9px 8px", borderRadius: "8px",
+                border: `1.5px solid ${cdtPass === true ? SR.teal : SR.border}`,
+                background: cdtPass === true ? SR.teal : SR.white,
+                color: cdtPass === true ? SR.white : SR.textSecondary,
+                fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font,
+                transition: "all 0.15s", textAlign: "center",
+              }}>
+                Normal clock
+                <div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.75, marginTop: "2px" }}>+2 pts</div>
+              </button>
+              <button onClick={() => setCdtPass(false)} style={{
+                flex: 1, padding: "9px 8px", borderRadius: "8px",
+                border: `1.5px solid ${cdtPass === false ? SR.danger : SR.border}`,
+                background: cdtPass === false ? SR.danger : SR.white,
+                color: cdtPass === false ? SR.white : SR.textSecondary,
+                fontSize: "12px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font,
+                transition: "all 0.15s", textAlign: "center",
+              }}>
+                Abnormal clock
+                <div style={{ fontSize: "10px", fontWeight: 400, opacity: 0.75, marginTop: "2px" }}>+0 pts</div>
+              </button>
+            </div>
+          </div>
+
+          {/* Score summary */}
+          {allDone && (
+            <div style={{
+              marginTop: "6px", marginBottom: "14px", padding: "18px 20px", borderRadius: "14px",
+              background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                <div>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: SR.font, marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.7px" }}>Mini-Cog Total Score</div>
+                  <div style={{ fontSize: "32px", fontWeight: 700, color: SR.white, fontFamily: SR.font, lineHeight: 1 }}>
+                    {totalScore}
+                    <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", fontWeight: 400, marginLeft: "4px" }}>/ 5</span>
+                  </div>
+                  <div style={{ fontSize: "12px", color: isPositive ? "#FCA5A5" : "#6EE7C7", fontFamily: SR.font, marginTop: "4px", fontWeight: 600 }}>
+                    {isPositive ? "Positive screen — cognitive impairment likely" : "Negative screen — cognitive impairment less likely"}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.55)", fontFamily: SR.font, marginBottom: "3px", textTransform: "uppercase", letterSpacing: "0.7px" }}>Breakdown</div>
+                  <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", fontFamily: SR.font }}>Recall: {recall}/3</div>
+                  <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", fontFamily: SR.font }}>CDT: {cdtScore}/2</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            disabled={!allDone}
+            onClick={() => onApply(isPositive ? "no" : "yes")}
+            style={{
+              width: "100%", padding: "13px",
+              borderRadius: "10px", border: "none",
+              background: allDone ? SR.teal : SR.borderLight,
+              color: allDone ? SR.white : SR.muted,
+              fontSize: "14px", fontWeight: 700, cursor: allDone ? "pointer" : "not-allowed",
+              fontFamily: SR.font, transition: "all 0.2s",
+            }}>
+            {allDone ? `Apply — ${isPositive ? "Abnormal" : "Normal"} →` : "Complete both steps to apply"}
           </button>
           <button onClick={onClose} style={{ marginTop: "8px", width: "100%", padding: "10px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted, fontSize: "13px", cursor: "pointer", fontFamily: SR.font }}>Cancel</button>
         </div>
@@ -2773,7 +3185,7 @@ function generatePlan(d) {
   const ferritinNum       = d.ferritinValue ? parseFloat(d.ferritinValue) : null;
   const tsatNum           = d.tsatValue ? parseFloat(d.tsatValue) : null;
   const stopBangNum       = d.stopBang ? parseInt(d.stopBang) : null;
-  const cfsNum            = d.cfsScore ? parseInt(d.cfsScore) : null;
+  const raiNum            = d.raiScore ? parseInt(d.raiScore) : null;
   const childPugh         = d.childPughClass || "";
   const biologicMeds      = d.biologicMeds || [];
   const conventionalDMARDs = d.conventionalDMARDs || [];
@@ -3683,24 +4095,25 @@ function generatePlan(d) {
   }
 
   // Pathway 29: Elderly ≥75 / Frailty
-  if (age >= 75 || other.includes("Frailty/recent falls") || (cfsNum !== null && cfsNum >= 5)) {
-    let cfsLine = "Screen with CFS, mFI, or RAI.";
-    if (cfsNum !== null) {
-      cfsLine = cfsNum >= 7 ? `CFS ${cfsNum}: GOALS-OF-CARE discussion. Advance directives / DNR.`
-        : cfsNum >= 5 ? `CFS ${cfsNum}: geriatric assessment indicated.`
-        : `CFS ${cfsNum}: robust.`;
+  if (age >= 75 || other.includes("Frailty/recent falls") || (raiNum !== null && raiNum >= 37)) {
+    let raiLine = "Screen with RAI-C or mFI.";
+    if (raiNum !== null) {
+      raiLine = raiNum >= 45 ? `RAI ${raiNum}: VERY FRAIL — goals-of-care discussion and advance directives warranted.`
+        : raiNum >= 37 ? `RAI ${raiNum}: frail — geriatric/prehabilitation assessment indicated.`
+        : raiNum >= 30 ? `RAI ${raiNum}: normal risk — monitor closely.`
+        : `RAI ${raiNum}: robust.`;
     }
     const miniCogLine = d.miniCogNormal === "no" ? "Mini-Cog ABNORMAL — high delirium risk." : d.miniCogNormal === "yes" ? "Mini-Cog normal." : "Screen with Mini-Cog or MoCA (<26).";
     provider.push({
       domain: "Frailty/Age", priority: "high", title: `Elderly ≥${age >= 75 ? "75" : "65"} / Frailty`,
       detail: timedDetail({
-        ge8: `${cfsLine} ${miniCogLine} Polypharmacy review per Beers 2023. Albumin, grip, protein. Advance care planning.`,
+        ge8: `${raiLine} ${miniCogLine} Polypharmacy review per Beers 2023. Albumin, grip, protein. Advance care planning.`,
         wk47: "Nutritional optimization (1.2–1.5 g/kg protein). Physical prehabilitation if time permits.",
         dos: "ESAIC delirium bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids (glasses/hearing aids). BIS 40–60. AVOID benzos, anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
         readiness: "Frailty documented. Delirium bundle orders active. Advance directives on file. Routine age-based EKG NOT indicated (ESAIC 2025).",
       }, "Aldecoa Eur J Anaesthesiol 2024; Varley JAMA Surg 2023"),
       learnMore: {
-        why: "Frailty is a physiological syndrome of reduced reserve that predicts postoperative complications, delirium, prolonged hospital stay, and mortality independently of age and comorbidity. The Clinical Frailty Scale (CFS) 5–6 indicates moderate frailty; ≥7 indicates severe frailty where goals-of-care discussion is warranted. Benzodiazepines and anticholinergic medications are major delirium precipitants and must be avoided perioperatively in elderly patients.",
+        why: "Frailty is a physiological syndrome of reduced reserve that predicts postoperative complications, delirium, prolonged hospital stay, and mortality independently of age and comorbidity. The Risk Analysis Index (RAI-C) is a validated 14-item perioperative frailty tool scoring 0–81: RAI ≥30 (normal risk) warrants close monitoring; RAI ≥37 (frail) indicates geriatric assessment and prehabilitation; RAI ≥45 (very frail) warrants goals-of-care discussion and advance directives. Benzodiazepines and anticholinergic medications are major delirium precipitants and must be avoided perioperatively in elderly patients.",
         evidence: "Aldecoa et al. (Eur J Anaesthesiol 2024) provides the ESAIC delirium prevention guidelines, validating the multicomponent bundle approach. Varley et al. (JAMA Surg 2023) demonstrate frailty as an independent predictor of 30-day outcomes in surgical patients.",
         citations: [
           { text: "Aldecoa C et al. European Society of Anaesthesiology and Intensive Care Evidence-Based and Consensus-Based Guideline on Postoperative Delirium. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37916500/" },
@@ -3812,7 +4225,7 @@ function generatePlan(d) {
   }
 
   // Pathway 34: Delirium Prevention
-  if (age >= 65 || d.miniCogNormal === "no" || (cfsNum !== null && cfsNum >= 5)) {
+  if (age >= 65 || d.miniCogNormal === "no" || (raiNum !== null && raiNum >= 37)) {
     provider.push({
       domain: "Neurologic", priority: "medium", title: "Delirium Prevention (ESAIC 2024)",
       detail: timedDetail({
