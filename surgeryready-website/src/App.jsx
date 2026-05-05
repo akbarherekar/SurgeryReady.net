@@ -1316,7 +1316,7 @@ function StepMedical({ data, update }) {
   const hasMG = other.includes("Myasthenia gravis");
   const hasSeizure = other.includes("Seizure disorder / epilepsy") || other.includes("Seizure disorder");
   const hasCancer = other.includes("Active cancer/chemo") || (data.surgeryTags || []).includes("Cancer resection");
-  const hasAnemia = other.includes("Anemia (Hgb <13)") || (data.hemoglobin && parseFloat(data.hemoglobin) < 13);
+  const hasAnemia = other.includes("Anemia (Hgb <13)");
   const ageNum = parseInt(data.age) || 0;
   const showGeriatric = ageNum >= 65;
   const showAnyDetail = hasCAD || hasStent || hasHF || hasAF || hasStroke || hasOSA || hasDiabetes || hasPheo || hasChronicSteroid || hasCKD || hasCirrhosis || hasRA || hasMG || hasSeizure || hasCancer || hasAnemia || showGeriatric;
@@ -1497,7 +1497,7 @@ function StepMedical({ data, update }) {
             </div>
           )}
 
-          {(hasCKD || hasDialysis || hasDiabetes || showGeriatric) && (
+          {(hasCKD || hasDialysis || hasDiabetes) && (
             <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
               <Field label="eGFR (mL/min/1.73m²)" hint="Drives DOAC/DPP-4 dose, metformin hold, drug avoidance">
                 <Input type="number" value={data.egfrValue || ""} onChange={v => update("egfrValue", v)} placeholder="e.g. 45" min="0" max="150" />
@@ -1563,7 +1563,7 @@ function StepMedical({ data, update }) {
 
           {showGeriatric && (
             <div className="sr-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="Risk Analysis Index (RAI)" hint="≥21 frailty assessment; ≥40 goals-of-care">
+              <Field label="Risk Analysis Index (RAI)" hint="≥37 frail; ≥45 very frail">
                 <Input type="number" value={data.raiScore || ""} onChange={v => update("raiScore", v)} placeholder="0–81" min="0" max="81" />
                 <InfoButton label="Calculate RAI" onClick={() => setShowRAI(true)} />
               </Field>
