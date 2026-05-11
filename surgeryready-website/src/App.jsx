@@ -796,7 +796,7 @@ function Contact() {
 /* ═══════════════════════════════════════════════════════════════
    [FOOTER]
    ═══════════════════════════════════════════════════════════════ */
-function Footer() {
+function Footer({ onNavigate }) {
   return (
     <footer style={{
       background: BRAND.navy, padding: "40px 0", textAlign: "center",
@@ -810,11 +810,80 @@ function Footer() {
       <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.3)", fontFamily: FONT, marginTop: "10px", maxWidth: "560px", margin: "10px auto 0", lineHeight: 1.5 }}>
         SurgeryReady provides general health information only. It is not a substitute for professional medical advice, diagnosis, or treatment.
       </div>
+      <div style={{ marginTop: "14px", display: "flex", gap: "20px", justifyContent: "center" }}>
+        <button onClick={() => onNavigate?.("privacy")} style={{
+          background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "11px",
+          fontFamily: FONT, cursor: "pointer", textDecoration: "underline", padding: 0,
+        }}>Privacy Policy</button>
+        <button onClick={() => onNavigate?.("terms")} style={{
+          background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "11px",
+          fontFamily: FONT, cursor: "pointer", textDecoration: "underline", padding: 0,
+        }}>Terms of Service</button>
+      </div>
     </footer>
   );
 }
 
 
+
+// ─── SAVE CONSENT MODAL ───
+function SaveConsentModal({ open, onClose, onConfirm }) {
+  const [checked, setChecked] = useState(false);
+  if (!open) return null;
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 10000,
+      background: "rgba(27,58,92,0.5)", backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "16px",
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: SR.white, borderRadius: "16px", padding: "36px 32px",
+        maxWidth: "440px", width: "100%", boxShadow: "0 8px 32px rgba(27,58,92,0.15)",
+        fontFamily: SR.font,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+          <SRLogo size={32} />
+          <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>Save your plan</h2>
+        </div>
+        <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 0 20px" }}>
+          To save your plan and track progress across sessions, we will store your health information securely. This includes your medical history, medications, and surgery details.
+        </p>
+        <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", marginBottom: "16px" }}>
+          <input
+            type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)}
+            style={{ marginTop: "2px", accentColor: SR.teal, width: "16px", height: "16px", flexShrink: 0, cursor: "pointer" }}
+          />
+          <span style={{ fontSize: "13px", color: SR.text, lineHeight: 1.6 }}>
+            I agree to let SurgeryReady store my health information to save and retrieve my plan.
+          </span>
+        </label>
+        <p style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.6, margin: "0 0 20px" }}>
+          By saving, you also agree to our{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: SR.teal, textDecoration: "underline" }}>Privacy Policy</a>
+          {" "}and{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: SR.teal, textDecoration: "underline" }}>Terms of Service</a>.
+        </p>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: "11px", borderRadius: "10px",
+            background: SR.white, color: SR.textSecondary,
+            border: `1.5px solid ${SR.border}`, fontSize: "14px", fontWeight: 600,
+            cursor: "pointer", fontFamily: SR.font,
+          }}>Cancel</button>
+          <button onClick={onConfirm} disabled={!checked} style={{
+            flex: 2, padding: "11px", borderRadius: "10px",
+            background: checked ? SR.teal : SR.borderLight,
+            color: checked ? SR.white : SR.muted,
+            border: "none", fontSize: "14px", fontWeight: 600,
+            cursor: checked ? "pointer" : "not-allowed", fontFamily: SR.font,
+            transition: "background 0.2s, color 0.2s",
+          }}>Save plan</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════════════════════════════
    [ALGORITHM] — Surgical Readiness Algorithm (v4)
@@ -5375,8 +5444,10 @@ function PreOpPage() {
   const [loadingSession, setLoadingSession] = useState(!!supabase);
   const [generating, setGenerating] = useState(false);
   const [motivationalMsgIdx, setMotivationalMsgIdx] = useState(0);
+  const [showSaveConsent, setShowSaveConsent] = useState(false);
   const msgIntervalRef = useRef(null);
   const saveTimerRef = useRef(null);
+  const pendingSaveRef = useRef(false);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -5387,8 +5458,9 @@ function PreOpPage() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      // If user just signed in and we have a plan, save it
-      if (s && plan && !planId) {
+      // Save plan only if user explicitly requested via Save my plan
+      if (s && plan && !planId && pendingSaveRef.current) {
+        pendingSaveRef.current = false;
         savePlanToSupabase(s.user.id, data, plan).then(id => {
           if (id) {
             setPlanId(id);
@@ -5408,7 +5480,7 @@ function PreOpPage() {
     });
   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-save progress to Supabase (debounced)
+  // Auto-save progress to Supabase (debounced) — only when plan is saved
   useEffect(() => {
     if (!session || !planId || !progress) return;
     clearTimeout(saveTimerRef.current);
@@ -5417,6 +5489,12 @@ function PreOpPage() {
     }, 1500);
     return () => clearTimeout(saveTimerRef.current);
   }, [progress, planId, session]);
+
+  // Persist progress to localStorage when plan hasn't been saved to Supabase
+  useEffect(() => {
+    if (planId || !progress) return;
+    try { localStorage.setItem("sr_progress", JSON.stringify(progress)); } catch (_) {}
+  }, [progress, planId]);
 
   // Inject animation keyframes once — keeps the progress bar animation stable
   // across re-renders caused by motivational message cycling
@@ -5468,11 +5546,6 @@ function PreOpPage() {
       setProgress(initProgress(newPlan));
       setMode(null);
       setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
-      if (session) {
-        savePlanToSupabase(session.user.id, data, newPlan).then(id => {
-          if (id) setPlanId(id);
-        });
-      }
       setGenerating(false);
     }, 20000);
   };
@@ -5492,6 +5565,21 @@ function PreOpPage() {
     setSession(null);
     setPlanId(null);
     setResumeData(null);
+  };
+
+  const handleSavePlan = () => {
+    setShowSaveConsent(false);
+    if (session) {
+      savePlanToSupabase(session.user.id, data, plan).then(id => {
+        if (id) {
+          setPlanId(id);
+          if (progress) saveProgressToSupabase(id, progress);
+        }
+      });
+    } else {
+      pendingSaveRef.current = true;
+      setShowAuth(true);
+    }
   };
 
   // Progress tracking handlers
@@ -5708,6 +5796,7 @@ function PreOpPage() {
     const showProvider = viewMode === "both" || viewMode === "provider";
 
     return (
+      <>
       <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
@@ -5759,6 +5848,22 @@ function PreOpPage() {
                 border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
                 fontFamily: SR.font, transition: "all 0.2s",
               }}>Download PDF</button>
+              {planId ? (
+                <span style={{
+                  padding: "7px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 600,
+                  color: SR.success, fontFamily: SR.font, display: "flex", alignItems: "center", gap: "5px",
+                  border: `1.5px solid ${SR.success}20`, background: SR.tealLight,
+                }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.success} strokeWidth="2"/><path d="M8 12l3 3 5-5" stroke={SR.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  Plan saved
+                </span>
+              ) : (
+                <button onClick={() => setShowSaveConsent(true)} style={{
+                  padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                  border: `1.5px solid ${SR.navy}`, background: SR.navy, color: SR.white,
+                  fontFamily: SR.font, transition: "all 0.2s",
+                }}>Save my plan</button>
+              )}
               {(data.userRole === "patient" || !data.userRole) && plan.patient.length > 0 && (
                 <button onClick={() => setMode("track")} style={{
                   padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
@@ -5868,6 +5973,9 @@ function PreOpPage() {
           </div>
         </div>
       </div>
+      <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
+      <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+      </>
     );
   }
 
@@ -5907,6 +6015,12 @@ function PreOpPage() {
                 I understand that SurgeryReady provides general health information only and is not a substitute for professional medical advice. I will consult my physician and care team before making any changes.
               </span>
             </label>
+            <p style={{ fontSize: "11px", color: SR.muted, margin: "10px 0 0", lineHeight: 1.6, fontFamily: SR.font }}>
+              By continuing, you agree to our{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: SR.teal, textDecoration: "underline" }}>Privacy Policy</a>
+              {" "}and{" "}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: SR.teal, textDecoration: "underline" }}>Terms of Service</a>.
+            </p>
             <button
               disabled={!disclaimerChecked}
               onClick={() => { sessionStorage.setItem("sr_disclaimer_ack", "1"); setDisclaimerAck(true); track("assessment_started"); }}
@@ -6017,22 +6131,143 @@ function PreOpPage() {
 
 
 /* ═══════════════════════════════════════════════════════════════
+   [PRIVACY POLICY PAGE]
+   ═══════════════════════════════════════════════════════════════ */
+function PrivacyPolicyPage({ onNavigate }) {
+  return (
+    <div style={{ fontFamily: FONT, background: BRAND.bg, minHeight: "100vh", padding: "80px 16px 60px" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+        <button onClick={() => onNavigate("home")} style={{
+          background: "none", border: "none", color: BRAND.teal, fontSize: "13px",
+          fontFamily: FONT, cursor: "pointer", padding: 0, marginBottom: "28px",
+          display: "flex", alignItems: "center", gap: "6px",
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke={BRAND.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Back to home
+        </button>
+        <h1 style={{ fontSize: "28px", fontWeight: 700, color: BRAND.navy, margin: "0 0 6px" }}>Privacy Policy</h1>
+        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: May 11, 2026</p>
+
+        {[
+          {
+            title: "What we collect",
+            body: "SurgeryReady collects your email address when you create an account. Health information (medical history, medications, surgery details) is collected and stored only if you explicitly choose to save your plan. If you do not save your plan, no health data is retained on our servers after your session ends.",
+          },
+          {
+            title: "How we store it",
+            body: "Account and plan data are stored on Supabase, a US-based cloud database provider. Data is encrypted in transit and at rest. We do not store payment information.",
+          },
+          {
+            title: "How we use it",
+            body: "Your data is used solely to save and retrieve your surgical preparation plan across sessions. We do not sell, share, or rent your personal information to third parties. We do not use your health information for advertising.",
+          },
+          {
+            title: "Data retention",
+            body: "Your plan data is retained until you delete your account or request deletion by contacting us. You may request deletion of your data at any time by emailing support@surgeryready.net.",
+          },
+          {
+            title: "Educational tool notice",
+            body: "SurgeryReady is an educational health information tool. It is not a covered entity under HIPAA and does not provide medical advice, diagnosis, or treatment. The information you enter is used only to generate your personalized educational summary.",
+          },
+          {
+            title: "Contact",
+            body: "Questions about this policy: support@surgeryready.net",
+          },
+        ].map(({ title, body }) => (
+          <div key={title} style={{ marginBottom: "28px" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: BRAND.navy, margin: "0 0 8px" }}>{title}</h2>
+            <p style={{ fontSize: "14px", color: BRAND.textSecondary, lineHeight: 1.75, margin: 0 }}>{body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   [TERMS OF SERVICE PAGE]
+   ═══════════════════════════════════════════════════════════════ */
+function TermsOfServicePage({ onNavigate }) {
+  return (
+    <div style={{ fontFamily: FONT, background: BRAND.bg, minHeight: "100vh", padding: "80px 16px 60px" }}>
+      <div style={{ maxWidth: "720px", margin: "0 auto" }}>
+        <button onClick={() => onNavigate("home")} style={{
+          background: "none", border: "none", color: BRAND.teal, fontSize: "13px",
+          fontFamily: FONT, cursor: "pointer", padding: 0, marginBottom: "28px",
+          display: "flex", alignItems: "center", gap: "6px",
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M19 12H5M12 5l-7 7 7 7" stroke={BRAND.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Back to home
+        </button>
+        <h1 style={{ fontSize: "28px", fontWeight: 700, color: BRAND.navy, margin: "0 0 6px" }}>Terms of Service</h1>
+        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: May 11, 2026</p>
+
+        {[
+          {
+            title: "Educational use only",
+            body: "SurgeryReady is an educational health information tool. The content it provides is for general informational purposes only and does not constitute medical advice, diagnosis, or treatment. Always consult your physician, surgeon, and anesthesiologist before making any changes to your medications, diet, exercise routine, or other health behaviors.",
+          },
+          {
+            title: "No physician-patient relationship",
+            body: "Use of SurgeryReady does not create a physician-patient relationship between you and SurgeryReady, its founders, or any affiliated clinicians. The tool surfaces published clinical guidelines to help you prepare — it does not replace individualized clinical care.",
+          },
+          {
+            title: "Clinical responsibility",
+            body: "For physician users: this tool is a clinical decision support resource. All recommendations must be reviewed, verified, and individualized by the responsible clinician. The treating physician, surgeon, and anesthesiologist retain full clinical and legal responsibility for all patient care decisions.",
+          },
+          {
+            title: "Age requirement",
+            body: "You must be 18 years of age or older to use SurgeryReady independently. Users under 18 may use the tool with parental or guardian consent and supervision.",
+          },
+          {
+            title: "Limitation of liability",
+            body: "SurgeryReady is provided 'as is' without warranty of any kind. To the fullest extent permitted by law, SurgeryReady and its operators are not liable for any clinical outcomes, decisions, or harms arising from use of this tool.",
+          },
+          {
+            title: "Contact",
+            body: "Questions about these terms: support@surgeryready.net",
+          },
+        ].map(({ title, body }) => (
+          <div key={title} style={{ marginBottom: "28px" }}>
+            <h2 style={{ fontSize: "16px", fontWeight: 700, color: BRAND.navy, margin: "0 0 8px" }}>{title}</h2>
+            <p style={{ fontSize: "14px", color: BRAND.textSecondary, lineHeight: 1.75, margin: 0 }}>{body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════
    [APP] — Main Application with Page Routing
-   
-   Pages: "home" and "preop"
+
+   Pages: "home", "preop", "privacy", "terms"
    To add a new page:
    1. Create a component (like PreOpPage above)
    2. Add it to the pages object below
    3. Add a nav link in the Nav component's `links` array
    ═══════════════════════════════════════════════════════════════ */
 export default function App() {
-  const [page, setPage] = useState("home");
+  const [page, setPage] = useState(() => {
+    const p = window.location.pathname;
+    if (p === "/preop") return "preop";
+    if (p === "/privacy") return "privacy";
+    if (p === "/terms") return "terms";
+    return "home";
+  });
+
+  const navigate = (newPage) => {
+    const paths = { home: "/", preop: "/preop", privacy: "/privacy", terms: "/terms" };
+    if (window.history.pushState) window.history.pushState({}, "", paths[newPage] || "/");
+    setPage(newPage);
+    window.scrollTo(0, 0);
+  };
 
   /* ── ADD NEW PAGES HERE ── */
   const pages = {
     home: (
       <>
-        <Hero onNavigate={setPage} />
+        <Hero onNavigate={navigate} />
         <ValueProps />
         <Journey />
         <HowItWorks />
@@ -6043,15 +6278,17 @@ export default function App() {
       </>
     ),
     preop: <PreOpPage />,
+    privacy: <PrivacyPolicyPage onNavigate={navigate} />,
+    terms: <TermsOfServicePage onNavigate={navigate} />,
   };
 
   return (
     <div style={{ fontFamily: FONT, color: BRAND.text, minHeight: "100vh" }}>
       <ResponsiveStyles />
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap" rel="stylesheet" />
-      <Nav currentPage={page} onNavigate={setPage} />
+      <Nav currentPage={page} onNavigate={navigate} />
       {pages[page]}
-      <Footer />
+      <Footer onNavigate={navigate} />
     </div>
   );
 }
