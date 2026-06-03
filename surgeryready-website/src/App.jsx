@@ -5313,7 +5313,7 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
   );
 }
 
-function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, session, onSignIn, onSignOut }) {
+function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, onRefine, fromChat, session, onSignIn, onSignOut }) {
   const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
   const stats = progress ? computeProgress(progress, plan) : null;
   const hasProgress = stats && stats.done > 0;
@@ -5376,6 +5376,28 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, s
           />
         </div>
 
+        {/* Refine prompt — shown when key fields from the full form are missing */}
+        {fromChat && onRefine && (
+          <div style={{
+            background: SR.white, borderRadius: "12px", padding: "16px 20px",
+            border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
+            marginBottom: "20px", display: "flex", alignItems: "center", gap: "14px", flexWrap: "wrap",
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M12 8v4m0 4h.01" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
+            <div style={{ flex: 1, minWidth: "180px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Want a more personalized plan?</div>
+              <div style={{ fontSize: "12px", color: SR.textSecondary, fontFamily: SR.font, marginTop: "2px" }}>
+                Add fitness scores, lab values, and medication details to unlock additional evidence-based recommendations.
+              </div>
+            </div>
+            <button onClick={onRefine} style={{
+              padding: "8px 16px", borderRadius: "8px", background: "none", border: `1.5px solid ${SR.teal}`,
+              color: SR.teal, fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
+              whiteSpace: "nowrap",
+            }}>Add more details</button>
+          </div>
+        )}
+
         {/* Auth prompt */}
         {!session ? (
           <div style={{
@@ -5417,6 +5439,496 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, s
 }
 
 
+/* ─── Chat Intake ─── */
+const CHAT_QUESTIONS = [
+  {
+    id: "firstName",
+    ask: "Hi! I'm the SurgeryReady assistant. I'll ask you a few questions to build your personalized surgical prep plan. What's your first name?",
+    type: "text",
+    field: "firstName",
+    placeholder: "Your first name",
+  },
+  {
+    id: "userRole",
+    ask: (d) => `Nice to meet you, ${d.firstName}! Are you preparing for your own surgery, or are you a physician using this for a patient?`,
+    type: "quickReply",
+    field: "userRole",
+    options: [
+      { label: "I'm a patient", value: "patient" },
+      { label: "I'm a physician", value: "provider" },
+    ],
+  },
+  {
+    id: "age",
+    ask: "How old are you?",
+    type: "number",
+    field: "age",
+    placeholder: "e.g., 52",
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "sex",
+    ask: "What is your biological sex?",
+    type: "quickReply",
+    field: "sex",
+    options: [
+      { label: "Male", value: "male" },
+      { label: "Female", value: "female" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "heightWeight",
+    ask: "What is your height and weight?",
+    type: "heightWeight",
+    fields: ["height", "weight"],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "surgeryType",
+    ask: "What type of surgery are you scheduled for?",
+    type: "text",
+    field: "surgeryType",
+    placeholder: "e.g., total knee replacement, gallbladder removal...",
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "weeksUntil",
+    ask: (d) => `How many weeks until your surgery, ${d.firstName}?`,
+    type: "quickReply",
+    field: "weeksUntil",
+    options: [
+      { label: "Less than 2 weeks", value: "1" },
+      { label: "2–4 weeks", value: "3" },
+      { label: "4–8 weeks", value: "6" },
+      { label: "8 or more weeks", value: "10" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "cardiac",
+    ask: "Do you have any heart conditions? Select all that apply.",
+    type: "multiSelect",
+    field: "cardiac",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Heart failure", value: "Heart failure" },
+      { label: "Coronary artery disease", value: "Coronary artery disease" },
+      { label: "Atrial fibrillation", value: "Atrial fibrillation (AF)" },
+      { label: "Hypertension", value: "Hypertension (uncontrolled, DBP>110)" },
+      { label: "Recent heart attack or stent", value: "Recent MI/stent (<6 months)" },
+      { label: "Heart valve disease", value: "Valve disease" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "respiratory",
+    ask: "Any lung or breathing conditions? Select all that apply.",
+    type: "multiSelect",
+    field: "respiratory",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Asthma", value: "Asthma" },
+      { label: "COPD", value: "COPD/Emphysema" },
+      { label: "Sleep apnea (OSA)", value: "Obstructive sleep apnea (diagnosed)" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "endocrine",
+    ask: "Any metabolic or hormone-related conditions? Select all that apply.",
+    type: "multiSelect",
+    field: "endocrine",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Type 2 diabetes", value: "Type 2 Diabetes" },
+      { label: "Type 1 diabetes", value: "Type 1 Diabetes" },
+      { label: "Obesity (BMI ≥ 35)", value: "Obesity (BMI≥35)" },
+      { label: "Thyroid condition", value: "Thyroid disease" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "hemoglobin",
+    ask: "Do you know your most recent hemoglobin (blood count) level? You can find this on a recent blood test result.",
+    type: "quickReply",
+    field: "hemoglobin",
+    options: [
+      { label: "I don't know", value: "" },
+      { label: "Below 10", value: "9.5" },
+      { label: "10–11.9", value: "11.0" },
+      { label: "12 or above", value: "13.0" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "anticoag",
+    ask: "Are you taking any blood thinners or anticoagulants? Select all that apply.",
+    type: "multiSelect",
+    field: "anticoag",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Aspirin", value: "Aspirin" },
+      { label: "Warfarin (Coumadin)", value: "Warfarin" },
+      { label: "Apixaban (Eliquis)", value: "Apixaban" },
+      { label: "Rivaroxaban (Xarelto)", value: "Rivaroxaban" },
+      { label: "Clopidogrel (Plavix)", value: "Clopidogrel" },
+      { label: "Other blood thinner", value: "Other anticoag" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "diabetesMeds",
+    ask: "Which diabetes medications are you taking? Select all that apply.",
+    type: "multiSelect",
+    field: "diabetesMeds",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "GLP-1 (Ozempic, Wegovy, Mounjaro)", value: "GLP-1 RAs" },
+      { label: "SGLT2 inhibitor (Jardiance, Farxiga)", value: "SGLT2 inhibitors" },
+      { label: "Insulin", value: "Insulin" },
+      { label: "Metformin", value: "Metformin" },
+      { label: "Other diabetes medication", value: "Other diabetes med" },
+    ],
+    condition: (d) => d.endocrine && (d.endocrine.includes("Type 1 Diabetes") || d.endocrine.includes("Type 2 Diabetes")),
+  },
+  {
+    id: "smokingStatus",
+    ask: "Do you smoke or use tobacco products?",
+    type: "quickReply",
+    field: "smokingStatus",
+    options: [
+      { label: "Never smoked", value: "never" },
+      { label: "Former smoker", value: "former_lt8" },
+      { label: "Current smoker", value: "current" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "alcoholUse",
+    ask: "How many alcoholic drinks do you typically have per day?",
+    type: "quickReply",
+    field: "alcoholUse",
+    options: [
+      { label: "None", value: "none" },
+      { label: "1–2 drinks", value: "light" },
+      { label: "3–4 drinks", value: "moderate" },
+      { label: "5 or more drinks", value: "heavy" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "exerciseLevel",
+    ask: "How physically active are you on a typical week?",
+    type: "quickReply",
+    field: "exerciseLevel",
+    options: [
+      { label: "Mostly sedentary", value: "sedentary" },
+      { label: "Light activity (short walks)", value: "light" },
+      { label: "Moderate (30 min most days)", value: "moderate" },
+      { label: "Very active (vigorous exercise)", value: "active" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "proteinLevel",
+    ask: "How much protein do you eat each day? Protein-rich foods include meat, fish, eggs, dairy, legumes, and nuts.",
+    type: "quickReply",
+    field: "proteinLevel",
+    options: [
+      { label: "Very little", value: "low" },
+      { label: "Some protein", value: "moderate" },
+      { label: "Protein at every meal", value: "high" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "weightLoss",
+    ask: "Have you lost weight unintentionally in the past 3 months?",
+    type: "quickReply",
+    field: "weightLoss",
+    options: [
+      { label: "No", value: "no" },
+      { label: "Yes, a little (less than 5%)", value: "mild" },
+      { label: "Yes, significant (5% or more)", value: "significant" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "complete",
+    ask: (d) => `Thank you, ${d.firstName || "there"}. I have everything I need. Ready to generate your personalized surgical prep plan?`,
+    type: "confirm",
+    options: [{ label: "Generate my plan", value: "go" }],
+    condition: (d) => d.userRole !== "provider",
+  },
+];
+
+function ChatIntake({ update, onComplete, onSwitchToForm }) {
+  const [messages, setMessages] = useState([]);
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(true);
+  const [multiSelected, setMultiSelected] = useState([]);
+  const [heightFt, setHeightFt] = useState("");
+  const [heightIn, setHeightIn] = useState("");
+  const [weightLbs, setWeightLbs] = useState("");
+  const messagesEndRef = useRef(null);
+  const chatDataRef = useRef({});
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "sr-chat-kf";
+    style.textContent = "@keyframes srDot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}";
+    if (!document.getElementById("sr-chat-kf")) document.head.appendChild(style);
+    return () => document.getElementById("sr-chat-kf")?.remove();
+  }, []);
+
+  useEffect(() => {
+    const firstQ = CHAT_QUESTIONS[0];
+    const t = setTimeout(() => {
+      setIsTyping(false);
+      setMessages([{ role: "assistant", content: firstQ.ask, qIdx: 0 }]);
+    }, 600);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  const findNextQIdx = (fromIdx, d) => {
+    for (let i = fromIdx + 1; i < CHAT_QUESTIONS.length; i++) {
+      const q = CHAT_QUESTIONS[i];
+      if (!q.condition || q.condition(d)) return i;
+    }
+    return -1;
+  };
+
+  const showNextQuestion = (fromIdx, latestData) => {
+    const nextIdx = findNextQIdx(fromIdx, latestData);
+    if (nextIdx === -1) return;
+    const nextQ = CHAT_QUESTIONS[nextIdx];
+    const askText = typeof nextQ.ask === "function" ? nextQ.ask(latestData) : nextQ.ask;
+    setTimeout(() => {
+      setIsTyping(true);
+      setTimeout(() => {
+        setIsTyping(false);
+        setMessages(prev => [...prev, { role: "assistant", content: askText, qIdx: nextIdx }]);
+        setCurrentQIdx(nextIdx);
+        setMultiSelected([]);
+        setInputValue("");
+        setHeightFt("");
+        setHeightIn("");
+        setWeightLbs("");
+      }, 500);
+    }, 200);
+  };
+
+  const handleConfirm = () => {
+    const cd = chatDataRef.current;
+    if (!cd.riskCategory) cd.riskCategory = "elevated";
+    if (!cd.duration) cd.duration = "medium";
+    if (!cd.eras) cd.eras = "no";
+    if (!cd.bloodLoss) cd.bloodLoss = "moderate";
+    if (!cd.eatingPattern) cd.eatingPattern = "regular";
+    if (!cd.other) cd.other = [];
+    if (!cd.otherMeds) cd.otherMeds = [];
+    if (!cd.cardioMeds) cd.cardioMeds = [];
+    if (!cd.painMeds) cd.painMeds = [];
+    if (!cd.surgeryTags) cd.surgeryTags = [];
+    if (!cd.diabetesMeds) cd.diabetesMeds = [];
+    Object.entries(cd).forEach(([k, v]) => update(k, v));
+    onComplete({ ...cd });
+  };
+
+  const recordAndAdvance = (questionId, field, value, displayText, fromIdx) => {
+    if (field) {
+      chatDataRef.current = { ...chatDataRef.current, [field]: value };
+      update(field, value);
+    }
+    setMessages(prev => [...prev, { role: "user", content: displayText }]);
+
+    if (questionId === "userRole" && value === "provider") {
+      setTimeout(() => {
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          setMessages(prev => [...prev, { role: "assistant", content: "The step-by-step form provides full clinical detail needed for physician assessments. Switching you there now." }]);
+          setTimeout(() => onSwitchToForm(), 1800);
+        }, 600);
+      }, 200);
+      return;
+    }
+
+    if (questionId === "firstName") {
+      const demoKey = (value || "").toLowerCase();
+      const demo = DEMO_PATIENTS[demoKey];
+      if (demo) {
+        Object.entries(demo).forEach(([k, v]) => { update(k, v); chatDataRef.current[k] = v; });
+        const completeIdx = CHAT_QUESTIONS.findIndex(q => q.id === "complete");
+        if (completeIdx >= 0) {
+          setTimeout(() => {
+            setIsTyping(true);
+            setTimeout(() => {
+              setIsTyping(false);
+              setMessages(prev => [...prev, { role: "assistant", content: `I've loaded a demo profile for ${demo.firstName}. Ready to generate the plan?`, qIdx: completeIdx }]);
+              setCurrentQIdx(completeIdx);
+              setMultiSelected([]);
+              setInputValue("");
+            }, 700);
+          }, 200);
+        }
+        return;
+      }
+    }
+
+    showNextQuestion(fromIdx, chatDataRef.current);
+  };
+
+  const handleTextSubmit = () => {
+    const v = inputValue.trim();
+    if (!v) return;
+    const q = CHAT_QUESTIONS[currentQIdx];
+    recordAndAdvance(q.id, q.field, v, v, currentQIdx);
+  };
+
+  const handleQuickReply = (opt) => {
+    const q = CHAT_QUESTIONS[currentQIdx];
+    recordAndAdvance(q.id, q.field, opt.value, opt.label, currentQIdx);
+  };
+
+  const handleMultiSelectSubmit = () => {
+    const q = CHAT_QUESTIONS[currentQIdx];
+    const isNone = multiSelected.includes("none") || multiSelected.length === 0;
+    const values = isNone ? [] : multiSelected;
+    const displayText = isNone ? "None" : multiSelected.join(", ");
+    recordAndAdvance(q.id, q.field, values, displayText, currentQIdx);
+  };
+
+  const handleHeightWeightSubmit = () => {
+    const totalInches = parseInt(heightFt || 0) * 12 + parseInt(heightIn || 0);
+    if (!totalInches || !weightLbs) return;
+    const displayText = `${heightFt || 0}' ${heightIn || 0}" / ${weightLbs} lbs`;
+    chatDataRef.current = { ...chatDataRef.current, height: String(totalInches), weight: weightLbs };
+    update("height", String(totalInches));
+    update("weight", weightLbs);
+    setMessages(prev => [...prev, { role: "user", content: displayText }]);
+    showNextQuestion(currentQIdx, chatDataRef.current);
+  };
+
+  const currentQ = CHAT_QUESTIONS[currentQIdx];
+  const isWaiting = isTyping || !currentQ;
+  const showQR = !isWaiting && currentQ?.type === "quickReply";
+  const showMS = !isWaiting && currentQ?.type === "multiSelect";
+  const showHW = !isWaiting && currentQ?.type === "heightWeight";
+  const showCF = !isWaiting && currentQ?.type === "confirm";
+  const showTxt = !isWaiting && (currentQ?.type === "text" || currentQ?.type === "number");
+
+  const totalQ = CHAT_QUESTIONS.filter(q => q.id !== "complete" && (!q.condition || q.condition(chatDataRef.current))).length;
+  const answeredQ = CHAT_QUESTIONS.slice(0, currentQIdx).filter(q => q.id !== "complete" && (!q.condition || q.condition(chatDataRef.current))).length;
+  const progressPct = totalQ > 0 ? Math.round((answeredQ / totalQ) * 100) : 0;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "580px", borderRadius: "14px", overflow: "hidden", border: `1px solid ${SR.borderLight}`, background: SR.white, boxShadow: SR.cardShadow, fontFamily: SR.font }}>
+      <div style={{ background: SR.navy, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div style={{ width: 28, height: 28, borderRadius: "50%", background: SR.teal, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 700, color: SR.white }}>SR</div>
+          <div>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: SR.white }}>SurgeryReady Assistant</div>
+            <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>Guided intake</div>
+          </div>
+        </div>
+        <button onClick={onSwitchToForm} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.65)", fontSize: "12px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font, display: "flex", alignItems: "center", gap: "4px" }}>
+          Switch to form
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      </div>
+      <div style={{ height: "3px", background: SR.borderLight, flexShrink: 0 }}>
+        <div style={{ width: `${progressPct}%`, height: "100%", background: SR.teal, transition: "width 0.5s ease" }} />
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "18px 16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+        {messages.map((msg, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start", gap: "8px", alignItems: "flex-end" }}>
+            {msg.role === "assistant" && (
+              <div style={{ width: 24, height: 24, borderRadius: "50%", background: SR.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, color: SR.white, flexShrink: 0 }}>SR</div>
+            )}
+            <div style={{ maxWidth: "78%", padding: "10px 14px", fontSize: "13px", lineHeight: 1.6, borderRadius: msg.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: msg.role === "user" ? SR.teal : SR.bg, color: msg.role === "user" ? SR.white : SR.text, border: msg.role === "assistant" ? `1px solid ${SR.borderLight}` : "none" }}>{msg.content}</div>
+          </div>
+        ))}
+        {isTyping && (
+          <div style={{ display: "flex", gap: "8px", alignItems: "flex-end" }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: SR.navy, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 700, color: SR.white, flexShrink: 0 }}>SR</div>
+            <div style={{ padding: "12px 16px", borderRadius: "14px 14px 14px 4px", background: SR.bg, border: `1px solid ${SR.borderLight}`, display: "flex", gap: "4px", alignItems: "center" }}>
+              {[0, 1, 2].map(d => <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: SR.muted, animation: "srDot 1.2s ease infinite", animationDelay: `${d * 0.2}s` }} />)}
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      {showQR && (
+        <div style={{ padding: "8px 16px 12px", display: "flex", flexWrap: "wrap", gap: "8px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
+          {currentQ.options.map(opt => (
+            <button key={opt.value} onClick={() => handleQuickReply(opt)} style={{ padding: "8px 16px", borderRadius: "20px", border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>{opt.label}</button>
+          ))}
+        </div>
+      )}
+      {showMS && (
+        <div style={{ padding: "10px 16px 12px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px", maxHeight: "96px", overflowY: "auto" }}>
+            {currentQ.options.map(opt => {
+              const sel = multiSelected.includes(opt.value);
+              return (
+                <button key={opt.value} onClick={() => {
+                  if (opt.exclusive) { setMultiSelected(sel ? [] : ["none"]); }
+                  else { setMultiSelected(prev => { const without = prev.filter(v => v !== "none"); return sel ? without.filter(v => v !== opt.value) : [...without, opt.value]; }); }
+                }} style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", fontFamily: SR.font, border: `1.5px solid ${sel ? SR.teal : SR.border}`, background: sel ? SR.tealLight : SR.white, color: sel ? SR.teal : SR.textSecondary, fontWeight: sel ? 600 : 400, transition: "all 0.15s" }}>{opt.label}</button>
+              );
+            })}
+          </div>
+          <button onClick={handleMultiSelectSubmit} style={{ width: "100%", padding: "9px", borderRadius: "10px", border: "none", background: SR.teal, color: SR.white, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>Continue</button>
+        </div>
+      )}
+      {showHW && (
+        <div style={{ padding: "10px 16px 12px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "8px", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1 }}>
+              <input type="number" placeholder="ft" value={heightFt} onChange={e => setHeightFt(e.target.value)} min="0" style={{ width: "46px", padding: "8px 6px", borderRadius: "8px", border: `1.5px solid ${SR.border}`, fontSize: "13px", fontFamily: SR.font, color: SR.text, textAlign: "center" }} />
+              <input type="number" placeholder="in" value={heightIn} onChange={e => setHeightIn(e.target.value)} min="0" max="11" style={{ width: "46px", padding: "8px 6px", borderRadius: "8px", border: `1.5px solid ${SR.border}`, fontSize: "13px", fontFamily: SR.font, color: SR.text, textAlign: "center" }} />
+              <span style={{ fontSize: "11px", color: SR.muted }}>height</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1 }}>
+              <input type="number" placeholder="lbs" value={weightLbs} onChange={e => setWeightLbs(e.target.value)} min="0" style={{ flex: 1, padding: "8px 10px", borderRadius: "8px", border: `1.5px solid ${SR.border}`, fontSize: "13px", fontFamily: SR.font, color: SR.text }} />
+              <span style={{ fontSize: "11px", color: SR.muted }}>lbs</span>
+            </div>
+          </div>
+          <button onClick={handleHeightWeightSubmit} disabled={!heightFt || !weightLbs} style={{ width: "100%", padding: "9px", borderRadius: "10px", border: "none", background: (heightFt && weightLbs) ? SR.teal : SR.borderLight, color: (heightFt && weightLbs) ? SR.white : SR.muted, fontSize: "13px", fontWeight: 600, cursor: (heightFt && weightLbs) ? "pointer" : "not-allowed", fontFamily: SR.font }}>Continue</button>
+        </div>
+      )}
+      {showCF && (
+        <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
+          <button onClick={handleConfirm} style={{ width: "100%", padding: "13px", borderRadius: "10px", border: "none", background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`, color: SR.white, fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font, boxShadow: "0 3px 12px rgba(27,58,92,0.3)" }}>Generate my plan</button>
+        </div>
+      )}
+      {showTxt && (
+        <div style={{ padding: "10px 16px 12px", borderTop: `1px solid ${SR.borderLight}`, display: "flex", gap: "8px", flexShrink: 0, background: SR.white }}>
+          <input
+            ref={inputRef}
+            type={currentQ.type === "number" ? "number" : "text"}
+            placeholder={currentQ.placeholder || "Type your answer..."}
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") handleTextSubmit(); }}
+            style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, fontSize: "13px", fontFamily: SR.font, color: SR.text, outline: "none" }}
+            autoFocus
+          />
+          <button onClick={handleTextSubmit} disabled={!inputValue.trim()} style={{ padding: "10px 18px", borderRadius: "10px", border: "none", background: inputValue.trim() ? SR.teal : SR.borderLight, color: inputValue.trim() ? SR.white : SR.muted, fontSize: "13px", fontWeight: 600, cursor: inputValue.trim() ? "pointer" : "not-allowed", fontFamily: SR.font, flexShrink: 0 }}>Send</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════
    [PREOP-PAGE] — Pre-Operative Assessment Page
    ═══════════════════════════════════════════════════════════════ */
@@ -5428,6 +5940,8 @@ function PreOpPage() {
   const [plan, setPlan] = useState(null);
   const [viewMode, setViewMode] = useState("both");
   const [mode, setMode] = useState(null); // null = choice screen, "view" = plan, "track" = tracking
+  const [intakeMode, setIntakeMode] = useState(null); // null = pick, "form" = form, "chat" = chat
+  const [isRefining, setIsRefining] = useState(false);
   const [progress, setProgress] = useState(null);
 
   // Disclaimer acknowledgment (once per session)
@@ -5531,25 +6045,27 @@ function PreOpPage() {
     "Your body responds to what you give it. This plan will show you how.",
     "Building your personalized readiness protocol...",
   ];
-  const generate = () => {
+  const generate = (overrideData) => {
     setGenerating(true);
     setMotivationalMsgIdx(0);
     window.scrollTo(0, 0);
+    const planData = overrideData || data;
     msgIntervalRef.current = setInterval(() => {
       setMotivationalMsgIdx(i => (i + 1) % MOTIVATIONAL_MESSAGES.length);
-    }, 5000);
+    }, 2000);
     setTimeout(() => {
       clearInterval(msgIntervalRef.current);
-      const newPlan = generatePlan(data);
-      track("assessment_completed", { role: data.userRole, riskLevel: newPlan.riskLevel });
+      const newPlan = generatePlan(planData);
+      track("assessment_completed", { role: planData.userRole, riskLevel: newPlan.riskLevel });
       setPlan(newPlan);
       setProgress(initProgress(newPlan));
       setMode(null);
-      setViewMode(data.userRole === "patient" ? "patient" : data.userRole === "provider" ? "provider" : "both");
+      setViewMode(planData.userRole === "patient" ? "patient" : planData.userRole === "provider" ? "provider" : "both");
       setGenerating(false);
-    }, 20000);
+    }, 10000);
   };
-  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setProgress(null); setPlanId(null); setResumeData(null); };
+  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setIntakeMode(null); setIsRefining(false); setProgress(null); setPlanId(null); setResumeData(null); };
+  const handleRefine = () => { setPlan(null); setIntakeMode("form"); setStep(0); setIsRefining(true); setProgress(null); window.scrollTo(0, 0); };
   const handleResume = () => {
     if (!resumeData) return;
     setData(resumeData.data);
@@ -5690,7 +6206,7 @@ function PreOpPage() {
               height: "100%",
               background: "linear-gradient(90deg, #2ECC9B, rgba(255,255,255,0.6))",
               borderRadius: 2,
-              animation: "srProgress 20s ease-in-out forwards",
+              animation: "srProgress 10s ease-in-out forwards",
             }} />
           </div>
         </div>
@@ -5757,6 +6273,8 @@ function PreOpPage() {
             plan={plan} data={data} progress={progress}
             onViewPlan={() => setMode("view")}
             onTrackProgress={() => setMode("track")}
+            onRefine={handleRefine}
+            fromChat={intakeMode === "chat"}
             session={session}
             onSignIn={() => setShowAuth(true)}
             onSignOut={handleSignOut}
@@ -5871,6 +6389,11 @@ function PreOpPage() {
                   fontFamily: SR.font, transition: "all 0.2s",
                 }}>Track Progress</button>
               )}
+              <button onClick={handleRefine} style={{
+                padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
+                border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary,
+                fontFamily: SR.font, transition: "all 0.2s",
+              }}>Refine details</button>
               <button onClick={reset} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
                 border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
@@ -6039,8 +6562,60 @@ function PreOpPage() {
           </div>
         )}
 
-        {/* Numbered Progress Steps + Card + Navigation (only after disclaimer ack) */}
+        {/* Mode picker / Chat / Form (only after disclaimer ack) */}
         {disclaimerAck && <>
+
+        {intakeMode === null && (
+          <div style={{ background: SR.white, borderRadius: "14px", padding: "32px", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow }}>
+            <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: "0 0 8px" }}>How would you like to get started?</h2>
+            <p style={{ fontSize: "13px", color: SR.textSecondary, margin: "0 0 24px", lineHeight: 1.6, fontFamily: SR.font }}>
+              Choose how you'd like to complete your surgical readiness assessment.
+            </p>
+            <div style={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
+              <button onClick={() => setIntakeMode("chat")} style={{
+                flex: 1, minWidth: "200px", padding: "20px", borderRadius: "12px",
+                border: `2px solid ${SR.teal}`, background: SR.tealLight,
+                cursor: "pointer", fontFamily: SR.font, textAlign: "left",
+              }}>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: SR.teal, marginBottom: "6px" }}>Chat with our assistant</div>
+                <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.5 }}>
+                  Answer questions one at a time in a guided conversation. Recommended for most patients.
+                </div>
+              </button>
+              <button onClick={() => setIntakeMode("form")} style={{
+                flex: 1, minWidth: "200px", padding: "20px", borderRadius: "12px",
+                border: `2px solid ${SR.border}`, background: SR.white,
+                cursor: "pointer", fontFamily: SR.font, textAlign: "left",
+              }}>
+                <div style={{ fontSize: "15px", fontWeight: 700, color: SR.navy, marginBottom: "6px" }}>Step-by-step form</div>
+                <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.5 }}>
+                  Fill out the full form with all fields at once. Better for physicians or users with lab values ready.
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {intakeMode === "chat" && (
+          <ChatIntake
+            update={update}
+            onComplete={generate}
+            onSwitchToForm={() => setIntakeMode("form")}
+          />
+        )}
+
+        {intakeMode === "form" && <>
+        {isRefining && (
+          <div style={{
+            background: SR.tealLight, border: `1px solid ${SR.teal}`,
+            borderRadius: "10px", padding: "12px 16px", marginBottom: "20px",
+            fontSize: "13px", color: SR.teal, fontFamily: SR.font, lineHeight: 1.6,
+          }}>
+            <strong>Refining your plan.</strong> Fields already answered are pre-filled below.
+            Add any additional details — lab values, fitness scores, medication specifics —
+            then click Generate to refresh your personalized plan.
+          </div>
+        )}
         <div style={{ display: "flex", gap: "6px", marginBottom: "28px" }}>
           {STEPS.map((s, i) => {
             const done = i < step;
@@ -6123,6 +6698,8 @@ function PreOpPage() {
         <div style={{ textAlign: "center", marginTop: "24px", fontSize: "10px", color: SR.muted }}>
           Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
         </div>
+        </>}
+
         </>}
       </div>
     </div>
