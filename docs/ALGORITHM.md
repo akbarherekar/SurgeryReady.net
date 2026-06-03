@@ -8,9 +8,49 @@
 
 ## Architecture
 
-The algorithm is a **standalone JSX artifact** — single file, no imports from other site components, no cross-dependencies. It is imported into the site as a page-level component only.
+The algorithm lives in `src/App.jsx` as `PreOpPage` + `generatePlan()`. It is not a standalone artifact anymore — the canonical version is the live deployed file.
 
-### Step Flow
+### Intake Mode Picker
+
+After the one-time disclaimer acknowledgment, patients see a two-card mode picker:
+
+| Mode | Description |
+|---|---|
+| **Chat with our assistant** | 18-question conversational intake via `ChatIntake` component. Quick-reply chips, multi-select, branching. Patient-only — physicians are routed to form mode. |
+| **Step-by-step form** | Traditional 6-step form. All fields, full clinical detail. Preferred for physicians and users with lab values ready. |
+
+State: `intakeMode` — `null` (picker) | `"chat"` | `"form"` inside `PreOpPage`.
+
+### Chat Intake (`ChatIntake` component + `CHAT_QUESTIONS`)
+
+A scripted chatbot that populates the same `formData` fields as the step form. Questions defined in the `CHAT_QUESTIONS` array (just above `PreOpPage` in `src/App.jsx`).
+
+**Fields collected in chat (18 questions):**
+firstName, userRole, age, sex, height/weight, surgeryType, weeksUntil, cardiac (multi-select), respiratory (multi-select), endocrine (multi-select), hemoglobin, anticoag (multi-select), diabetesMeds (conditional on diabetes), smokingStatus, alcoholUse, exerciseLevel, proteinLevel, weightLoss
+
+**Fields NOT asked in chat (set to safe defaults):** riskCategory (`"elevated"`), duration (`"medium"`), eras (`"no"`), bloodLoss (`"moderate"`), eatingPattern (`"regular"`), and all detailed conditional clinical fields (dasiScore, a1cValue, egfrValue, albumin, etc.).
+
+**Physician routing:** Selecting "I'm a physician" in chat shows a message and switches to form mode after 1.8 s.
+
+**Demo patient auto-fill in chat:** Typing a demo name in the firstName question loads all fields and jumps to the confirm step.
+
+### Refine My Plan Flow
+
+After plan generation, two entry points allow adding more clinical detail:
+
+1. **`PlanChoiceScreen`** — shows "Want a more personalized plan?" prompt (only when `intakeMode === "chat"`) with an "Add more details" button.
+2. **Plan view header** — "Refine details" button always visible alongside "Track Progress" and "Start Over".
+
+Both call `handleRefine()`:
+```js
+const handleRefine = () => { setPlan(null); setIntakeMode("form"); setStep(0); setIsRefining(true); setProgress(null); window.scrollTo(0, 0); };
+```
+
+The 6-step form re-opens with all chat data pre-filled and a teal "Refining your plan" banner at the top. The user fills in missing fields (DASI, HbA1c, eGFR, albumin, etc.) and clicks "Generate Readiness Plan" to produce a more detailed plan.
+
+**Top fields that unlock additional recommendations:** `dasiScore`, `a1cValue`, `egfrValue`, `albumin`, `raiScore`, `withdrawalHistory`, `thermalHabits`, `cardiacEventMonths`, `ferritinValue`, `eatingPattern`, `supplements`.
+
+### Step Flow (Form Mode)
 
 ```
 Step 0: Demographics     → Role selection (patient | provider) + age, sex, BMI
@@ -27,6 +67,12 @@ const STEPS = ["demographics", "surgery", "medical", "medications", "fitness", "
 const STEP_LABELS = ["Patient Info", "Surgery Details", "Medical History", "Medications", "Fitness Baseline", "Nutrition"];
 const STEP_NUMS = ["01", "02", "03", "04", "05", "06"];
 ```
+
+### Generation Animation
+
+- **Duration:** 10 seconds (`setTimeout` 10 000 ms)
+- **Progress bar:** CSS animation `srProgress 10s ease-in-out forwards` — reaches 100% as plan appears
+- **Messages:** 5 motivational messages, each shown for 2 seconds (2 000 ms `setInterval`)
 
 ---
 
@@ -103,7 +149,7 @@ Results rendered as expandable cards, one per clinical domain. Each card has:
 
 ## Demo Patients
 
-Three pre-filled showcase patients are defined in the `DEMO_PATIENTS` const at the top of `src/App.jsx` (just after the BRAND config). Typing their exact name in the First Name field auto-fills all 6 steps. Matching is case-insensitive.
+Three pre-filled showcase patients are defined in the `DEMO_PATIENTS` const at the top of `src/App.jsx` (just after the BRAND config). Typing their exact name in the First Name field auto-fills all fields. Matching is case-insensitive. Works in **both form mode and chat mode**.
 
 | Name | Age/Sex | Surgery | Weeks | Key complexity |
 |---|---|---|---|---|
@@ -111,7 +157,10 @@ Three pre-filled showcase patients are defined in the `DEMO_PATIENTS` const at t
 | `Demo Patient 2` | 68M | Left hip replacement | 4 | AF on Apixaban, SGLT2i + GLP-1 RA, OSA, HbA1c 8.4 |
 | `Demo Patient 3` | 74M | Colorectal cancer resection | 2 | Anemia (Hgb 9.2), frailty, COPD, current smoker, chemo |
 
-The three patients produce meaningfully different timelines due to different `weeksUntil` values and clinical profiles. A teal confirmation banner appears for 3 seconds after auto-fill fires.
+The three patients produce meaningfully different timelines due to different `weeksUntil` values and clinical profiles.
+
+- **Form mode:** teal confirmation banner appears for 3 seconds, all 6 steps pre-filled.
+- **Chat mode:** assistant message confirms the demo load and jumps directly to the final "Generate my plan" confirm step.
 
 To add a new demo patient: add an entry to `DEMO_PATIENTS` in **both** `src/App.jsx` and `surgeryready-website/src/App.jsx` using the same key structure.
 

@@ -41,7 +41,7 @@ src/
     TimelineView.jsx    # Patient-only forward-looking prep timeline
   data/
     timeline.js         # Timeline phase/card generator (patient only)
-  App.jsx               # All homepage sections + PreOpPage + algorithm (single file, ~5000 lines)
+  App.jsx               # All homepage sections + PreOpPage + algorithm (single file, ~7000 lines)
   main.jsx
   supabaseClient.js     # Supabase auth + persistence
 public/
@@ -52,6 +52,13 @@ CLAUDE.md               # ← you are here
 **Note:** The entire site — homepage, PreOp assessment, algorithm — lives in `src/App.jsx`. There are no separate component files for Hero, Navbar, etc. Everything is inline in one file.
 
 **Vercel deploys from root `src/App.jsx`.** There is also a `surgeryready-website/src/App.jsx` (a parallel copy used for local preview server). Both must be kept in sync when making changes.
+
+**Key constants and components defined in `src/App.jsx` (in order):**
+- `DEMO_PATIENTS` — three pre-filled showcase patients
+- `CHAT_QUESTIONS` — scripted 18-question array for the chat intake flow
+- `ChatIntake` — conversational intake component (patient-facing, before PreOpPage)
+- `PlanChoiceScreen` — post-generation choice screen (View Plan / Track Progress / Refine)
+- `PreOpPage` — full assessment including mode picker, form steps, plan view, progress tracker
 
 **Active standalone artifact (versioned separately):**
 ```
@@ -113,9 +120,12 @@ const SR = {
 See `docs/ALGORITHM.md` for full spec. Summary:
 
 - **File:** `src/App.jsx` — `PreOpPage` component + `generatePlan()` function (live, deployed)
+- **Intake modes:** After the disclaimer, patients choose **Chat** (guided 18-question conversation) or **Step-by-step form** (all 6 steps at once). Physicians are routed to form mode from chat.
 - **Steps (6):** Patient Info → Surgery Details → Medical History → Medications → Fitness Baseline → Nutrition
 - **Role selection:** Patient vs. Provider at step 1, drives branching throughout
 - **Key clinical modules:**
+  - Chat intake: `ChatIntake` component + `CHAT_QUESTIONS` array (18 questions, quick-reply chips, multi-select, branching)
+  - Refine My Plan: after plan generation, "Add more details" (from chat) or "Refine details" (from plan view) re-enters the pre-filled 6-step form with a refinement banner
   - Anemia protocols: 4 severity tiers by hemoglobin (Hb)
   - Smoking cessation with timeline branching
   - Alcohol use with withdrawal risk detection (PAWSS/CIWA-Ar screening)
@@ -124,12 +134,13 @@ See `docs/ALGORITHM.md` for full spec. Summary:
   - VO₂max modal
   - Personalized forward-looking timeline (`TimelineView.jsx` + `src/data/timeline.js`)
   - Supabase auth + plan persistence (save/resume across sessions)
+- **Generation animation:** 10-second loading screen with progress bar (CSS `srProgress 10s`) and 5 motivational messages cycling every 2 seconds.
 - **Known constraint:** PDF export was removed due to JSX parsing error (template literal + embedded script tag). Do **not** reintroduce PDF generation using that pattern.
 - **InfoButton placement:** Must be inside their `Field` component as children, not outside — placing them outside creates layout gaps.
 
 ## Demo Patients
 
-Three showcase patients auto-fill the entire assessment when their name is typed in the First Name field. Defined as `DEMO_PATIENTS` const in `src/App.jsx` (just after BRAND config).
+Three showcase patients auto-fill the entire assessment when their name is typed in the First Name field. Works in **both form mode and chat mode**. Defined as `DEMO_PATIENTS` const in `src/App.jsx` (just after BRAND config).
 
 | Name (type exactly) | Profile | Weeks to surgery |
 |---|---|---|
@@ -137,7 +148,7 @@ Three showcase patients auto-fill the entire assessment when their name is typed
 | `Demo Patient 2` | 68M, AF on Apixaban, SGLT2i + GLP-1 RA, OSA | 4 |
 | `Demo Patient 3` | 74M, colorectal cancer, anemia (Hgb 9.2), frailty | 2 |
 
-Matching is case-insensitive. A teal confirmation banner appears for 3 seconds on load.
+Matching is case-insensitive. In form mode: a teal banner appears for 3 seconds. In chat mode: the assistant message confirms the demo load and jumps to the final confirm step.
 
 ---
 
