@@ -5468,7 +5468,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "sex",
-    ask: "What is your biological sex?",
+    ask: "And what is your biological sex — male or female?",
     type: "quickReply",
     field: "sex",
     options: [
@@ -5479,14 +5479,14 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "heightWeight",
-    ask: "What is your height and weight?",
+    ask: "What's your height and weight?",
     type: "heightWeight",
     fields: ["height", "weight"],
     condition: (d) => d.userRole !== "provider",
   },
   {
     id: "surgeryType",
-    ask: "What type of surgery are you scheduled for?",
+    ask: "What type of surgery are you having?",
     type: "text",
     field: "surgeryType",
     placeholder: "e.g., total knee replacement, gallbladder removal...",
@@ -5494,7 +5494,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "weeksUntil",
-    ask: (d) => `How many weeks until your surgery, ${d.firstName}?`,
+    ask: (d) => `And how many weeks until your surgery, ${d.firstName}?`,
     type: "quickReply",
     field: "weeksUntil",
     options: [
@@ -5507,7 +5507,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "cardiac",
-    ask: "Do you have any heart conditions? Select all that apply.",
+    ask: "Do you have any heart or cardiovascular conditions? You can name them all, or say none.",
     type: "multiSelect",
     field: "cardiac",
     options: [
@@ -5522,8 +5522,44 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "rateControlled",
+    ask: "Since you have atrial fibrillation — is your heart rate well-controlled, generally below 110 beats per minute?",
+    type: "quickReply",
+    field: "rateControlled",
+    options: [
+      { label: "Yes, well-controlled", value: "yes" },
+      { label: "No / not sure", value: "no" },
+    ],
+    condition: (d) => d.userRole !== "provider" && d.cardiac?.includes("Atrial fibrillation (AF)"),
+  },
+  {
+    id: "hfType",
+    ask: "For your heart failure — is it with reduced ejection fraction, meaning the heart muscle is weak, or preserved ejection fraction, where the heart squeezes normally but is stiff?",
+    type: "quickReply",
+    field: "hfType",
+    options: [
+      { label: "Reduced EF (HFrEF)", value: "HFrEF" },
+      { label: "Preserved EF (HFpEF)", value: "HFpEF" },
+      { label: "Not sure", value: "HFpEF" },
+    ],
+    condition: (d) => d.userRole !== "provider" && d.cardiac?.includes("Heart failure"),
+  },
+  {
+    id: "cardiacEventMonths",
+    ask: "About how many months ago was your most recent heart attack or stent procedure?",
+    type: "quickReply",
+    field: "cardiacEventMonths",
+    options: [
+      { label: "Less than 3 months", value: "<3" },
+      { label: "3 to 6 months", value: "3-6" },
+      { label: "6 to 12 months", value: "6-12" },
+      { label: "More than 12 months", value: ">12" },
+    ],
+    condition: (d) => d.userRole !== "provider" && d.cardiac?.includes("Recent MI/stent (<6 months)"),
+  },
+  {
     id: "respiratory",
-    ask: "Any lung or breathing conditions? Select all that apply.",
+    ask: "Any lung or breathing conditions? Name them all, or say none.",
     type: "multiSelect",
     field: "respiratory",
     options: [
@@ -5535,8 +5571,19 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "cpapAdherent",
+    ask: "Since you have sleep apnea — do you use a CPAP machine, and do you use it most nights?",
+    type: "quickReply",
+    field: "cpapAdherent",
+    options: [
+      { label: "Yes, most nights", value: "yes" },
+      { label: "No or rarely", value: "no" },
+    ],
+    condition: (d) => d.userRole !== "provider" && d.respiratory?.includes("Obstructive sleep apnea (diagnosed)"),
+  },
+  {
     id: "endocrine",
-    ask: "Any metabolic or hormone-related conditions? Select all that apply.",
+    ask: "Any metabolic conditions — like diabetes, thyroid disease, or obesity? Name them all, or say none.",
     type: "multiSelect",
     field: "endocrine",
     options: [
@@ -5550,7 +5597,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "hemoglobin",
-    ask: "Do you know your most recent hemoglobin (blood count) level? You can find this on a recent blood test result.",
+    ask: "Do you know your most recent hemoglobin level — that's a blood count from a lab test? You can say the range, or say I don't know.",
     type: "quickReply",
     field: "hemoglobin",
     options: [
@@ -5562,8 +5609,20 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "ironDeficiency",
+    ask: "Have you been told you have iron deficiency anemia?",
+    type: "quickReply",
+    field: "ironDeficiency",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unknown" },
+    ],
+    condition: (d) => d.userRole !== "provider" && (d.hemoglobin === "9.5" || d.hemoglobin === "11.0"),
+  },
+  {
     id: "anticoag",
-    ask: "Are you taking any blood thinners or anticoagulants? Select all that apply.",
+    ask: "Are you on any blood thinners or anticoagulants? Name them, or say none.",
     type: "multiSelect",
     field: "anticoag",
     options: [
@@ -5579,7 +5638,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "diabetesMeds",
-    ask: "Which diabetes medications are you taking? Select all that apply.",
+    ask: "Which diabetes medications are you taking? Name them all, or say none.",
     type: "multiSelect",
     field: "diabetesMeds",
     options: [
@@ -5593,8 +5652,28 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.endocrine && (d.endocrine.includes("Type 1 Diabetes") || d.endocrine.includes("Type 2 Diabetes")),
   },
   {
+    id: "a1cValue",
+    ask: (d) => `Do you know your most recent A1C level, ${d.firstName || ""}? That's the blood sugar average from a lab test. Say the number, or say I don't know.`,
+    type: "text",
+    field: "a1cValue",
+    placeholder: "e.g., 7.2 or I don't know",
+    condition: (d) => d.userRole !== "provider" && d.endocrine && (d.endocrine.includes("Type 1 Diabetes") || d.endocrine.includes("Type 2 Diabetes")),
+  },
+  {
+    id: "glp1GI",
+    ask: "Since you're on a GLP-1 medication — are you currently experiencing any nausea, vomiting, or stomach issues from it?",
+    type: "quickReply",
+    field: "glp1GI",
+    options: [
+      { label: "No GI symptoms", value: "none" },
+      { label: "Mild — occasional nausea", value: "mild" },
+      { label: "Active symptoms", value: "active" },
+    ],
+    condition: (d) => d.userRole !== "provider" && d.diabetesMeds?.includes("GLP-1 RAs"),
+  },
+  {
     id: "smokingStatus",
-    ask: "Do you smoke or use tobacco products?",
+    ask: "Do you smoke or use any tobacco products?",
     type: "quickReply",
     field: "smokingStatus",
     options: [
@@ -5605,8 +5684,16 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "cigPerDay",
+    ask: "About how many cigarettes do you smoke per day?",
+    type: "number",
+    field: "cigPerDay",
+    placeholder: "e.g., 10",
+    condition: (d) => d.userRole !== "provider" && d.smokingStatus === "current",
+  },
+  {
     id: "alcoholUse",
-    ask: "How many alcoholic drinks do you typically have per day?",
+    ask: "How about alcohol — how many drinks do you typically have per day?",
     type: "quickReply",
     field: "alcoholUse",
     options: [
@@ -5616,6 +5703,29 @@ const CHAT_QUESTIONS = [
       { label: "5 or more drinks", value: "heavy" },
     ],
     condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "bingeDrinking",
+    ask: "Do you ever have episodes of drinking heavily in a short time — like four or more drinks within a couple of hours?",
+    type: "quickReply",
+    field: "bingeDrinking",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    condition: (d) => d.userRole !== "provider" && (d.alcoholUse === "moderate" || d.alcoholUse === "heavy"),
+  },
+  {
+    id: "withdrawalHistory",
+    ask: "Have you ever experienced withdrawal symptoms when you've cut back on drinking — things like shaking, sweating, or seizures?",
+    type: "quickReply",
+    field: "withdrawalHistory",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unknown" },
+    ],
+    condition: (d) => d.userRole !== "provider" && (d.alcoholUse === "moderate" || d.alcoholUse === "heavy"),
   },
   {
     id: "exerciseLevel",
@@ -5632,7 +5742,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "proteinLevel",
-    ask: "How much protein do you eat each day? Protein-rich foods include meat, fish, eggs, dairy, legumes, and nuts.",
+    ask: "How much protein do you eat each day — things like meat, fish, eggs, dairy, or legumes?",
     type: "quickReply",
     field: "proteinLevel",
     options: [
@@ -5644,7 +5754,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "weightLoss",
-    ask: "Have you lost weight unintentionally in the past 3 months?",
+    ask: "And lastly — have you lost any weight unintentionally in the past 3 months?",
     type: "quickReply",
     field: "weightLoss",
     options: [
@@ -5957,6 +6067,7 @@ async function speakText(text, onEnd) {
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const audio = new Audio(url);
+    audio.volume = 1.0;
     _currentAudio = audio;
     audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); onEnd?.(); };
     audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); onEnd?.(); };
@@ -6062,6 +6173,43 @@ function parseQuickReply(questionId, t, options) {
       { keys: ["a little", "mild", "small amount", "a bit", "slightly", "yes a little", "little weight"], value: "mild" },
       { keys: ["significant", "a lot of weight", "substantial", "noticeable", "yes significant", "quite a bit"], value: "significant" },
     ],
+    rateControlled: [
+      { keys: ["yes", "well-controlled", "controlled", "below 110", "good rate", "rate is good", "rate controlled"], value: "yes" },
+      { keys: ["no", "not sure", "not controlled", "uncontrolled", "fast", "high rate", "not well"], value: "no" },
+    ],
+    hfType: [
+      { keys: ["reduced", "hfref", "weak", "low ejection", "systolic", "pump is weak"], value: "HFrEF" },
+      { keys: ["preserved", "hfpef", "stiff", "normal ejection", "diastolic", "not sure", "unknown"], value: "HFpEF" },
+    ],
+    cardiacEventMonths: [
+      { keys: ["less than three", "less than 3", "one month", "two months", "recent", "just happened", "a month ago"], value: "<3" },
+      { keys: ["three to six", "3 to 6", "four months", "five months", "four or five"], value: "3-6" },
+      { keys: ["six to twelve", "6 to 12", "seven months", "eight months", "nine months", "ten months", "eleven months"], value: "6-12" },
+      { keys: ["more than twelve", "more than 12", "over a year", "a year ago", "years ago", "long time ago"], value: ">12" },
+    ],
+    cpapAdherent: [
+      { keys: ["yes", "most nights", "every night", "i use it", "use cpap", "compliant", "always"], value: "yes" },
+      { keys: ["no", "rarely", "sometimes", "not always", "don't use", "stopped", "never"], value: "no" },
+    ],
+    glp1GI: [
+      { keys: ["none", "no symptoms", "no nausea", "no issues", "feeling fine", "no stomach", "nothing"], value: "none" },
+      { keys: ["mild", "occasional", "sometimes", "a little nausea", "minor", "tolerable"], value: "mild" },
+      { keys: ["active", "yes", "bad", "nausea", "vomiting", "stomach issues", "very nauseous", "sick"], value: "active" },
+    ],
+    bingeDrinking: [
+      { keys: ["yes", "sometimes", "occasionally", "i do", "binge", "heavy episodes"], value: "yes" },
+      { keys: ["no", "never", "not really", "i don't"], value: "no" },
+    ],
+    withdrawalHistory: [
+      { keys: ["yes", "i have", "shaking", "seizures", "sweating", "dts", "withdrawal", "delirium"], value: "yes" },
+      { keys: ["no", "never", "not that i know", "i haven't"], value: "no" },
+      { keys: ["not sure", "unknown", "maybe", "not certain"], value: "unknown" },
+    ],
+    ironDeficiency: [
+      { keys: ["yes", "i have", "iron deficient", "told i have iron", "iron deficiency"], value: "yes" },
+      { keys: ["no", "not that i know", "i don't think so", "i haven't been"], value: "no" },
+      { keys: ["not sure", "unknown", "maybe", "not certain", "i don't know"], value: "unknown" },
+    ],
   };
   const qMap = maps[questionId];
   if (qMap) {
@@ -6072,10 +6220,20 @@ function parseQuickReply(questionId, t, options) {
       }
     }
   }
-  // Simple yes/no fallback for smokingStatus
+  // Simple yes/no fallbacks
   if (questionId === "smokingStatus" && /\bno\b/.test(t)) return { value: "never", display: "Never smoked" };
   if (questionId === "alcoholUse" && /\bno\b/.test(t)) return { value: "none", display: "None" };
   if (questionId === "weightLoss" && /\bno\b/.test(t)) return { value: "no", display: "No" };
+  if (questionId === "rateControlled" && /\byes\b/.test(t)) return { value: "yes", display: "Yes, well-controlled" };
+  if (questionId === "rateControlled" && /\bno\b/.test(t)) return { value: "no", display: "No / not sure" };
+  if (questionId === "cpapAdherent" && /\byes\b/.test(t)) return { value: "yes", display: "Yes, most nights" };
+  if (questionId === "cpapAdherent" && /\bno\b/.test(t)) return { value: "no", display: "No or rarely" };
+  if (questionId === "bingeDrinking" && /\byes\b/.test(t)) return { value: "yes", display: "Yes" };
+  if (questionId === "bingeDrinking" && /\bno\b/.test(t)) return { value: "no", display: "No" };
+  if (questionId === "withdrawalHistory" && /\byes\b/.test(t)) return { value: "yes", display: "Yes" };
+  if (questionId === "withdrawalHistory" && /\bno\b/.test(t)) return { value: "no", display: "No" };
+  if (questionId === "ironDeficiency" && /\byes\b/.test(t)) return { value: "yes", display: "Yes" };
+  if (questionId === "ironDeficiency" && /\bno\b/.test(t)) return { value: "no", display: "No" };
   // Fuzzy match option labels
   for (const opt of (options || [])) {
     const lv = opt.label.toLowerCase();
@@ -6174,6 +6332,42 @@ function parseVoiceAnswer(questionId, questionType, options, transcript, voiceDa
   return null;
 }
 
+function buildAcknowledgment(q, parsed) {
+  if (q.type === "multiSelect" && Array.isArray(parsed.value) && parsed.value.length === 0) {
+    return "Got it, none noted.";
+  }
+  const acks = {
+    firstName: `Great, nice to meet you, ${parsed.value}.`,
+    age: "Got it.",
+    sex: "Got it.",
+    heightWeight: "Perfect.",
+    surgeryType: "Got it.",
+    weeksUntil: "Okay.",
+    cardiac: "Noted.",
+    rateControlled: "Okay.",
+    hfType: "Got it.",
+    cardiacEventMonths: "Noted.",
+    respiratory: "Got it.",
+    cpapAdherent: "Got it.",
+    endocrine: "Noted.",
+    hemoglobin: "Okay.",
+    ironDeficiency: "Got it.",
+    anticoag: "Got it.",
+    diabetesMeds: "Noted.",
+    a1cValue: "Noted.",
+    glp1GI: "Okay.",
+    smokingStatus: parsed.value === "never" ? "Good." : "Thanks for letting me know.",
+    cigPerDay: "Got it.",
+    alcoholUse: parsed.value === "none" ? "Perfect." : "Okay.",
+    bingeDrinking: "Okay.",
+    withdrawalHistory: "Thanks for sharing that.",
+    exerciseLevel: "Got it.",
+    proteinLevel: "Okay.",
+    weightLoss: "Got it.",
+  };
+  return acks[q.id] ?? "Got it.";
+}
+
 function buildReadBackText(d) {
   const smokingLabels = { never: "never smoked", current: "current smoker", former_lt8: "former smoker" };
   const alcoholLabels = { none: "none", light: "1 to 2 drinks a day", moderate: "3 to 4 drinks a day", heavy: "5 or more drinks a day" };
@@ -6199,12 +6393,22 @@ function buildReadBackText(d) {
   if (d.surgeryType) parts.push(`Surgery: ${d.surgeryType}.`);
   if (d.weeksUntil) parts.push(`Time until surgery: ${weeksLabels[d.weeksUntil] || d.weeksUntil}.`);
   parts.push(`Heart conditions: ${cardiac}.`);
+  if (d.rateControlled) parts.push(`A-fib rate controlled: ${d.rateControlled === "yes" ? "yes" : "no"}.`);
+  if (d.hfType) parts.push(`Heart failure type: ${d.hfType}.`);
+  if (d.cardiacEventMonths) parts.push(`Heart event timing: ${d.cardiacEventMonths} months ago.`);
   parts.push(`Lung conditions: ${respiratory}.`);
+  if (d.cpapAdherent) parts.push(`CPAP adherent: ${d.cpapAdherent === "yes" ? "yes" : "no"}.`);
   parts.push(`Metabolic conditions: ${endocrine}.`);
   if (d.anticoag !== undefined) parts.push(`Blood thinners: ${anticoag}.`);
   if (d.hemoglobin !== undefined) parts.push(`Hemoglobin level: ${hgbLabels[d.hemoglobin] ?? "not provided"}.`);
+  if (d.ironDeficiency) parts.push(`Iron deficiency: ${d.ironDeficiency}.`);
+  if (d.a1cValue) parts.push(`A1C: ${d.a1cValue}.`);
+  if (d.glp1GI) parts.push(`GLP-1 GI symptoms: ${d.glp1GI}.`);
   if (d.smokingStatus) parts.push(`Smoking: ${smokingLabels[d.smokingStatus] ?? d.smokingStatus}.`);
+  if (d.cigPerDay) parts.push(`Cigarettes per day: ${d.cigPerDay}.`);
   if (d.alcoholUse) parts.push(`Alcohol: ${alcoholLabels[d.alcoholUse] ?? d.alcoholUse}.`);
+  if (d.bingeDrinking) parts.push(`Binge drinking: ${d.bingeDrinking}.`);
+  if (d.withdrawalHistory) parts.push(`Withdrawal history: ${d.withdrawalHistory}.`);
   if (d.exerciseLevel) parts.push(`Exercise: ${exerciseLabels[d.exerciseLevel] ?? d.exerciseLevel}.`);
   if (d.proteinLevel) parts.push(`Protein: ${proteinLabels[d.proteinLevel] ?? d.proteinLevel}.`);
   if (d.weightLoss) parts.push(`Unintentional weight loss: ${weightLossLabels[d.weightLoss] ?? d.weightLoss}.`);
@@ -6465,9 +6669,7 @@ function VoiceIntake({ update, onComplete, onBack }) {
         update(q.field, parsed.value);
       }
       setPendingAnswer({ display: parsed.display });
-      const confirmMsg = (q.type === "multiSelect" && Array.isArray(parsed.value) && parsed.value.length === 0)
-        ? "Got it, none noted."
-        : `I heard: ${parsed.display}.`;
+      const confirmMsg = buildAcknowledgment(q, parsed);
       setIsSpeaking(true);
       speakText(confirmMsg, () => {
         setIsSpeaking(false);
