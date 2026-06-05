@@ -5930,6 +5930,853 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   [VOICE-INTAKE] — Voice-driven intake interview
+   ═══════════════════════════════════════════════════════════════ */
+
+// Module-level audio ref so speakText can cancel itself without React state
+let _currentAudio = null;
+
+function cancelCurrentAudio() {
+  if (_currentAudio) {
+    _currentAudio.pause();
+    _currentAudio.src = "";
+    _currentAudio = null;
+  }
+}
+
+async function speakText(text, onEnd) {
+  cancelCurrentAudio();
+  if (!text) { onEnd?.(); return; }
+  try {
+    const res = await fetch("/api/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) throw new Error("TTS failed");
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    _currentAudio = audio;
+    audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); onEnd?.(); };
+    audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); onEnd?.(); };
+    await audio.play();
+  } catch {
+    _currentAudio = null;
+    onEnd?.();
+  }
+}
+
+const WORD_NUMS = {
+  zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,
+  ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,
+  seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,
+  fifty:50,sixty:60,seventy:70,eighty:80,ninety:90,hundred:100,
+};
+
+function parseWordNumber(text) {
+  const t = (text || "").toLowerCase().trim();
+  const digits = t.match(/\d+/);
+  if (digits) return parseInt(digits[0]);
+  let total = 0, current = 0;
+  t.split(/[\s-]+/).forEach(w => {
+    const n = WORD_NUMS[w];
+    if (n !== undefined) {
+      if (n === 100) { current = (current || 1) * 100; }
+      else { current += n; }
+    } else if (w === "thousand") { total += current * 1000; current = 0; }
+  });
+  return (total + current) || null;
+}
+
+function parseHeightWeight(transcript) {
+  const t = transcript.toLowerCase();
+  let height = null, weight = null;
+  const hPatterns = [
+    /([\w]+)\s*(?:foot|feet|ft|')\s*(?:and\s*)?([\w]+)\s*(?:inch|inches|in|")?/,
+    /(\d+)['"'](\d+)/,
+    /(\d+)\s*ft\s*(\d+)/,
+  ];
+  for (const p of hPatterns) {
+    const m = t.match(p);
+    if (m) {
+      const ft = parseWordNumber(m[1]) ?? 0;
+      const ins = parseWordNumber(m[2]) ?? 0;
+      if (ft > 0) { height = String(ft * 12 + ins); break; }
+    }
+  }
+  const wm = t.match(/([\w\s]+?)\s*(?:pound|pounds|lbs|lb)\b/);
+  if (wm) {
+    const w = parseWordNumber(wm[1].trim());
+    if (w && w > 50 && w < 700) weight = String(w);
+  }
+  return { height, weight };
+}
+
+function parseQuickReply(questionId, t, options) {
+  const maps = {
+    userRole: [
+      { keys: ["patient", "i'm a patient", "myself", "my own", "for myself"], value: "patient" },
+      { keys: ["doctor", "physician", "provider", "surgeon", "clinician"], value: "provider" },
+    ],
+    sex: [
+      { keys: ["male", "man", "boy"], value: "male" },
+      { keys: ["female", "woman", "girl", "lady"], value: "female" },
+    ],
+    weeksUntil: [
+      { keys: ["less than two", "less than 2", "one week", "two weeks", "a week", "week or two", "a couple days"], value: "1" },
+      { keys: ["two to four", "2 to 4", "three weeks", "a month", "couple weeks", "about three", "around three"], value: "3" },
+      { keys: ["four to eight", "4 to 8", "six weeks", "five weeks", "seven weeks", "four weeks", "about six", "around six"], value: "6" },
+      { keys: ["eight", "more than eight", "8 or more", "nine weeks", "ten weeks", "twelve weeks", "two months", "three months", "many weeks"], value: "10" },
+    ],
+    hemoglobin: [
+      { keys: ["don't know", "not sure", "i don't know", "no idea", "unknown", "not sure"], value: "" },
+      { keys: ["below ten", "below 10", "under ten", "less than ten", "nine point", "eight point", "very low", "severely"], value: "9.5" },
+      { keys: ["10 to 12", "between ten", "eleven point", "borderline", "slightly low", "ten point"], value: "11.0" },
+      { keys: ["twelve or above", "12 or above", "thirteen", "normal", "fine", "good", "12 plus", "high"], value: "13.0" },
+    ],
+    smokingStatus: [
+      { keys: ["never", "don't smoke", "non-smoker", "nonsmoker", "have never smoked"], value: "never" },
+      { keys: ["current", "i smoke", "smoker", "still smoke", "actively smoke", "do smoke"], value: "current" },
+      { keys: ["former", "used to", "quit", "ex-smoker", "stopped", "gave up", "ex smoker", "used to smoke"], value: "former_lt8" },
+    ],
+    alcoholUse: [
+      { keys: ["none", "don't drink", "rarely", "never drink", "i don't drink", "no alcohol"], value: "none" },
+      { keys: ["one drink", "two drinks", "1 or 2", "light", "a drink or two", "occasionally", "couple drinks"], value: "light" },
+      { keys: ["three", "four", "3 or 4", "moderate", "a few drinks"], value: "moderate" },
+      { keys: ["five or more", "heavy", "heavily", "more than four", "a lot of drinks"], value: "heavy" },
+    ],
+    exerciseLevel: [
+      { keys: ["sedentary", "don't exercise", "not active", "inactive", "mostly sit", "not much exercise"], value: "sedentary" },
+      { keys: ["light", "some walking", "occasionally", "a little exercise", "short walks", "light activity"], value: "light" },
+      { keys: ["moderate", "regularly", "most days", "thirty minutes", "30 minutes", "regular exercise"], value: "moderate" },
+      { keys: ["very active", "vigorous", "a lot of exercise", "every day", "intense", "athlete", "highly active"], value: "active" },
+    ],
+    proteinLevel: [
+      { keys: ["very little", "not much protein", "barely", "rarely eat protein", "low protein"], value: "low" },
+      { keys: ["moderate", "some protein", "sometimes", "a little protein", "occasionally protein"], value: "moderate" },
+      { keys: ["every meal", "lots of protein", "high protein", "a lot of protein", "protein at every"], value: "high" },
+    ],
+    weightLoss: [
+      { keys: ["no weight loss", "not really", "haven't lost", "i haven't", "no i haven't"], value: "no" },
+      { keys: ["a little", "mild", "small amount", "a bit", "slightly", "yes a little", "little weight"], value: "mild" },
+      { keys: ["significant", "a lot of weight", "substantial", "noticeable", "yes significant", "quite a bit"], value: "significant" },
+    ],
+  };
+  const qMap = maps[questionId];
+  if (qMap) {
+    for (const entry of qMap) {
+      if (entry.keys.some(k => t.includes(k))) {
+        const opt = options?.find(o => o.value === entry.value);
+        return { value: entry.value, display: opt?.label ?? entry.value };
+      }
+    }
+  }
+  // Simple yes/no fallback for smokingStatus
+  if (questionId === "smokingStatus" && /\bno\b/.test(t)) return { value: "never", display: "Never smoked" };
+  if (questionId === "alcoholUse" && /\bno\b/.test(t)) return { value: "none", display: "None" };
+  if (questionId === "weightLoss" && /\bno\b/.test(t)) return { value: "no", display: "No" };
+  // Fuzzy match option labels
+  for (const opt of (options || [])) {
+    const lv = opt.label.toLowerCase();
+    if (t.includes(lv) || (opt.value && t.includes(opt.value.toLowerCase()))) {
+      return { value: opt.value, display: opt.label };
+    }
+  }
+  return null;
+}
+
+function parseMultiSelect(questionId, t, options) {
+  if (/\b(none|nothing|no conditions|no medications|no blood thinners|neither|negative|i don't have any|i don't take any|none of those|no i don't)\b/.test(t)) {
+    return { value: [], display: "None" };
+  }
+  const multiMaps = {
+    cardiac: [
+      { keys: ["heart failure", "chf", "congestive heart"], value: "Heart failure" },
+      { keys: ["coronary artery", "cad", "coronary disease", "heart attack", "ischemic heart"], value: "Coronary artery disease" },
+      { keys: ["atrial fibrillation", "afib", "a-fib", " af,", "af ", "irregular heart"], value: "Atrial fibrillation (AF)" },
+      { keys: ["hypertension", "high blood pressure", "uncontrolled blood pressure"], value: "Hypertension (uncontrolled, DBP>110)" },
+      { keys: ["recent heart attack", "recent mi", "stent recently", "heart attack recently", "mi recently", "stent placed"], value: "Recent MI/stent (<6 months)" },
+      { keys: ["valve disease", "valve replacement", "valve repair", "aortic valve", "mitral valve"], value: "Valve disease" },
+    ],
+    respiratory: [
+      { keys: ["asthma"], value: "Asthma" },
+      { keys: ["copd", "emphysema", "chronic lung disease", "chronic obstructive", "chronic bronchitis"], value: "COPD/Emphysema" },
+      { keys: ["sleep apnea", "osa", "cpap", "obstructive sleep", "apnea"], value: "Obstructive sleep apnea (diagnosed)" },
+    ],
+    endocrine: [
+      { keys: ["type 1 diabetes", "type one diabetes", "juvenile diabetes", "insulin dependent diabetes"], value: "Type 1 Diabetes" },
+      { keys: ["type 2 diabetes", "type two diabetes", "diabetes type 2", "diabetic", "adult diabetes"], value: "Type 2 Diabetes" },
+      { keys: ["obesity", "obese", "morbid obesity", "bmi over 35", "bmi above 35"], value: "Obesity (BMI≥35)" },
+      { keys: ["thyroid", "hypothyroid", "hyperthyroid", "thyroid disease", "thyroid condition"], value: "Thyroid disease" },
+    ],
+    anticoag: [
+      { keys: ["aspirin", "baby aspirin"], value: "Aspirin" },
+      { keys: ["warfarin", "coumadin"], value: "Warfarin" },
+      { keys: ["apixaban", "eliquis"], value: "Apixaban" },
+      { keys: ["rivaroxaban", "xarelto"], value: "Rivaroxaban" },
+      { keys: ["clopidogrel", "plavix"], value: "Clopidogrel" },
+      { keys: ["dabigatran", "pradaxa", "enoxaparin", "lovenox", "heparin shot", "ticagrelor", "brilinta", "other blood thinner", "other anticoagulant"], value: "Other anticoag" },
+    ],
+    diabetesMeds: [
+      { keys: ["glp-1", "ozempic", "wegovy", "mounjaro", "semaglutide", "tirzepatide", "liraglutide", "victoza", "dulaglutide", "trulicity", "rybelsus"], value: "GLP-1 RAs" },
+      { keys: ["sglt2", "jardiance", "farxiga", "invokana", "empagliflozin", "dapagliflozin", "canagliflozin"], value: "SGLT2 inhibitors" },
+      { keys: ["insulin"], value: "Insulin" },
+      { keys: ["metformin", "glucophage"], value: "Metformin" },
+      { keys: ["sulfonylurea", "glipizide", "glimepiride", "glyburide", "januvia", "sitagliptin", "dpp-4", "other diabetes med", "other medication for diabetes"], value: "Other diabetes med" },
+    ],
+  };
+  const map = multiMaps[questionId] || [];
+  const matched = [];
+  for (const entry of map) {
+    if (entry.keys.some(k => t.includes(k))) {
+      if (!matched.includes(entry.value)) matched.push(entry.value);
+    }
+  }
+  if (matched.length > 0) {
+    const labels = matched.map(v => options?.find(o => o.value === v)?.label ?? v);
+    return { value: matched, display: labels.join(", ") };
+  }
+  return null;
+}
+
+function parseVoiceAnswer(questionId, questionType, options, transcript, voiceData) {
+  const t = transcript.toLowerCase().trim();
+  if (questionType === "text") {
+    return { value: transcript.trim(), display: transcript.trim() };
+  }
+  if (questionType === "number") {
+    const n = parseWordNumber(t);
+    if (n && n > 0 && n < 130) return { value: String(n), display: String(n) };
+    return null;
+  }
+  if (questionType === "heightWeight") {
+    const { height, weight } = parseHeightWeight(t);
+    if (height && weight) {
+      const ft = Math.floor(parseInt(height) / 12);
+      const ins = parseInt(height) % 12;
+      return { height, weight, display: `${ft}'${ins}" / ${weight} lbs` };
+    }
+    return null;
+  }
+  if (questionType === "quickReply") {
+    return parseQuickReply(questionId, t, options);
+  }
+  if (questionType === "multiSelect") {
+    return parseMultiSelect(questionId, t, options);
+  }
+  if (questionType === "confirm") {
+    if (/\b(yes|correct|confirm|good|right|looks good|sounds right|go ahead|generate|proceed)\b/.test(t)) {
+      return { value: "go", display: "Confirmed" };
+    }
+    return null;
+  }
+  return null;
+}
+
+function buildReadBackText(d) {
+  const smokingLabels = { never: "never smoked", current: "current smoker", former_lt8: "former smoker" };
+  const alcoholLabels = { none: "none", light: "1 to 2 drinks a day", moderate: "3 to 4 drinks a day", heavy: "5 or more drinks a day" };
+  const exerciseLabels = { sedentary: "mostly sedentary", light: "light activity", moderate: "moderate exercise", active: "very active" };
+  const hgbLabels = { "": "not known", "9.5": "below 10", "11.0": "10 to 12", "13.0": "12 or above" };
+  const weeksLabels = { "1": "less than 2 weeks", "3": "2 to 4 weeks", "6": "4 to 8 weeks", "10": "8 or more weeks" };
+  const proteinLabels = { low: "very little", moderate: "moderate", high: "high, protein at every meal" };
+  const weightLossLabels = { no: "no", mild: "yes, a little", significant: "yes, significant" };
+  const cleanLabel = (str) => str.replace(" (uncontrolled, DBP>110)", "").replace(" (AF)", "").replace(" (<6 months)", "").replace(" (BMI≥35)", "").replace("/Emphysema", " or emphysema").replace(" (diagnosed)", "");
+  const cardiac = d.cardiac?.length ? d.cardiac.map(cleanLabel).join(", ") : "none noted";
+  const respiratory = d.respiratory?.length ? d.respiratory.map(cleanLabel).join(", ") : "none noted";
+  const endocrine = d.endocrine?.length ? d.endocrine.map(cleanLabel).join(", ") : "none noted";
+  const anticoag = d.anticoag?.length ? d.anticoag.join(", ") : "none";
+  const parts = [];
+  parts.push(`Your name is ${d.firstName || "not provided"}.`);
+  if (d.age) parts.push(`You are ${d.age} years old.`);
+  if (d.sex) parts.push(`Biological sex: ${d.sex}.`);
+  if (d.height && d.weight) {
+    const ft = Math.floor(parseInt(d.height) / 12);
+    const ins = parseInt(d.height) % 12;
+    parts.push(`Height: ${ft} feet ${ins} inches. Weight: ${d.weight} pounds.`);
+  }
+  if (d.surgeryType) parts.push(`Surgery: ${d.surgeryType}.`);
+  if (d.weeksUntil) parts.push(`Time until surgery: ${weeksLabels[d.weeksUntil] || d.weeksUntil}.`);
+  parts.push(`Heart conditions: ${cardiac}.`);
+  parts.push(`Lung conditions: ${respiratory}.`);
+  parts.push(`Metabolic conditions: ${endocrine}.`);
+  if (d.anticoag !== undefined) parts.push(`Blood thinners: ${anticoag}.`);
+  if (d.hemoglobin !== undefined) parts.push(`Hemoglobin level: ${hgbLabels[d.hemoglobin] ?? "not provided"}.`);
+  if (d.smokingStatus) parts.push(`Smoking: ${smokingLabels[d.smokingStatus] ?? d.smokingStatus}.`);
+  if (d.alcoholUse) parts.push(`Alcohol: ${alcoholLabels[d.alcoholUse] ?? d.alcoholUse}.`);
+  if (d.exerciseLevel) parts.push(`Exercise: ${exerciseLabels[d.exerciseLevel] ?? d.exerciseLevel}.`);
+  if (d.proteinLevel) parts.push(`Protein: ${proteinLabels[d.proteinLevel] ?? d.proteinLevel}.`);
+  if (d.weightLoss) parts.push(`Unintentional weight loss: ${weightLossLabels[d.weightLoss] ?? d.weightLoss}.`);
+  return `Here is what I have for you. ${parts.join(" ")} Does everything sound accurate? Say yes to confirm, or say change followed by the item you would like to update.`;
+}
+
+function FallbackTextInput({ q, onAnswer }) {
+  const [val, setVal] = useState("");
+  const [ft, setFt] = useState("");
+  const [ins, setIns] = useState("");
+  const [lbs, setLbs] = useState("");
+  const [sel, setSel] = useState([]);
+
+  if (!q) return null;
+
+  if (q.type === "heightWeight") {
+    const ftNum = parseInt(ft), insNum = parseInt(ins) || 0, lbsNum = parseInt(lbs);
+    const ready = ftNum > 0 && lbsNum > 0;
+    return (
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap" }}>
+        <input type="number" placeholder="ft" value={ft} onChange={e => setFt(e.target.value)} style={{ width: 46, padding: "8px 6px", borderRadius: 8, border: `1.5px solid ${SR.border}`, fontSize: 13, fontFamily: SR.font, textAlign: "center", color: SR.text, outline: "none" }} />
+        <input type="number" placeholder="in" value={ins} onChange={e => setIns(e.target.value)} style={{ width: 46, padding: "8px 6px", borderRadius: 8, border: `1.5px solid ${SR.border}`, fontSize: 13, fontFamily: SR.font, textAlign: "center", color: SR.text, outline: "none" }} />
+        <input type="number" placeholder="lbs" value={lbs} onChange={e => setLbs(e.target.value)} style={{ width: 70, padding: "8px 8px", borderRadius: 8, border: `1.5px solid ${SR.border}`, fontSize: 13, fontFamily: SR.font, color: SR.text, outline: "none" }} />
+        <button disabled={!ready} onClick={() => { const h = String(ftNum * 12 + insNum); onAnswer({ height: h, weight: lbs, display: `${ftNum}'${insNum}" / ${lbs} lbs` }); }} style={{ padding: "8px 14px", borderRadius: 8, border: "none", background: ready ? SR.teal : SR.borderLight, color: ready ? SR.white : SR.muted, fontSize: 12, fontWeight: 600, cursor: ready ? "pointer" : "not-allowed", fontFamily: SR.font }}>OK</button>
+      </div>
+    );
+  }
+
+  if (q.type === "quickReply") {
+    return (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+        {q.options.map(opt => (
+          <button key={opt.value} onClick={() => onAnswer({ value: opt.value, display: opt.label })} style={{ padding: "7px 14px", borderRadius: "20px", border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>{opt.label}</button>
+        ))}
+      </div>
+    );
+  }
+
+  if (q.type === "multiSelect") {
+    const handleToggle = (opt) => {
+      if (opt.exclusive) { setSel(sel.includes(opt.value) ? [] : [opt.value]); return; }
+      setSel(prev => {
+        const without = prev.filter(v => v !== "none");
+        return prev.includes(opt.value) ? without.filter(v => v !== opt.value) : [...without, opt.value];
+      });
+    };
+    return (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "8px" }}>
+          {q.options.map(opt => {
+            const selected = sel.includes(opt.value);
+            return (
+              <button key={opt.value} onClick={() => handleToggle(opt)} style={{ padding: "6px 12px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", fontFamily: SR.font, border: `1.5px solid ${selected ? SR.teal : SR.border}`, background: selected ? SR.tealLight : SR.white, color: selected ? SR.teal : SR.textSecondary, fontWeight: selected ? 600 : 400 }}>{opt.label}</button>
+            );
+          })}
+        </div>
+        <button onClick={() => {
+          const isNone = sel.includes("none") || sel.length === 0;
+          const values = isNone ? [] : sel;
+          const display = isNone ? "None" : sel.map(v => q.options.find(o => o.value === v)?.label ?? v).join(", ");
+          onAnswer({ value: values, display });
+        }} style={{ padding: "7px 18px", borderRadius: "8px", border: "none", background: SR.teal, color: SR.white, fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>Confirm</button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: "8px" }}>
+      <input
+        type={q.type === "number" ? "number" : "text"}
+        placeholder={q.placeholder || "Type your answer..."}
+        value={val}
+        onChange={e => setVal(e.target.value)}
+        onKeyDown={e => { if (e.key === "Enter" && val.trim()) onAnswer({ value: val.trim(), display: val.trim() }); }}
+        style={{ flex: 1, padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${SR.border}`, fontSize: 13, fontFamily: SR.font, color: SR.text, outline: "none" }}
+      />
+      <button disabled={!val.trim()} onClick={() => onAnswer({ value: val.trim(), display: val.trim() })} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: val.trim() ? SR.teal : SR.borderLight, color: val.trim() ? SR.white : SR.muted, fontSize: 12, fontWeight: 600, cursor: val.trim() ? "pointer" : "not-allowed", fontFamily: SR.font }}>OK</button>
+    </div>
+  );
+}
+
+function VoiceIntake({ update, onComplete, onBack }) {
+  const [phase, setPhase] = useState("intro");
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState("");
+  const [pendingAnswer, setPendingAnswer] = useState(null);
+  const [parseError, setParseError] = useState(false);
+  const phaseRef = useRef("intro");
+  const voiceDataRef = useRef({});
+  const recognizerRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const supported = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
+
+  const setPhaseSync = (p) => { phaseRef.current = p; setPhase(p); };
+
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.id = "sr-voice-kf";
+    style.textContent = `
+      @keyframes srVoicePulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.18);opacity:1}}
+      @keyframes srWave1{0%,100%{height:6px}50%{height:22px}}
+      @keyframes srWave2{0%,100%{height:12px}50%{height:30px}}
+      @keyframes srWave3{0%,100%{height:4px}50%{height:18px}}
+      @keyframes srWave4{0%,100%{height:16px}50%{height:34px}}
+      @keyframes srWave5{0%,100%{height:8px}50%{height:26px}}
+      @keyframes srSpeakPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+      @keyframes srFadeSlide{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    `;
+    if (!document.getElementById("sr-voice-kf")) document.head.appendChild(style);
+    return () => {
+      document.getElementById("sr-voice-kf")?.remove();
+      cancelCurrentAudio();
+      recognizerRef.current?.stop?.();
+      clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const startListening = (onResult) => {
+    recognizerRef.current?.stop?.();
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      setIsListening(true);
+      setLiveTranscript("");
+      setParseError(false);
+
+      // Silence detection via Web Audio API
+      const audioCtx = new AudioContext();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512;
+      source.connect(analyser);
+
+      const chunks = [];
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4";
+      const rec = new MediaRecorder(stream, { mimeType });
+      rec.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+      rec.onstop = () => {
+        audioCtx.close();
+        stream.getTracks().forEach(t => t.stop());
+        setIsListening(false);
+        if (chunks.length === 0) return;
+        const blob = new Blob(chunks, { type: mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = reader.result.split(",")[1];
+          fetch("/api/transcribe", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ audio: base64, type: mimeType }),
+          })
+            .then(r => r.json())
+            .then(({ text }) => { if (text?.trim()) onResult(text.trim()); })
+            .catch(() => {}); // Network error — user can use text fallback
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      rec.start(100);
+      recognizerRef.current = { stop: () => { if (rec.state === "recording") rec.stop(); } };
+
+      // Auto-stop on 1.5s of silence after user first speaks
+      const buf = new Float32Array(analyser.fftSize);
+      let hasSpoken = false, silenceTimer = null;
+      const checkSilence = () => {
+        if (rec.state !== "recording") return;
+        analyser.getFloatTimeDomainData(buf);
+        const rms = Math.sqrt(buf.reduce((s, v) => s + v * v, 0) / buf.length);
+        if (rms > 0.01) {
+          hasSpoken = true;
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        } else if (hasSpoken && !silenceTimer) {
+          silenceTimer = setTimeout(() => recognizerRef.current?.stop(), 1500);
+        }
+        requestAnimationFrame(checkSilence);
+      };
+      setTimeout(() => requestAnimationFrame(checkSilence), 300);
+
+      // Hard cap: 12 seconds per answer
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => recognizerRef.current?.stop(), 12000);
+    }).catch(() => setIsListening(false));
+  };
+
+  const findNextQIdx = (fromIdx, d) => {
+    for (let i = fromIdx + 1; i < CHAT_QUESTIONS.length; i++) {
+      const q = CHAT_QUESTIONS[i];
+      if (q.id === "complete") continue;
+      if (!q.condition || q.condition(d)) return i;
+    }
+    return -1;
+  };
+
+  const handleConfirm = () => {
+    const cd = voiceDataRef.current;
+    if (!cd.riskCategory) cd.riskCategory = "elevated";
+    if (!cd.duration) cd.duration = "medium";
+    if (!cd.eras) cd.eras = "no";
+    if (!cd.bloodLoss) cd.bloodLoss = "moderate";
+    if (!cd.eatingPattern) cd.eatingPattern = "regular";
+    if (!cd.other) cd.other = [];
+    if (!cd.otherMeds) cd.otherMeds = [];
+    if (!cd.cardioMeds) cd.cardioMeds = [];
+    if (!cd.painMeds) cd.painMeds = [];
+    if (!cd.surgeryTags) cd.surgeryTags = [];
+    if (!cd.diabetesMeds) cd.diabetesMeds = [];
+    Object.entries(cd).forEach(([k, v]) => update(k, v));
+    onComplete({ ...cd });
+  };
+
+  const advanceFromQ = (qIdx) => {
+    if (phaseRef.current === "correction") {
+      setPhaseSync("readback");
+      beginReadBack();
+      return;
+    }
+    const next = findNextQIdx(qIdx, voiceDataRef.current);
+    if (next === -1) { beginReadBack(); }
+    else { setCurrentQIdx(next); askQuestion(next); }
+  };
+
+  const listenForAnswer = (qIdx) => {
+    const q = CHAT_QUESTIONS[qIdx];
+    startListening((transcript) => {
+      if (/\b(repeat|say that again|what did you say|pardon|come again|say again)\b/i.test(transcript)) {
+        askQuestion(qIdx); return;
+      }
+      const parsed = parseVoiceAnswer(q.id, q.type, q.options, transcript, voiceDataRef.current);
+      if (!parsed) {
+        setParseError(true);
+        setIsSpeaking(true);
+        speakText("Sorry, I didn't catch that. Let me ask again.", () => {
+          setIsSpeaking(false); setParseError(false); askQuestion(qIdx);
+        });
+        return;
+      }
+      if (q.type === "heightWeight") {
+        voiceDataRef.current = { ...voiceDataRef.current, height: parsed.height, weight: parsed.weight };
+        update("height", parsed.height); update("weight", parsed.weight);
+      } else if (q.field) {
+        if (q.id === "firstName") {
+          const demoKey = (parsed.value || "").toLowerCase();
+          const demo = DEMO_PATIENTS[demoKey];
+          if (demo) {
+            Object.entries(demo).forEach(([k, v]) => { update(k, v); voiceDataRef.current[k] = v; });
+            setPendingAnswer({ display: `Demo profile loaded for ${demo.firstName}` });
+            setIsSpeaking(true);
+            speakText(`I've loaded a demo profile for ${demo.firstName}. ${buildReadBackText(voiceDataRef.current)}`, () => {
+              setIsSpeaking(false); setPhaseSync("readback"); listenForConfirmation();
+            });
+            return;
+          }
+        }
+        voiceDataRef.current = { ...voiceDataRef.current, [q.field]: parsed.value };
+        update(q.field, parsed.value);
+      }
+      setPendingAnswer({ display: parsed.display });
+      const confirmMsg = (q.type === "multiSelect" && Array.isArray(parsed.value) && parsed.value.length === 0)
+        ? "Got it, none noted."
+        : `I heard: ${parsed.display}.`;
+      setIsSpeaking(true);
+      speakText(confirmMsg, () => {
+        setIsSpeaking(false);
+        clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => advanceFromQ(qIdx), 200);
+      });
+    });
+  };
+
+  const askQuestion = (qIdx) => {
+    const q = CHAT_QUESTIONS[qIdx];
+    const text = typeof q.ask === "function" ? q.ask(voiceDataRef.current) : q.ask;
+    const typeHints = {
+      heightWeight: " Please say your height and weight, for example: five feet ten, one hundred eighty pounds.",
+      multiSelect: " Please name all that apply, or say none.",
+    };
+    const hint = typeHints[q.type] || "";
+    setIsSpeaking(true);
+    setLiveTranscript("");
+    setPendingAnswer(null);
+    setParseError(false);
+    speakText(text + hint, () => { setIsSpeaking(false); listenForAnswer(qIdx); });
+  };
+
+  const beginReadBack = () => {
+    setPhaseSync("readback");
+    setIsSpeaking(true);
+    speakText(buildReadBackText(voiceDataRef.current), () => {
+      setIsSpeaking(false); listenForConfirmation();
+    });
+  };
+
+  const listenForConfirmation = () => {
+    startListening((transcript) => {
+      const t = transcript.toLowerCase();
+      if (/\b(yes|confirm|correct|looks good|sounds good|that.s right|go ahead|generate|proceed|all good)\b/.test(t)) {
+        setPhaseSync("done"); handleConfirm();
+      } else if (/\bchange\b/.test(t)) {
+        handleCorrectionRequest(t);
+      } else {
+        setIsSpeaking(true);
+        speakText("Say yes to confirm, or say change followed by what you would like to update.", () => {
+          setIsSpeaking(false); listenForConfirmation();
+        });
+      }
+    });
+  };
+
+  const handleCorrectionRequest = (t) => {
+    const correctionMap = [
+      { keys: ["name", "first name", "my name"], id: "firstName" },
+      { keys: ["age", "how old"], id: "age" },
+      { keys: ["sex", "gender", "biological sex"], id: "sex" },
+      { keys: ["height", "weight", "height and weight"], id: "heightWeight" },
+      { keys: ["surgery", "operation", "procedure", "type of surgery"], id: "surgeryType" },
+      { keys: ["weeks", "time", "when", "timeline", "how soon"], id: "weeksUntil" },
+      { keys: ["heart", "cardiac", "heart condition"], id: "cardiac" },
+      { keys: ["lung", "breathing", "respiratory", "lung condition"], id: "respiratory" },
+      { keys: ["metabolic", "hormone", "diabetes", "endocrine"], id: "endocrine" },
+      { keys: ["blood thinner", "anticoagulant", "thinner", "blood thinners"], id: "anticoag" },
+      { keys: ["diabetes medication", "diabetes med", "glp", "sglt", "metformin", "insulin for diabetes"], id: "diabetesMeds" },
+      { keys: ["hemoglobin", "blood count", "hgb", "anemia"], id: "hemoglobin" },
+      { keys: ["smoking", "tobacco", "smoke", "cigarette"], id: "smokingStatus" },
+      { keys: ["alcohol", "drinking", "drinks"], id: "alcoholUse" },
+      { keys: ["exercise", "activity", "active", "fitness"], id: "exerciseLevel" },
+      { keys: ["protein", "diet", "nutrition"], id: "proteinLevel" },
+      { keys: ["weight loss", "lost weight", "weight change"], id: "weightLoss" },
+    ];
+    let targetId = null;
+    for (const entry of correctionMap) {
+      if (entry.keys.some(k => t.includes(k))) { targetId = entry.id; break; }
+    }
+    if (!targetId) {
+      setIsSpeaking(true);
+      speakText("I'm not sure which item you'd like to change. You can say, for example: change my surgery, change my age, or change my heart conditions.", () => {
+        setIsSpeaking(false); listenForConfirmation();
+      });
+      return;
+    }
+    const qIdx = CHAT_QUESTIONS.findIndex(q => q.id === targetId);
+    if (qIdx === -1) { beginReadBack(); return; }
+    setPhaseSync("correction");
+    setIsSpeaking(true);
+    speakText("Sure, let me re-ask that.", () => {
+      setIsSpeaking(false); setCurrentQIdx(qIdx); askQuestion(qIdx);
+    });
+  };
+
+  const stopAndBack = () => {
+    cancelCurrentAudio();
+    recognizerRef.current?.stop?.();
+    clearTimeout(timerRef.current);
+    onBack();
+  };
+
+  const beginInterview = () => {
+    // Unlock AudioContext on user gesture (required for iOS Safari autoplay)
+    try { const ctx = new AudioContext(); ctx.resume().then(() => ctx.close()); } catch (_) {}
+    setPhaseSync("questions");
+    setCurrentQIdx(0);
+    askQuestion(0);
+  };
+
+  const VoiceHeader = ({ subtitle }) => (
+    <div style={{ background: SR.navy, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ width: 28, height: 28, borderRadius: "50%", background: SR.teal, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "10px", fontWeight: 700, color: SR.white }}>SR</div>
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: SR.white }}>Voice Interview</div>
+          {subtitle && <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.5)" }}>{subtitle}</div>}
+        </div>
+      </div>
+      <button onClick={stopAndBack} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.65)", fontSize: "12px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font, display: "flex", alignItems: "center", gap: "4px" }}>
+        Switch to Chat
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+    </div>
+  );
+
+  if (!supported) {
+    return (
+      <div style={{ background: SR.white, borderRadius: "14px", padding: "32px 24px", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, fontFamily: SR.font, textAlign: "center" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", background: SR.lightOrange, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="9" y="2" width="6" height="11" rx="3" fill={SR.warning}/><path d="M5 10a7 7 0 0 0 14 0" stroke={SR.warning} strokeWidth="2" strokeLinecap="round"/><line x1="12" y1="17" x2="12" y2="21" stroke={SR.warning} strokeWidth="2" strokeLinecap="round"/></svg>
+        </div>
+        <div style={{ fontSize: "15px", fontWeight: 600, color: SR.navy, marginBottom: "8px" }}>Voice intake requires Chrome or Edge</div>
+        <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.6, marginBottom: "20px" }}>Your current browser doesn't support the Web Speech API. Please switch to the chat intake instead.</div>
+        <button onClick={stopAndBack} style={{ padding: "10px 24px", borderRadius: "10px", border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>Switch to Chat</button>
+      </div>
+    );
+  }
+
+  if (phase === "intro") {
+    return (
+      <div style={{ background: SR.white, borderRadius: "14px", overflow: "hidden", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, fontFamily: SR.font }}>
+        <VoiceHeader subtitle="Speak with your pre-op nurse assistant" />
+        <div style={{ padding: "48px 32px", textAlign: "center" }}>
+          <div style={{ position: "relative", width: 80, height: 80, margin: "0 auto 28px" }}>
+            <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: SR.tealLight, animation: "srVoicePulse 2s ease infinite" }} />
+            <div style={{ position: "relative", width: 80, height: 80, borderRadius: "50%", background: `linear-gradient(135deg, ${SR.teal} 0%, ${SR.tealDark} 100%)`, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                <rect x="9" y="2" width="6" height="11" rx="3" fill="white"/>
+                <path d="M5 10a7 7 0 0 0 14 0" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <line x1="12" y1="17" x2="12" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="8" y1="21" x2="16" y2="21" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: "0 0 10px" }}>Voice Interview</h2>
+          <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 auto 8px", maxWidth: "380px" }}>Your pre-op assistant will guide you through a brief interview — about 3 minutes. Answer by speaking naturally.</p>
+          <p style={{ fontSize: "12px", color: SR.muted, lineHeight: 1.6, margin: "0 auto 32px", maxWidth: "340px" }}>Say "repeat" at any time to hear a question again. Text fallback available below each question.</p>
+          <button onClick={beginInterview} style={{ padding: "14px 44px", borderRadius: "12px", border: "none", background: `linear-gradient(135deg, ${SR.teal} 0%, ${SR.tealDark} 100%)`, color: SR.white, fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font, boxShadow: "0 4px 14px rgba(13,124,102,0.35)" }}>Begin Voice Interview</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "questions" || phase === "correction") {
+    const q = CHAT_QUESTIONS[currentQIdx];
+    const qText = q ? (typeof q.ask === "function" ? q.ask(voiceDataRef.current) : q.ask) : "";
+    const answeredCount = CHAT_QUESTIONS.slice(0, currentQIdx).filter(qi => qi.id !== "complete" && (!qi.condition || qi.condition(voiceDataRef.current))).length;
+    const totalQ = CHAT_QUESTIONS.filter(qi => qi.id !== "complete" && (!qi.condition || qi.condition(voiceDataRef.current))).length;
+    const pct = totalQ > 0 ? Math.round((answeredCount / totalQ) * 100) : 0;
+    return (
+      <div style={{ background: SR.white, borderRadius: "14px", overflow: "hidden", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, fontFamily: SR.font }}>
+        <VoiceHeader subtitle={phase === "correction" ? "Correcting answer" : `Question ${answeredCount + 1} of ${totalQ}`} />
+        <div style={{ height: 3, background: SR.borderLight }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: SR.teal, transition: "width 0.5s ease" }} />
+        </div>
+        <div style={{ padding: "24px 24px 20px", animation: "srFadeSlide 0.3s ease" }}>
+          <div style={{ fontSize: "16px", fontWeight: 600, color: SR.navy, lineHeight: 1.55, marginBottom: "20px" }}>{qText}</div>
+
+          {isSpeaking && !isListening && (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", padding: "10px 14px", background: SR.bg, borderRadius: "10px" }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: SR.navy, display: "flex", alignItems: "center", justifyContent: "center", animation: "srSpeakPulse 1.5s ease infinite", flexShrink: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill="white"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <span style={{ fontSize: "12px", color: SR.muted }}>Reading question aloud...</span>
+            </div>
+          )}
+
+          {isListening && (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", padding: "12px 16px", background: SR.tealLight, borderRadius: "10px", border: `1px solid ${SR.teal}30` }}>
+              <div style={{ display: "flex", gap: "3px", alignItems: "center", height: 36, flexShrink: 0 }}>
+                {["srWave1","srWave2","srWave3","srWave4","srWave5"].map((anim, i) => (
+                  <div key={i} style={{ width: 4, borderRadius: 2, background: SR.teal, animation: `${anim} 0.55s ease infinite`, animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </div>
+              <span style={{ fontSize: "12px", color: SR.teal, fontWeight: 600 }}>Listening...</span>
+            </div>
+          )}
+
+          {liveTranscript && (
+            <div style={{ fontSize: "13px", color: SR.textSecondary, padding: "10px 14px", background: SR.bg, borderRadius: "8px", marginBottom: "12px", lineHeight: 1.5, fontStyle: "italic" }}>
+              "{liveTranscript}"
+            </div>
+          )}
+
+          {pendingAnswer && !isListening && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 14px", borderRadius: "20px", background: SR.tealLight, border: `1px solid ${SR.teal}`, fontSize: "13px", color: SR.teal, fontWeight: 600, marginBottom: "8px" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke={SR.teal} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              {pendingAnswer.display}
+            </div>
+          )}
+
+          {parseError && (
+            <div style={{ fontSize: "12px", color: SR.danger, padding: "8px 12px", background: SR.dangerBg, borderRadius: "8px", marginBottom: "8px" }}>
+              Didn't catch that — listening again...
+            </div>
+          )}
+
+          <div style={{ marginTop: "18px", paddingTop: "14px", borderTop: `1px solid ${SR.borderLight}` }}>
+            <div style={{ fontSize: "11px", color: SR.muted, marginBottom: "8px", fontWeight: 500 }}>Prefer to type?</div>
+            <FallbackTextInput q={q} onAnswer={(parsed) => {
+              cancelCurrentAudio();
+              recognizerRef.current?.stop?.();
+              clearTimeout(timerRef.current);
+              if (q.type === "heightWeight") {
+                voiceDataRef.current = { ...voiceDataRef.current, height: parsed.height, weight: parsed.weight };
+                update("height", parsed.height); update("weight", parsed.weight);
+              } else if (q.field) {
+                voiceDataRef.current = { ...voiceDataRef.current, [q.field]: parsed.value };
+                update(q.field, parsed.value);
+              }
+              setPendingAnswer({ display: parsed.display });
+              setIsListening(false);
+              setIsSpeaking(false);
+              timerRef.current = setTimeout(() => advanceFromQ(currentQIdx), 700);
+            }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (phase === "readback") {
+    const d = voiceDataRef.current;
+    const weeksLabels = { "1": "< 2 weeks", "3": "2–4 weeks", "6": "4–8 weeks", "10": "8+ weeks" };
+    const hgbLabels = { "": "Not known", "9.5": "Below 10", "11.0": "10–11.9", "13.0": "12+" };
+    const smokingLabels = { never: "Never smoked", current: "Current smoker", former_lt8: "Former smoker" };
+    const alcoholLabels = { none: "None", light: "1–2/day", moderate: "3–4/day", heavy: "5+/day" };
+    const exerciseLabels = { sedentary: "Mostly sedentary", light: "Light activity", moderate: "Moderate", active: "Very active" };
+    const proteinLabels = { low: "Very little", moderate: "Moderate", high: "High (every meal)" };
+    const weightLossLabels = { no: "No", mild: "Yes, a little", significant: "Yes, significant" };
+    const cleanLabel = (str) => str.replace(" (uncontrolled, DBP>110)", "").replace(" (AF)", "").replace(" (<6 months)", "").replace(" (BMI≥35)", "").replace("/Emphysema", " / Emphysema").replace(" (diagnosed)", "");
+    const summaryRows = [
+      { label: "Name", value: d.firstName },
+      { label: "Age", value: d.age },
+      { label: "Sex", value: d.sex },
+      { label: "Height / Weight", value: d.height && d.weight ? `${Math.floor(parseInt(d.height)/12)}'${parseInt(d.height)%12}" / ${d.weight} lbs` : null },
+      { label: "Surgery", value: d.surgeryType },
+      { label: "Time until surgery", value: weeksLabels[d.weeksUntil] },
+      { label: "Heart conditions", value: d.cardiac?.length ? d.cardiac.map(cleanLabel).join(", ") : "None" },
+      { label: "Lung conditions", value: d.respiratory?.length ? d.respiratory.map(cleanLabel).join(", ") : "None" },
+      { label: "Metabolic conditions", value: d.endocrine?.length ? d.endocrine.map(cleanLabel).join(", ") : "None" },
+      { label: "Blood thinners", value: d.anticoag?.length ? d.anticoag.join(", ") : "None" },
+      { label: "Hemoglobin", value: hgbLabels[d.hemoglobin] },
+      { label: "Smoking", value: smokingLabels[d.smokingStatus] },
+      { label: "Alcohol", value: alcoholLabels[d.alcoholUse] },
+      { label: "Exercise", value: exerciseLabels[d.exerciseLevel] },
+      { label: "Protein intake", value: proteinLabels[d.proteinLevel] },
+      { label: "Weight loss", value: weightLossLabels[d.weightLoss] },
+    ].filter(r => r.value != null);
+    return (
+      <div style={{ background: SR.white, borderRadius: "14px", overflow: "hidden", border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, fontFamily: SR.font }}>
+        <VoiceHeader subtitle="Review your answers" />
+        {isSpeaking && (
+          <div style={{ padding: "8px 18px", background: SR.tealLight, display: "flex", alignItems: "center", gap: "8px", fontSize: "12px", color: SR.teal, fontWeight: 500 }}>
+            <div style={{ animation: "srSpeakPulse 1.5s ease infinite", display: "flex" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M11 5L6 9H2v6h4l5 4V5z" fill={SR.teal}/><path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
+            </div>
+            Reading your summary aloud...
+          </div>
+        )}
+        <div style={{ padding: "16px 24px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, marginBottom: "12px" }}>Here's what I have for you</div>
+          {summaryRows.map(({ label, value }) => (
+            <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "8px 0", borderBottom: `1px solid ${SR.borderLight}`, gap: "12px" }}>
+              <span style={{ color: SR.muted, fontSize: "12px", fontWeight: 500, flexShrink: 0 }}>{label}</span>
+              <span style={{ color: SR.text, fontSize: "13px", fontWeight: 600, textAlign: "right" }}>{value}</span>
+            </div>
+          ))}
+        </div>
+        {isListening && (
+          <div style={{ padding: "10px 24px", display: "flex", alignItems: "center", gap: "8px", background: SR.tealLight }}>
+            <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
+              {[0,1,2,3,4].map(i => <div key={i} style={{ width: 4, borderRadius: 2, background: SR.teal, animation: `srWave${i+1} 0.55s ease infinite`, animationDelay: `${i*0.1}s`, height: 16 }} />)}
+            </div>
+            <span style={{ fontSize: "12px", color: SR.teal, fontWeight: 600 }}>Listening — say "yes" to confirm or "change [item]"</span>
+          </div>
+        )}
+        {!isSpeaking && (
+          <div style={{ padding: "16px 24px", display: "flex", gap: "10px", borderTop: `1px solid ${SR.borderLight}` }}>
+            <button onClick={() => { setPhaseSync("done"); handleConfirm(); }} style={{ flex: 1, padding: "13px", borderRadius: "10px", border: "none", background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`, color: SR.white, fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font, boxShadow: "0 3px 12px rgba(27,58,92,0.25)" }}>
+              Confirm — Generate My Plan
+            </button>
+            <button onClick={() => { setPhaseSync("questions"); setCurrentQIdx(0); setPendingAnswer(null); setLiveTranscript(""); voiceDataRef.current = {}; askQuestion(0); }} style={{ padding: "13px 16px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>
+              Start Over
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════
    [PREOP-PAGE] — Pre-Operative Assessment Page
    ═══════════════════════════════════════════════════════════════ */
 function PreOpPage() {
@@ -6274,7 +7121,7 @@ function PreOpPage() {
             onViewPlan={() => setMode("view")}
             onTrackProgress={() => setMode("track")}
             onRefine={handleRefine}
-            fromChat={intakeMode === "chat"}
+            fromChat={intakeMode === "chat" || intakeMode === "voice"}
             session={session}
             onSignIn={() => setShowAuth(true)}
             onSignOut={handleSignOut}
@@ -6592,6 +7439,23 @@ function PreOpPage() {
                   Fill out the full form with all fields at once. Better for physicians or users with lab values ready.
                 </div>
               </button>
+              <button onClick={() => setIntakeMode("voice")} style={{
+                flex: 1, minWidth: "200px", padding: "20px", borderRadius: "12px",
+                border: `2px solid ${SR.border}`, background: SR.white,
+                cursor: "pointer", fontFamily: SR.font, textAlign: "left",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                    <rect x="9" y="2" width="6" height="11" rx="3" fill={SR.teal}/>
+                    <path d="M5 10a7 7 0 0 0 14 0" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <div style={{ fontSize: "15px", fontWeight: 700, color: SR.navy }}>Voice interview</div>
+                </div>
+                <div style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.5 }}>
+                  Answer questions by speaking. A voice assistant guides you through the interview and reads back your answers.
+                </div>
+              </button>
             </div>
           </div>
         )}
@@ -6601,6 +7465,14 @@ function PreOpPage() {
             update={update}
             onComplete={generate}
             onSwitchToForm={() => setIntakeMode("form")}
+          />
+        )}
+
+        {intakeMode === "voice" && (
+          <VoiceIntake
+            update={update}
+            onComplete={generate}
+            onBack={() => setIntakeMode("chat")}
           />
         )}
 
