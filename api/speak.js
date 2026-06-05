@@ -14,7 +14,7 @@ export default async function handler(req, res) {
       voice: 'nova',
       input: text,
       response_format: 'mp3',
-      speed: 0.95,
+      speed: 1.0,
     });
     const buffer = Buffer.from(await mp3.arrayBuffer());
     res.setHeader('Content-Type', 'audio/mpeg');

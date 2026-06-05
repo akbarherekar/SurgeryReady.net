@@ -6332,41 +6332,6 @@ function parseVoiceAnswer(questionId, questionType, options, transcript, voiceDa
   return null;
 }
 
-function buildAcknowledgment(q, parsed) {
-  if (q.type === "multiSelect" && Array.isArray(parsed.value) && parsed.value.length === 0) {
-    return "Got it, none noted.";
-  }
-  const acks = {
-    firstName: `Great, nice to meet you, ${parsed.value}.`,
-    age: "Got it.",
-    sex: "Got it.",
-    heightWeight: "Perfect.",
-    surgeryType: "Got it.",
-    weeksUntil: "Okay.",
-    cardiac: "Noted.",
-    rateControlled: "Okay.",
-    hfType: "Got it.",
-    cardiacEventMonths: "Noted.",
-    respiratory: "Got it.",
-    cpapAdherent: "Got it.",
-    endocrine: "Noted.",
-    hemoglobin: "Okay.",
-    ironDeficiency: "Got it.",
-    anticoag: "Got it.",
-    diabetesMeds: "Noted.",
-    a1cValue: "Noted.",
-    glp1GI: "Okay.",
-    smokingStatus: parsed.value === "never" ? "Good." : "Thanks for letting me know.",
-    cigPerDay: "Got it.",
-    alcoholUse: parsed.value === "none" ? "Perfect." : "Okay.",
-    bingeDrinking: "Okay.",
-    withdrawalHistory: "Thanks for sharing that.",
-    exerciseLevel: "Got it.",
-    proteinLevel: "Okay.",
-    weightLoss: "Got it.",
-  };
-  return acks[q.id] ?? "Got it.";
-}
 
 function buildReadBackText(d) {
   const smokingLabels = { never: "never smoked", current: "current smoker", former_lt8: "former smoker" };
@@ -6502,6 +6467,7 @@ function VoiceIntake({ update, onComplete, onBack }) {
   const voiceDataRef = useRef({});
   const recognizerRef = useRef(null);
   const timerRef = useRef(null);
+  const prefetchRef = useRef(null);
 
   const supported = !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder);
 
@@ -6526,6 +6492,7 @@ function VoiceIntake({ update, onComplete, onBack }) {
       cancelCurrentAudio();
       recognizerRef.current?.stop?.();
       clearTimeout(timerRef.current);
+      prefetchRef.current = null;
     };
   }, []);
 
@@ -6584,7 +6551,7 @@ function VoiceIntake({ update, onComplete, onBack }) {
           clearTimeout(silenceTimer);
           silenceTimer = null;
         } else if (hasSpoken && !silenceTimer) {
-          silenceTimer = setTimeout(() => recognizerRef.current?.stop(), 1500);
+          silenceTimer = setTimeout(() => recognizerRef.current?.stop(), 800);
         }
         requestAnimationFrame(checkSilence);
       };
@@ -6669,29 +6636,56 @@ function VoiceIntake({ update, onComplete, onBack }) {
         update(q.field, parsed.value);
       }
       setPendingAnswer({ display: parsed.display });
-      const confirmMsg = buildAcknowledgment(q, parsed);
-      setIsSpeaking(true);
-      speakText(confirmMsg, () => {
-        setIsSpeaking(false);
-        clearTimeout(timerRef.current);
-        timerRef.current = setTimeout(() => advanceFromQ(qIdx), 200);
-      });
+      // Prefetch next question's audio while user sees their answer on screen
+      const nextQIdx = findNextQIdx(qIdx, voiceDataRef.current);
+      if (nextQIdx !== -1) prefetchQuestion(nextQIdx);
+      clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => advanceFromQ(qIdx), 400);
     });
+  };
+
+  const typeHints = {
+    heightWeight: " Please say your height and weight, for example: five feet ten, one hundred eighty pounds.",
+    multiSelect: " Please name all that apply, or say none.",
+  };
+
+  const prefetchQuestion = (qIdx) => {
+    const q = CHAT_QUESTIONS[qIdx];
+    if (!q || q.type === "confirm") return;
+    const text = typeof q.ask === "function" ? q.ask(voiceDataRef.current) : q.ask;
+    const fullText = text + (typeHints[q.type] || "");
+    const urlPromise = fetch("/api/speak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: fullText }),
+    }).then(r => r.blob()).then(blob => URL.createObjectURL(blob)).catch(() => null);
+    prefetchRef.current = { qIdx, urlPromise };
   };
 
   const askQuestion = (qIdx) => {
     const q = CHAT_QUESTIONS[qIdx];
     const text = typeof q.ask === "function" ? q.ask(voiceDataRef.current) : q.ask;
-    const typeHints = {
-      heightWeight: " Please say your height and weight, for example: five feet ten, one hundred eighty pounds.",
-      multiSelect: " Please name all that apply, or say none.",
-    };
     const hint = typeHints[q.type] || "";
     setIsSpeaking(true);
     setLiveTranscript("");
     setPendingAnswer(null);
     setParseError(false);
-    speakText(text + hint, () => { setIsSpeaking(false); listenForAnswer(qIdx); });
+
+    const cached = prefetchRef.current;
+    if (cached?.qIdx === qIdx && cached.urlPromise) {
+      prefetchRef.current = null;
+      cached.urlPromise.then(url => {
+        if (!url) { speakText(text + hint, () => { setIsSpeaking(false); listenForAnswer(qIdx); }); return; }
+        const audio = new Audio(url);
+        audio.volume = 1.0;
+        _currentAudio = audio;
+        audio.onended = () => { _currentAudio = null; URL.revokeObjectURL(url); setIsSpeaking(false); listenForAnswer(qIdx); };
+        audio.onerror = () => { _currentAudio = null; URL.revokeObjectURL(url); setIsSpeaking(false); listenForAnswer(qIdx); };
+        audio.play().catch(() => { setIsSpeaking(false); listenForAnswer(qIdx); });
+      });
+    } else {
+      speakText(text + hint, () => { setIsSpeaking(false); listenForAnswer(qIdx); });
+    }
   };
 
   const beginReadBack = () => {
@@ -6762,6 +6756,7 @@ function VoiceIntake({ update, onComplete, onBack }) {
     cancelCurrentAudio();
     recognizerRef.current?.stop?.();
     clearTimeout(timerRef.current);
+    prefetchRef.current = null;
     onBack();
   };
 
