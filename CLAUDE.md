@@ -43,7 +43,7 @@ src/
     timeline.js         # Timeline phase/card generator (patient only)
   App.jsx               # All homepage sections + PreOpPage + algorithm (single file, ~7000 lines)
   main.jsx
-  supabaseClient.js     # Supabase auth + persistence
+  supabaseClient.js     # Supabase client (anon-code persistence via RPCs)
 public/
 docs/                   # These context docs live here
 CLAUDE.md               # ← you are here
@@ -133,7 +133,7 @@ See `docs/ALGORITHM.md` for full spec. Summary:
   - Expandable patient output cards with custom two-tone SVG domain icons
   - VO₂max modal
   - Personalized forward-looking timeline (`TimelineView.jsx` + `src/data/timeline.js`)
-  - Supabase auth + plan persistence (save/resume across sessions)
+  - Deidentified access-code persistence: save/resume via `SR-XXXX-XXXX-XXXX` codes (~59 bits entropy). SHA-256 hash of the code is the only server-side key — no accounts, no email, `firstName` never leaves the browser (kept in `localStorage` as `sr_first_name`, code as `sr_access_code`). All DB access goes through security-definer RPCs (`save_plan`, `load_plan`, `save_progress`, `delete_plan`) defined in `docs/SUPABASE_SETUP.sql`; anon clients have zero direct table access. Partial mid-form saves supported ("Save and continue later"); finishing or refining upserts the same row.
 - **Generation animation:** 10-second loading screen with progress bar (CSS `srProgress 10s`) and 5 motivational messages cycling every 2 seconds.
 - **Known constraint:** PDF export was removed due to JSX parsing error (template literal + embedded script tag). Do **not** reintroduce PDF generation using that pattern.
 - **InfoButton placement:** Must be inside their `Field` component as children, not outside — placing them outside creates layout gaps.

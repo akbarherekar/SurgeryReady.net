@@ -847,7 +847,7 @@ function SaveConsentModal({ open, onClose, onConfirm }) {
           <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>Save your plan</h2>
         </div>
         <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 0 20px" }}>
-          To save your plan and track progress across sessions, we will store your health information securely. This includes your medical history, medications, and surgery details.
+          To save your plan, we store your assessment answers and plan on our server with no name, email, or account attached. A random access code is the only key to your saved plan. Your first name stays on this device and is never sent to us.
         </p>
         <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", marginBottom: "16px" }}>
           <input
@@ -855,7 +855,7 @@ function SaveConsentModal({ open, onClose, onConfirm }) {
             style={{ marginTop: "2px", accentColor: SR.teal, width: "16px", height: "16px", flexShrink: 0, cursor: "pointer" }}
           />
           <span style={{ fontSize: "13px", color: SR.text, lineHeight: 1.6 }}>
-            I agree to let SurgeryReady store my health information to save and retrieve my plan.
+            I understand my plan is saved under an anonymous access code, and that SurgeryReady cannot recover my plan if I lose the code.
           </span>
         </label>
         <p style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.6, margin: "0 0 20px" }}>
@@ -878,7 +878,7 @@ function SaveConsentModal({ open, onClose, onConfirm }) {
             border: "none", fontSize: "14px", fontWeight: 600,
             cursor: checked ? "pointer" : "not-allowed", fontFamily: SR.font,
             transition: "background 0.2s, color 0.2s",
-          }}>Save plan</button>
+          }}>Save and get my code</button>
         </div>
       </div>
     </div>
@@ -910,21 +910,6 @@ const SR = {
 };
 
 // ─── PROGRESS TRACKING DATA LAYER ───
-const PLAN_HASH_KEYS = [
-  "age", "sex", "height", "weight", "weeksUntil", "surgeryType", "surgeryTags",
-  "riskCategory", "cardiac", "respiratory", "endocrine", "other",
-  "anticoag", "diabetesMeds", "painMeds", "cardioMeds",
-  "hemoglobin", "albumin", "dasiScore", "mets", "vo2Max",
-  "exerciseLevel", "smokingStatus", "alcoholUse", "tracksHRV",
-  "glp1GI", "proteinLevel", "userRole",
-];
-
-function planHash(data) {
-  const subset = {};
-  PLAN_HASH_KEYS.forEach(k => { if (data[k] !== undefined) subset[k] = data[k]; });
-  return btoa(JSON.stringify(subset)).slice(0, 40);
-}
-
 function recKey(rec) { return `${rec.domain}::${rec.title}`; }
 
 const VALUE_LOG_CONFIG = {
@@ -977,95 +962,136 @@ function getMotivationalMessage(pct) {
   return "You have completed your preparation plan. Well done.";
 }
 
-// ─── SUPABASE PERSISTENCE HELPERS ───
-async function savePlanToSupabase(userId, data, planOutput) {
-  if (!supabase) return null;
-  const hash = planHash(data);
-  // Check for existing plan with same hash
-  const { data: existing } = await supabase
-    .from("plans")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("plan_hash", hash)
-    .maybeSingle();
-  if (existing) return existing.id;
-  const { data: row, error } = await supabase
-    .from("plans")
-    .insert({ user_id: userId, plan_hash: hash, plan_data: data, plan_output: planOutput })
-    .select("id")
-    .single();
-  if (error) { console.error("savePlan:", error); return null; }
-  return row.id;
-}
+// ─── ACCESS CODE HELPERS ───
+// Crockford-style alphabet: no 0/O, 1/I/L, or U. 12 chars ≈ 58.9 bits of entropy.
+const CODE_ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+const CODE_LENGTH = 12;
+const ACCESS_CODE_KEY = "sr_access_code";
+const FIRST_NAME_KEY = "sr_first_name";
 
-async function saveProgressToSupabase(planId, progress) {
-  if (!supabase || !planId) return;
-  const entries = Object.entries(progress.items).map(([key, item]) => ({
-    plan_id: planId,
-    item_key: key,
-    completed: item.completed || false,
-    step_states: item.steps || {},
-    logged_values: item.loggedValues || [],
-  }));
-  for (const entry of entries) {
-    await supabase.from("progress").upsert(entry, { onConflict: "plan_id,item_key" });
+function generateAccessCode() {
+  const bytes = new Uint8Array(CODE_LENGTH * 2);
+  let chars = "";
+  let i = bytes.length;
+  while (chars.length < CODE_LENGTH) {
+    if (i >= bytes.length) { crypto.getRandomValues(bytes); i = 0; }
+    const b = bytes[i++];
+    if (b < 240) chars += CODE_ALPHABET[b % 30]; // rejection sampling: 240 = 8 * 30
   }
+  return `SR-${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}`;
 }
 
-async function loadLatestPlan(userId) {
-  if (!supabase) return null;
-  const { data: row, error } = await supabase
-    .from("plans")
-    .select("id, plan_data, plan_output, plan_hash")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (error || !row) return null;
-  // Load progress
-  const { data: progressRows } = await supabase
-    .from("progress")
-    .select("item_key, completed, step_states, logged_values")
-    .eq("plan_id", row.id);
-  const items = {};
-  (progressRows || []).forEach(p => {
-    items[p.item_key] = {
-      completed: p.completed,
-      steps: p.step_states || {},
-      loggedValues: p.logged_values || [],
-      completedAt: p.completed ? new Date().toISOString() : null,
-    };
+function normalizeCode(input) {
+  let s = (input || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (s.startsWith("SR")) s = s.slice(2);
+  return s;
+}
+
+function isValidCodeFormat(input) {
+  const s = normalizeCode(input);
+  return s.length === CODE_LENGTH && [...s].every(c => CODE_ALPHABET.includes(c));
+}
+
+async function hashCode(code) {
+  // Plaintext code never leaves the browser — only this hash is sent to the server.
+  // crypto.subtle requires a secure context (https or localhost).
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(normalizeCode(code)));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function stripIdentifiers(data) {
+  const { firstName, ...rest } = data || {};
+  return rest;
+}
+
+// ─── SUPABASE PERSISTENCE (RPC-only; deidentified, keyed by code hash) ───
+async function savePlanWithCode(codeHash, data, planOutput, currentStep, progress) {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("save_plan", {
+    p_code_hash: codeHash,
+    p_plan_data: stripIdentifiers(data),
+    p_plan_output: planOutput ?? null,
+    p_current_step: currentStep ?? null,
+    p_progress: progress ?? null,
   });
+  if (error) { console.error("savePlanWithCode:", error.message); return false; }
+  return true;
+}
+
+// Returns the saved plan, null when no plan exists for the code, or
+// { error: true } when the lookup itself failed (network/server) — callers
+// must not treat a failed lookup as "plan does not exist".
+async function loadPlanByCode(codeHash) {
+  if (!supabase) return null;
+  const { data: rows, error } = await supabase.rpc("load_plan", { p_code_hash: codeHash });
+  if (error) { console.error("loadPlanByCode:", error.message); return { error: true }; }
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0];
   return {
-    planId: row.id,
     data: row.plan_data,
     plan: row.plan_output,
-    hash: row.plan_hash,
-    progress: { items, createdAt: null, updatedAt: null },
+    currentStep: row.current_step,
+    progress: row.progress && row.progress.items ? row.progress : null,
   };
 }
 
-// ─── AUTH MODAL ───
-function AuthModal({ open, onClose, onAuthenticated }) {
-  const [email, setEmail] = useState("");
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState(null);
+async function saveProgressByCode(codeHash, progress) {
+  if (!supabase || !codeHash) return;
+  await supabase.rpc("save_progress", { p_code_hash: codeHash, p_progress: progress });
+}
 
-  if (!open) return null;
+async function deletePlanByCode(codeHash) {
+  if (!supabase || !codeHash) return;
+  await supabase.rpc("delete_plan", { p_code_hash: codeHash });
+}
 
-  const handleSend = async () => {
-    if (!email || !email.includes("@")) { setError("Please enter a valid email address."); return; }
-    if (!supabase) { setError("Authentication is not configured yet."); return; }
-    setSending(true);
-    setError(null);
-    const { error: authError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin + "/preop" },
+// ─── ACCESS CODE MODAL ───
+function AccessCodeModal({ open, code, partial, onClose }) {
+  const [copied, setCopied] = useState(false);
+  if (!open || !code) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
-    setSending(false);
-    if (authError) { setError(authError.message); return; }
-    setSent(true);
+  };
+
+  const handleDownload = () => {
+    const text = `SurgeryReady access code\n\n${code}\n\nUse this code at ${window.location.origin}/preop to return to your plan.\nKeep it somewhere safe — it cannot be recovered if lost.\n`;
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "surgeryready-access-code.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => {
+    const w = window.open("", "_blank", "width=600,height=400");
+    if (!w) return;
+    w.document.write(
+      '<html><head><title>SurgeryReady Access Code</title></head>' +
+      '<body style="font-family: sans-serif; padding: 40px;">' +
+      '<h2 style="margin: 0 0 8px;">SurgeryReady access code</h2>' +
+      '<p style="font-size: 28px; letter-spacing: 3px; font-family: monospace; margin: 16px 0;">' + code + '</p>' +
+      '<p>Use this code at ' + window.location.origin + '/preop to return to your plan.</p>' +
+      '<p><strong>Keep it somewhere safe — it cannot be recovered if lost.</strong></p>' +
+      '</body></html>'
+    );
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
+  const btnStyle = {
+    flex: 1, padding: "10px", borderRadius: "10px",
+    background: SR.white, color: SR.navy,
+    border: `1.5px solid ${SR.border}`, fontSize: "13px", fontWeight: 600,
+    cursor: "pointer", fontFamily: SR.font,
   };
 
   return (
@@ -1077,65 +1103,131 @@ function AuthModal({ open, onClose, onAuthenticated }) {
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         background: SR.white, borderRadius: "16px", padding: "36px 32px",
-        maxWidth: "420px", width: "100%", boxShadow: "0 8px 32px rgba(27,58,92,0.15)",
+        maxWidth: "440px", width: "100%", boxShadow: "0 8px 32px rgba(27,58,92,0.15)",
         fontFamily: SR.font,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
           <SRLogo size={32} />
-          <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>
-            {sent ? "Check your email" : "Save your progress"}
-          </h2>
+          <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>Your access code</h2>
         </div>
-
-        {sent ? (
-          <div>
-            <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, marginBottom: "20px" }}>
-              We sent a login link to <strong style={{ color: SR.navy }}>{email}</strong>. Click the link in your email to sign in and save your plan.
-            </p>
-            <button onClick={onClose} style={{
-              width: "100%", padding: "12px", borderRadius: "10px",
-              background: SR.navy, color: SR.white, border: "none",
-              fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Got it</button>
-          </div>
-        ) : (
-          <div>
-            <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, marginBottom: "20px" }}>
-              Enter your email to save your plan and track progress across visits. No password needed.
-            </p>
-            <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              onKeyDown={e => e.key === "Enter" && handleSend()}
-              placeholder="you@email.com"
-              style={{
-                width: "100%", padding: "12px 14px", borderRadius: "10px",
-                border: `1.5px solid ${SR.border}`, fontSize: "14px", fontFamily: SR.font,
-                outline: "none", boxSizing: "border-box", marginBottom: "12px",
-              }}
-              onFocus={e => { e.target.style.borderColor = SR.teal; }}
-              onBlur={e => { e.target.style.borderColor = SR.border; }}
-            />
-            {error && (
-              <p style={{ fontSize: "12px", color: SR.danger, margin: "0 0 10px", fontFamily: SR.font }}>{error}</p>
-            )}
-            <button onClick={handleSend} disabled={sending} style={{
-              width: "100%", padding: "12px", borderRadius: "10px",
-              background: SR.teal, color: SR.white, border: "none",
-              fontSize: "14px", fontWeight: 600, cursor: sending ? "not-allowed" : "pointer",
-              fontFamily: SR.font, opacity: sending ? 0.7 : 1,
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={e => { if (!sending) e.target.style.background = SR.tealDark; }}
-            onMouseLeave={e => { e.target.style.background = SR.teal; }}
-            >
-              {sending ? "Sending..." : "Send login link"}
-            </button>
-            <p style={{ fontSize: "11px", color: SR.muted, textAlign: "center", marginTop: "14px", lineHeight: 1.5 }}>
-              We will email you a secure link. No passwords, no spam.
-            </p>
-          </div>
-        )}
+        <p style={{ fontSize: "14px", color: SR.textSecondary, lineHeight: 1.7, margin: "0 0 16px" }}>
+          {partial
+            ? "Your answers so far are saved. Enter this code when you return to pick up where you left off."
+            : "Your plan is saved. Enter this code when you return to view it and track your progress."}
+        </p>
+        <div style={{
+          background: SR.tealLight, border: `1.5px solid ${SR.teal}`,
+          borderRadius: "12px", padding: "18px 16px", textAlign: "center",
+          fontSize: "22px", fontWeight: 700, letterSpacing: "3px",
+          color: SR.navy, fontFamily: "monospace", userSelect: "all",
+          marginBottom: "14px",
+        }}>{code}</div>
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <button onClick={handleCopy} style={btnStyle}>{copied ? "Copied" : "Copy code"}</button>
+          <button onClick={handleDownload} style={btnStyle}>Download</button>
+          <button onClick={handlePrint} style={btnStyle}>Print</button>
+        </div>
+        <div style={{
+          background: SR.dangerBg, border: `1px solid ${SR.danger}`,
+          borderRadius: "10px", padding: "12px 14px", marginBottom: "14px",
+        }}>
+          <p style={{ fontSize: "12.5px", color: SR.danger, lineHeight: 1.6, margin: 0, fontWeight: 600 }}>
+            This code is the only way to return to your plan. We do not collect your name or email, so we cannot recover it. If you lose the code, you will need to start over.
+          </p>
+        </div>
+        <p style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.6, margin: "0 0 16px" }}>
+          We also keep a copy of this code in this browser so you can resume without typing it. Use "Forget this device" on the resume screen if this is a shared computer.
+        </p>
+        <button onClick={onClose} style={{
+          width: "100%", padding: "12px", borderRadius: "10px",
+          background: SR.teal, color: SR.white, border: "none",
+          fontSize: "14px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
+        }}>I saved my code</button>
       </div>
+    </div>
+  );
+}
+
+// ─── RESUME WITH CODE ───
+function ResumeWithCodeCard({ onLoaded }) {
+  const [expanded, setExpanded] = useState(false);
+  const [input, setInput] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState(null);
+
+  if (!supabase) return null;
+
+  const handleResume = async () => {
+    if (!isValidCodeFormat(input)) {
+      setError("That code does not look right. Codes have 12 letters and numbers, like SR-XXXX-XXXX-XXXX.");
+      return;
+    }
+    setChecking(true);
+    setError(null);
+    const hash = await hashCode(input);
+    const result = await loadPlanByCode(hash);
+    setChecking(false);
+    if (result && result.error) {
+      setError("We could not reach the server. Check your connection and try again.");
+      return;
+    }
+    if (!result) {
+      setError("We could not find a plan for that code. Check for typos — codes never contain 0, O, 1, I, or L.");
+      return;
+    }
+    const s = normalizeCode(input);
+    onLoaded(`SR-${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8, 12)}`, hash, result);
+  };
+
+  return (
+    <div style={{
+      background: SR.white, borderRadius: "12px", padding: expanded ? "20px 24px" : "0",
+      border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, marginTop: "20px",
+      overflow: "hidden",
+    }}>
+      {!expanded ? (
+        <button onClick={() => setExpanded(true)} style={{
+          width: "100%", padding: "16px 24px", background: "none", border: "none",
+          cursor: "pointer", fontFamily: SR.font, display: "flex", alignItems: "center",
+          justifyContent: "space-between", gap: "10px",
+        }}>
+          <span style={{ fontSize: "13px", fontWeight: 600, color: SR.navy }}>
+            Returning? Resume with your access code
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </button>
+      ) : (
+        <div>
+          <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, fontFamily: SR.font, marginBottom: "10px" }}>
+            Resume with your access code
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <input
+              type="text" value={input}
+              onChange={e => { setInput(e.target.value.toUpperCase()); setError(null); }}
+              onKeyDown={e => e.key === "Enter" && handleResume()}
+              placeholder="SR-XXXX-XXXX-XXXX"
+              autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+              style={{
+                flex: 1, minWidth: "200px", padding: "11px 14px", borderRadius: "10px",
+                border: `1.5px solid ${error ? SR.danger : SR.border}`, fontSize: "14px",
+                fontFamily: "monospace", letterSpacing: "1.5px", outline: "none", boxSizing: "border-box",
+              }}
+              onFocus={e => { if (!error) e.target.style.borderColor = SR.teal; }}
+              onBlur={e => { if (!error) e.target.style.borderColor = SR.border; }}
+            />
+            <button onClick={handleResume} disabled={checking} style={{
+              padding: "11px 24px", borderRadius: "10px", border: "none",
+              background: SR.teal, color: SR.white, fontSize: "13px", fontWeight: 600,
+              cursor: checking ? "not-allowed" : "pointer", fontFamily: SR.font,
+              opacity: checking ? 0.7 : 1,
+            }}>{checking ? "Checking..." : "Resume"}</button>
+          </div>
+          {error && (
+            <p style={{ fontSize: "12px", color: SR.danger, margin: "10px 0 0", fontFamily: SR.font, lineHeight: 1.5 }}>{error}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -5218,7 +5310,7 @@ function ProgressDomainCard({ domain, recs, progress, onToggleStep, onToggleRec,
   );
 }
 
-function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLogValue, onViewPlan, onReset, session, onSignIn, onSignOut }) {
+function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLogValue, onViewPlan, onReset, saved, onSave, onShowCode }) {
   const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
 
   // Group recs by domain
@@ -5273,8 +5365,8 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
           />
         ))}
 
-        {/* Auth status */}
-        {!session ? (
+        {/* Save status */}
+        {!saved ? (
           <div style={{
             background: SR.white, borderRadius: "12px", padding: "16px 20px",
             border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
@@ -5284,12 +5376,12 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke={SR.teal} strokeWidth="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
             <div style={{ flex: 1, minWidth: "160px" }}>
               <div style={{ fontSize: "12px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Your progress is session-only</div>
-              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Sign in to save it across visits.</div>
+              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Save your plan to get a private access code. No email, no account.</div>
             </div>
-            <button onClick={onSignIn} style={{
+            <button onClick={onSave} style={{
               padding: "7px 16px", borderRadius: "8px", background: SR.teal, color: SR.white,
               border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Sign in</button>
+            }}>Save my plan</button>
           </div>
         ) : (
           <div style={{
@@ -5297,11 +5389,11 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
             gap: "8px", marginTop: "20px", fontSize: "12px", color: SR.muted, fontFamily: SR.font,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Progress saved • {session.user.email}
-            <button onClick={onSignOut} style={{
+            Plan saved • access code on this device
+            <button onClick={onShowCode} style={{
               background: "none", border: "none", color: SR.muted, fontSize: "11px",
               cursor: "pointer", fontFamily: SR.font, textDecoration: "underline", padding: 0,
-            }}>Sign out</button>
+            }}>View code</button>
           </div>
         )}
 
@@ -5313,7 +5405,7 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
   );
 }
 
-function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, onRefine, fromChat, session, onSignIn, onSignOut }) {
+function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, onRefine, fromChat, saved, onSave, onShowCode }) {
   const riskColor = { low: SR.success, elevated: SR.warning, high: SR.danger };
   const stats = progress ? computeProgress(progress, plan) : null;
   const hasProgress = stats && stats.done > 0;
@@ -5398,8 +5490,8 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, o
           </div>
         )}
 
-        {/* Auth prompt */}
-        {!session ? (
+        {/* Save prompt */}
+        {!saved ? (
           <div style={{
             background: SR.white, borderRadius: "12px", padding: "18px 22px",
             border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow,
@@ -5408,13 +5500,13 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, o
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="11" rx="2" stroke={SR.teal} strokeWidth="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round"/></svg>
             <div style={{ flex: 1, minWidth: "180px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Sign in to save your progress</div>
-              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Track your plan across visits. No password needed.</div>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: SR.navy, fontFamily: SR.font }}>Save your plan to return later</div>
+              <div style={{ fontSize: "11px", color: SR.muted, fontFamily: SR.font }}>Get a private access code. No email, no account.</div>
             </div>
-            <button onClick={onSignIn} style={{
+            <button onClick={onSave} style={{
               padding: "8px 18px", borderRadius: "8px", background: SR.teal, color: SR.white,
               border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
-            }}>Sign in</button>
+            }}>Save my plan</button>
           </div>
         ) : (
           <div style={{
@@ -5422,11 +5514,11 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, o
             gap: "8px", marginBottom: "20px", fontSize: "12px", color: SR.muted, fontFamily: SR.font,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.teal} strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            Signed in as {session.user.email}
-            <button onClick={onSignOut} style={{
+            Plan saved • access code on this device
+            <button onClick={onShowCode} style={{
               background: "none", border: "none", color: SR.muted, fontSize: "11px",
               cursor: "pointer", fontFamily: SR.font, textDecoration: "underline", padding: 0,
-            }}>Sign out</button>
+            }}>View code</button>
           </div>
         )}
 
@@ -5441,9 +5533,10 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, o
 
 /* ─── Chat Intake ─── */
 const CHAT_QUESTIONS = [
+  // ── ABOUT YOU ──────────────────────────────────────────────────────────────
   {
     id: "firstName",
-    ask: "Hi! I'm the SurgeryReady assistant. I'll ask you a few questions to build your personalized surgical prep plan. What's your first name?",
+    ask: "Hi! I'm the SurgeryReady assistant. I'll walk you through a series of questions to build your personalized surgical prep plan. What's your first name?",
     type: "text",
     field: "firstName",
     placeholder: "Your first name",
@@ -5484,6 +5577,7 @@ const CHAT_QUESTIONS = [
     fields: ["height", "weight"],
     condition: (d) => d.userRole !== "provider",
   },
+  // ── YOUR SURGERY ────────────────────────────────────────────────────────────
   {
     id: "surgeryType",
     ask: "What type of surgery are you scheduled for?",
@@ -5506,6 +5600,63 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "surgeryTags",
+    ask: "Does your surgery involve any of the following? Select all that apply.",
+    type: "multiSelect",
+    field: "surgeryTags",
+    options: [
+      { label: "None of these", value: "none", exclusive: true },
+      { label: "Joint replacement (hip or knee)", value: "Joint replacement" },
+      { label: "Spinal surgery", value: "Spinal surgery" },
+      { label: "Implant or device (mesh, hardware)", value: "Foreign body/implant" },
+      { label: "Open chest or cardiac surgery", value: "Open chest/cardiac" },
+      { label: "Vascular surgery", value: "Vascular" },
+      { label: "Neurological surgery", value: "Neurologic" },
+      { label: "Cancer resection", value: "Cancer resection" },
+      { label: "Bariatric (weight loss) surgery", value: "Bariatric" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "riskCategory",
+    ask: "Has your surgical team given any indication of your overall surgical risk?",
+    type: "quickReply",
+    field: "riskCategory",
+    options: [
+      { label: "Low risk", value: "low" },
+      { label: "Moderate or elevated risk", value: "elevated" },
+      { label: "High risk", value: "high" },
+      { label: "Not sure", value: "elevated" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "duration",
+    ask: "How long is your surgery expected to take?",
+    type: "quickReply",
+    field: "duration",
+    options: [
+      { label: "Less than 2 hours", value: "short" },
+      { label: "2–6 hours", value: "medium" },
+      { label: "More than 6 hours", value: "long" },
+      { label: "Not sure", value: "medium" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "eras",
+    ask: "Has your care team mentioned an Enhanced Recovery After Surgery (ERAS) protocol for your procedure?",
+    type: "quickReply",
+    field: "eras",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "no" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  // ── HEART CONDITIONS ────────────────────────────────────────────────────────
+  {
     id: "cardiac",
     ask: "Do you have any heart conditions? Select all that apply.",
     type: "multiSelect",
@@ -5513,14 +5664,69 @@ const CHAT_QUESTIONS = [
     options: [
       { label: "None", value: "none", exclusive: true },
       { label: "Heart failure", value: "Heart failure" },
-      { label: "Coronary artery disease", value: "Coronary artery disease" },
+      { label: "Coronary artery disease or Angina", value: "Coronary artery disease" },
       { label: "Atrial fibrillation", value: "Atrial fibrillation (AF)" },
       { label: "Hypertension", value: "Hypertension (uncontrolled, DBP>110)" },
-      { label: "Recent heart attack or stent", value: "Recent MI/stent (<6 months)" },
+      { label: "Recent heart attack or stent (within 6 months)", value: "Recent MI/stent (<6 months)" },
+      { label: "Prior stent or heart procedure (more than 6 months ago)", value: "Prior PCI/stent" },
       { label: "Heart valve disease", value: "Valve disease" },
+      { label: "Pacemaker or AICD", value: "Pacemaker/AICD" },
+      { label: "Prior stroke or TIA", value: "Prior stroke" },
+      { label: "Pulmonary hypertension", value: "Pulmonary hypertension" },
+      { label: "Peripheral vascular disease", value: "Peripheral vascular disease" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  {
+    id: "hfType",
+    ask: "What type of heart failure have you been diagnosed with?",
+    type: "quickReply",
+    field: "hfType",
+    options: [
+      { label: "HFrEF (reduced ejection fraction)", value: "HFrEF" },
+      { label: "HFpEF (preserved ejection fraction)", value: "HFpEF" },
+      { label: "Not sure", value: "HFrEF" },
+    ],
+    condition: (d) => d.cardiac?.some(c => c.includes("Heart failure") || c === "CHF" || c === "HFrEF" || c === "HFpEF"),
+  },
+  {
+    id: "rateControlled",
+    ask: "Is your atrial fibrillation currently rate-controlled (resting heart rate below 110)?",
+    type: "quickReply",
+    field: "rateControlled",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "yes" },
+    ],
+    condition: (d) => d.cardiac?.some(c => c.includes("Atrial fibrillation") || c.includes("Arrhythmia")),
+  },
+  {
+    id: "cardiacEventMonths",
+    ask: "How long ago was your most recent cardiac event (heart attack, stent, or bypass surgery)?",
+    type: "quickReply",
+    field: "cardiacEventMonths",
+    options: [
+      { label: "Less than 3 months ago", value: "<3" },
+      { label: "3–6 months ago", value: "3-6" },
+      { label: "6–12 months ago", value: "6-12" },
+      { label: "More than 12 months ago", value: ">12" },
+    ],
+    condition: (d) => d.cardiac?.some(c => c.includes("MI") || c.includes("stent") || c.includes("PCI") || c.includes("Coronary")),
+  },
+  {
+    id: "onDAPT",
+    ask: "Are you currently taking two blood thinners together — for example, aspirin plus Plavix (clopidogrel)?",
+    type: "quickReply",
+    field: "onDAPT",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "no" },
+    ],
+    condition: (d) => d.cardiac?.some(c => c.includes("stent") || c.includes("PCI")),
+  },
+  // ── BREATHING & SLEEP ───────────────────────────────────────────────────────
   {
     id: "respiratory",
     ask: "Any lung or breathing conditions? Select all that apply.",
@@ -5530,10 +5736,37 @@ const CHAT_QUESTIONS = [
       { label: "None", value: "none", exclusive: true },
       { label: "Asthma", value: "Asthma" },
       { label: "COPD", value: "COPD/Emphysema" },
-      { label: "Sleep apnea (OSA)", value: "Obstructive sleep apnea (diagnosed)" },
+      { label: "Sleep apnea (diagnosed, uses CPAP)", value: "Obstructive sleep apnea (diagnosed)" },
+      { label: "Sleep apnea (suspected or high snoring risk)", value: "Obstructive sleep apnea (suspected/STOP-BANG ≥3)" },
+      { label: "Unexplained shortness of breath", value: "Unexplained dyspnea" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  {
+    id: "stopBang",
+    ask: "Your STOP-BANG score helps assess sleep apnea risk. Do you know your score (0–8)?",
+    type: "quickReply",
+    field: "stopBang",
+    options: [
+      { label: "0–2 (low risk)", value: "2" },
+      { label: "3–4 (moderate risk)", value: "3" },
+      { label: "5–8 (high risk)", value: "6" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => d.respiratory?.some(r => r.includes("sleep apnea") || r.includes("OSA")),
+  },
+  {
+    id: "cpapAdherent",
+    ask: "Do you regularly use your CPAP machine — at least 4 hours per night?",
+    type: "quickReply",
+    field: "cpapAdherent",
+    options: [
+      { label: "Yes, consistently", value: "yes" },
+      { label: "No or inconsistently", value: "no" },
+    ],
+    condition: (d) => d.respiratory?.some(r => r.includes("Obstructive sleep apnea (diagnosed)")),
+  },
+  // ── METABOLIC CONDITIONS ────────────────────────────────────────────────────
   {
     id: "endocrine",
     ask: "Any metabolic or hormone-related conditions? Select all that apply.",
@@ -5543,11 +5776,14 @@ const CHAT_QUESTIONS = [
       { label: "None", value: "none", exclusive: true },
       { label: "Type 2 diabetes", value: "Type 2 Diabetes" },
       { label: "Type 1 diabetes", value: "Type 1 Diabetes" },
-      { label: "Obesity (BMI ≥ 35)", value: "Obesity (BMI≥35)" },
+      { label: "Obesity (BMI at or above 35)", value: "Obesity (BMI≥35)" },
       { label: "Thyroid condition", value: "Thyroid disease" },
+      { label: "Chronic steroid use (prednisone, etc.)", value: "Chronic steroid use" },
+      { label: "Poorly controlled diabetes (HbA1c above 8%)", value: "HbA1c >8 (poorly controlled)" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  // ── BLOOD & LABS ────────────────────────────────────────────────────────────
   {
     id: "hemoglobin",
     ask: "Do you know your most recent hemoglobin (blood count) level? You can find this on a recent blood test result.",
@@ -5562,6 +5798,64 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "other",
+    ask: "Do you have any of the following other conditions? Select all that apply.",
+    type: "multiSelect",
+    field: "other",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Chronic kidney disease (CKD)", value: "CKD (chronic kidney disease)" },
+      { label: "Liver disease or cirrhosis", value: "Cirrhosis/liver disease" },
+      { label: "Anemia (diagnosed)", value: "Anemia (Hgb <13)" },
+      { label: "Bleeding disorder", value: "Bleeding disorder" },
+      { label: "Seizure disorder or epilepsy", value: "Seizure disorder / epilepsy" },
+      { label: "Rheumatoid arthritis or autoimmune disease", value: "Rheumatoid arthritis / autoimmune" },
+      { label: "Active cancer or receiving chemotherapy", value: "Active cancer/receiving chemotherapy" },
+      { label: "Frailty or recent falls", value: "Frailty/recent falls" },
+      { label: "Difficult airway history", value: "Difficult airway history" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "egfrValue",
+    ask: "Do you know your eGFR (kidney function number from blood tests, labeled 'eGFR' or 'GFR')?",
+    type: "quickReply",
+    field: "egfrValue",
+    options: [
+      { label: "Above 60 (normal)", value: "75" },
+      { label: "30–60 (mildly reduced)", value: "45" },
+      { label: "Below 30 (significantly reduced)", value: "20" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => d.other?.some(o => o.includes("kidney") || o.includes("CKD")) || d.endocrine?.some(e => e.includes("Diabetes")),
+  },
+  {
+    id: "ferritinValue",
+    ask: "Do you know your ferritin level (a measure of iron stores, from blood tests)?",
+    type: "quickReply",
+    field: "ferritinValue",
+    options: [
+      { label: "Below 30 ng/mL (very low)", value: "15" },
+      { label: "30–100 ng/mL (borderline)", value: "65" },
+      { label: "Above 100 ng/mL", value: "150" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => d.other?.some(o => o.includes("Anemia")) || (d.hemoglobin && parseFloat(d.hemoglobin) < 12),
+  },
+  {
+    id: "ironDeficiency",
+    ask: "Has a doctor told you that you have iron deficiency?",
+    type: "quickReply",
+    field: "ironDeficiency",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unknown" },
+    ],
+    condition: (d) => d.other?.some(o => o.includes("Anemia")) || (d.hemoglobin && parseFloat(d.hemoglobin) < 12),
+  },
+  // ── MEDICATIONS ─────────────────────────────────────────────────────────────
+  {
     id: "anticoag",
     ask: "Are you taking any blood thinners or anticoagulants? Select all that apply.",
     type: "multiSelect",
@@ -5573,7 +5867,25 @@ const CHAT_QUESTIONS = [
       { label: "Apixaban (Eliquis)", value: "Apixaban" },
       { label: "Rivaroxaban (Xarelto)", value: "Rivaroxaban" },
       { label: "Clopidogrel (Plavix)", value: "Clopidogrel" },
+      { label: "Ticagrelor (Brilinta)", value: "Ticagrelor" },
       { label: "Other blood thinner", value: "Other anticoag" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "cardioMeds",
+    ask: "Are you taking any heart or blood pressure medications? Select all that apply.",
+    type: "multiSelect",
+    field: "cardioMeds",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "ACE inhibitor (lisinopril, enalapril)", value: "ACE inhibitor" },
+      { label: "ARB (losartan, valsartan)", value: "ARB" },
+      { label: "Beta-blocker (metoprolol, atenolol)", value: "Beta-blocker" },
+      { label: "Statin (atorvastatin, rosuvastatin)", value: "Statin" },
+      { label: "Diuretic (furosemide, HCTZ)", value: "Diuretic (Lasix/HCTZ)" },
+      { label: "Calcium channel blocker (amlodipine)", value: "Calcium channel blocker" },
+      { label: "Digoxin", value: "Digoxin" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
@@ -5588,10 +5900,90 @@ const CHAT_QUESTIONS = [
       { label: "SGLT2 inhibitor (Jardiance, Farxiga)", value: "SGLT2 inhibitors" },
       { label: "Insulin", value: "Insulin" },
       { label: "Metformin", value: "Metformin" },
+      { label: "Sulfonylurea (glipizide, glimepiride)", value: "Sulfonylurea (glipizide)" },
       { label: "Other diabetes medication", value: "Other diabetes med" },
     ],
-    condition: (d) => d.endocrine && (d.endocrine.includes("Type 1 Diabetes") || d.endocrine.includes("Type 2 Diabetes")),
+    condition: (d) => d.endocrine?.some(e => e.includes("Diabetes") || e.includes("HbA1c")),
   },
+  {
+    id: "a1cValue",
+    ask: "What is your most recent HbA1c (blood sugar control %)? Found on recent lab results.",
+    type: "quickReply",
+    field: "a1cValue",
+    options: [
+      { label: "Below 7% (well controlled)", value: "6.5" },
+      { label: "7–8%", value: "7.5" },
+      { label: "Above 8% (poorly controlled)", value: "8.5" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => d.endocrine?.some(e => e.includes("Diabetes") || e.includes("HbA1c")),
+  },
+  {
+    id: "insulinType",
+    ask: "What type of insulin are you taking?",
+    type: "quickReply",
+    field: "insulinType",
+    options: [
+      { label: "Basal insulin only (long-acting, once daily)", value: "basal" },
+      { label: "Basal + mealtime insulin (multiple daily shots)", value: "basal-bolus" },
+      { label: "Insulin pump", value: "pump" },
+      { label: "I don't take insulin", value: "none" },
+    ],
+    condition: (d) => d.diabetesMeds?.includes("Insulin"),
+  },
+  {
+    id: "glp1Phase",
+    ask: "Are you currently in the dose-escalation phase of your GLP-1 medication — still increasing your dose?",
+    type: "quickReply",
+    field: "glp1Phase",
+    options: [
+      { label: "Yes, still increasing the dose", value: "yes" },
+      { label: "No, on a stable maintenance dose", value: "no" },
+    ],
+    condition: (d) => d.diabetesMeds?.some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
+  },
+  {
+    id: "glp1GI",
+    ask: "Are you currently experiencing GI side effects from your GLP-1 medication — nausea, vomiting, or bloating?",
+    type: "quickReply",
+    field: "glp1GI",
+    options: [
+      { label: "No GI symptoms", value: "none" },
+      { label: "Mild (occasional nausea)", value: "mild" },
+      { label: "Active symptoms (nausea, vomiting, or bloating)", value: "active" },
+    ],
+    condition: (d) => d.diabetesMeds?.some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
+  },
+  {
+    id: "painMeds",
+    ask: "Are you taking any of the following pain or substance-related medications? Select all that apply.",
+    type: "multiSelect",
+    field: "painMeds",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Chronic opioids (oxycodone, hydrocodone, etc.)", value: "Chronic opioids (not buprenorphine/methadone)" },
+      { label: "Buprenorphine (Suboxone, Subutex)", value: "Buprenorphine" },
+      { label: "Methadone", value: "Methadone" },
+      { label: "Naltrexone (Vivitrol)", value: "Naltrexone (XR/Vivitrol)" },
+      { label: "Medical marijuana or cannabis", value: "Marijuana" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "otherMeds",
+    ask: "Are you taking any of the following other medications? Select all that apply.",
+    type: "multiSelect",
+    field: "otherMeds",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Corticosteroids (prednisone, dexamethasone)", value: "Corticosteroids" },
+      { label: "Biologics or DMARDs (for arthritis or autoimmune)", value: "Biologics/DMARDs" },
+      { label: "Antiepileptics (seizure medications)", value: "Antiepileptics" },
+      { label: "Immunotherapy or checkpoint inhibitors", value: "Immunotherapy/checkpoint inhibitors" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  // ── SMOKING & ALCOHOL ───────────────────────────────────────────────────────
   {
     id: "smokingStatus",
     ask: "Do you smoke or use tobacco products?",
@@ -5599,24 +5991,61 @@ const CHAT_QUESTIONS = [
     field: "smokingStatus",
     options: [
       { label: "Never smoked", value: "never" },
-      { label: "Former smoker", value: "former_lt8" },
+      { label: "Quit more than 8 weeks ago", value: "former_gt8" },
+      { label: "Quit less than 8 weeks ago", value: "former_lt8" },
       { label: "Current smoker", value: "current" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "cigPerDay",
+    ask: "How many cigarettes do you smoke per day on average?",
+    type: "quickReply",
+    field: "cigPerDay",
+    options: [
+      { label: "Fewer than 10 per day", value: "5" },
+      { label: "10–20 per day", value: "15" },
+      { label: "More than 20 per day", value: "25" },
+    ],
+    condition: (d) => d.smokingStatus === "current",
+  },
+  {
     id: "alcoholUse",
-    ask: "How many alcoholic drinks do you typically have per day?",
+    ask: "How much alcohol do you typically drink?",
     type: "quickReply",
     field: "alcoholUse",
     options: [
-      { label: "None", value: "none" },
-      { label: "1–2 drinks", value: "light" },
-      { label: "3–4 drinks", value: "moderate" },
-      { label: "5 or more drinks", value: "heavy" },
+      { label: "None or rarely", value: "none" },
+      { label: "Light (1–7 drinks per week)", value: "light" },
+      { label: "Moderate (8–14 drinks per week)", value: "moderate" },
+      { label: "Heavy (more than 14 drinks per week)", value: "heavy" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  {
+    id: "bingeDrinking",
+    ask: "Do you have episodes of binge drinking — 5 or more drinks in a single sitting?",
+    type: "quickReply",
+    field: "bingeDrinking",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    condition: (d) => d.alcoholUse === "moderate" || d.alcoholUse === "heavy",
+  },
+  {
+    id: "withdrawalHistory",
+    ask: "Have you ever experienced alcohol withdrawal symptoms — shaking, sweating, or seizures — when stopping drinking?",
+    type: "quickReply",
+    field: "withdrawalHistory",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "unknown" },
+    ],
+    condition: (d) => d.alcoholUse === "moderate" || d.alcoholUse === "heavy",
+  },
+  // ── FITNESS ─────────────────────────────────────────────────────────────────
   {
     id: "exerciseLevel",
     ask: "How physically active are you on a typical week?",
@@ -5630,6 +6059,50 @@ const CHAT_QUESTIONS = [
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  {
+    id: "mets",
+    ask: "Which best describes your physical fitness level?",
+    type: "quickReply",
+    field: "mets",
+    options: [
+      { label: "I get winded with light activity like walking or light housework", value: "lt4" },
+      { label: "I can climb a flight of stairs or do yard work without stopping", value: "4-7" },
+      { label: "I exercise regularly — running, cycling, or vigorous activity", value: "gt7" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "thermalHabits",
+    ask: "Do you regularly use a sauna or cold plunge?",
+    type: "multiSelect",
+    field: "thermalHabits",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Regular sauna use", value: "Sauna use" },
+      { label: "Cold plunge or cold showers", value: "Cold plunge/cold showers" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "tracksHRV",
+    ask: "Do you track your Heart Rate Variability (HRV) with a wearable device?",
+    type: "quickReply",
+    field: "tracksHRV",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "hrvValue",
+    ask: "What is your typical morning HRV reading (in milliseconds)?",
+    type: "number",
+    field: "hrvValue",
+    placeholder: "e.g., 45",
+    condition: (d) => d.tracksHRV === "yes",
+  },
+  // ── NUTRITION ───────────────────────────────────────────────────────────────
   {
     id: "proteinLevel",
     ask: "How much protein do you eat each day? Protein-rich foods include meat, fish, eggs, dairy, legumes, and nuts.",
@@ -5654,6 +6127,49 @@ const CHAT_QUESTIONS = [
     ],
     condition: (d) => d.userRole !== "provider",
   },
+  {
+    id: "eatingPattern",
+    ask: "Which best describes your typical eating pattern?",
+    type: "quickReply",
+    field: "eatingPattern",
+    options: [
+      { label: "Regular meals (3 meals per day)", value: "regular" },
+      { label: "Intermittent fasting (e.g., 16:8)", value: "if" },
+      { label: "Calorie-restricted or dieting", value: "restricted" },
+      { label: "Irregular (skip meals frequently)", value: "irregular" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "albumin",
+    ask: "Do you know your serum albumin level? This is on most standard blood panels.",
+    type: "quickReply",
+    field: "albumin",
+    options: [
+      { label: "3.5 or above (normal)", value: "3.8" },
+      { label: "3.0–3.4 (mildly low)", value: "3.2" },
+      { label: "Below 3.0 (significantly low)", value: "2.8" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "supplements",
+    ask: "Are you currently taking any of the following supplements? Select all that apply.",
+    type: "multiSelect",
+    field: "supplements",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Protein supplement", value: "Protein supplement" },
+      { label: "Multivitamin", value: "Multivitamin" },
+      { label: "Omega-3 or fish oil", value: "Omega-3/fish oil" },
+      { label: "Vitamin D", value: "Vitamin D" },
+      { label: "Iron", value: "Iron" },
+      { label: "Immunonutrition (Impact or equivalent)", value: "Immunonutrition (Impact/equivalent)" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  // ── COMPLETE ────────────────────────────────────────────────────────────────
   {
     id: "complete",
     ask: (d) => `Thank you, ${d.firstName || "there"}. I have everything I need. Ready to generate your personalized surgical prep plan?`,
@@ -5727,17 +6243,18 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
 
   const handleConfirm = () => {
     const cd = chatDataRef.current;
-    if (!cd.riskCategory) cd.riskCategory = "elevated";
-    if (!cd.duration) cd.duration = "medium";
-    if (!cd.eras) cd.eras = "no";
+    // bloodLoss is not asked in chat — apply safe default
     if (!cd.bloodLoss) cd.bloodLoss = "moderate";
-    if (!cd.eatingPattern) cd.eatingPattern = "regular";
+    // Array fields: ensure they exist even if question was skipped
     if (!cd.other) cd.other = [];
-    if (!cd.otherMeds) cd.otherMeds = [];
     if (!cd.cardioMeds) cd.cardioMeds = [];
     if (!cd.painMeds) cd.painMeds = [];
+    if (!cd.otherMeds) cd.otherMeds = [];
     if (!cd.surgeryTags) cd.surgeryTags = [];
     if (!cd.diabetesMeds) cd.diabetesMeds = [];
+    if (!cd.anticoag) cd.anticoag = [];
+    if (!cd.thermalHabits) cd.thermalHabits = [];
+    if (!cd.supplements) cd.supplements = [];
     Object.entries(cd).forEach(([k, v]) => update(k, v));
     onComplete({ ...cd });
   };
@@ -5950,65 +6467,56 @@ function PreOpPage() {
   );
   const [disclaimerChecked, setDisclaimerChecked] = useState(false);
 
-  // Auth + persistence state
-  const [session, setSession] = useState(null);
-  const [showAuth, setShowAuth] = useState(false);
-  const [planId, setPlanId] = useState(null);
-  const [resumeData, setResumeData] = useState(null); // { data, plan, progress, planId }
-  const [loadingSession, setLoadingSession] = useState(!!supabase);
+  // Access-code persistence state (deidentified; no accounts)
+  const [accessCode, setAccessCode] = useState(() => {
+    try { return localStorage.getItem(ACCESS_CODE_KEY); } catch (_) { return null; }
+  });
+  const [codeHash, setCodeHash] = useState(null);
+  const [showCodeModal, setShowCodeModal] = useState(false);
+  const [codeModalPartial, setCodeModalPartial] = useState(false);
+  const [saveFlash, setSaveFlash] = useState(false);
+  const [resumeData, setResumeData] = useState(null); // { data, plan, currentStep, progress }
   const [generating, setGenerating] = useState(false);
   const [motivationalMsgIdx, setMotivationalMsgIdx] = useState(0);
   const [showSaveConsent, setShowSaveConsent] = useState(false);
+  const consentContextRef = useRef("plan"); // "plan" | "partial"
   const msgIntervalRef = useRef(null);
   const saveTimerRef = useRef(null);
-  const pendingSaveRef = useRef(false);
 
-  // Listen for auth state changes
+  // Same-device resume: if a code is stored in this browser, look up the saved plan
   useEffect(() => {
-    if (!supabase) { setLoadingSession(false); return; }
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoadingSession(false);
+    if (!supabase || !accessCode) return;
+    hashCode(accessCode).then(hash => {
+      setCodeHash(hash);
+      loadPlanByCode(hash).then(result => {
+        if (result && !result.error) {
+          setResumeData(result);
+        } else if (result === null) {
+          // Saved plan confirmed gone — forget the stale code.
+          // On lookup errors (result.error) keep the code; the plan may still exist.
+          try { localStorage.removeItem(ACCESS_CODE_KEY); } catch (_) {}
+          setAccessCode(null);
+          setCodeHash(null);
+        }
+      });
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      // Save plan only if user explicitly requested via Save my plan
-      if (s && plan && !planId && pendingSaveRef.current) {
-        pendingSaveRef.current = false;
-        savePlanToSupabase(s.user.id, data, plan).then(id => {
-          if (id) {
-            setPlanId(id);
-            if (progress) saveProgressToSupabase(id, progress);
-          }
-        });
-      }
-    });
-    return () => subscription.unsubscribe();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load existing plan for authenticated user
+  // Auto-save progress (debounced) — only when the plan has been saved under a code
   useEffect(() => {
-    if (!session || plan || resumeData) return;
-    loadLatestPlan(session.user.id).then(result => {
-      if (result) setResumeData(result);
-    });
-  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Auto-save progress to Supabase (debounced) — only when plan is saved
-  useEffect(() => {
-    if (!session || !planId || !progress) return;
+    if (!codeHash || !progress) return;
     clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      saveProgressToSupabase(planId, progress);
+      saveProgressByCode(codeHash, progress);
     }, 1500);
     return () => clearTimeout(saveTimerRef.current);
-  }, [progress, planId, session]);
+  }, [progress, codeHash]);
 
-  // Persist progress to localStorage when plan hasn't been saved to Supabase
+  // Persist progress to localStorage when the plan hasn't been saved yet
   useEffect(() => {
-    if (planId || !progress) return;
+    if (codeHash || !progress) return;
     try { localStorage.setItem("sr_progress", JSON.stringify(progress)); } catch (_) {}
-  }, [progress, planId]);
+  }, [progress, codeHash]);
 
   // Inject animation keyframes once — keeps the progress bar animation stable
   // across re-renders caused by motivational message cycling
@@ -6057,44 +6565,104 @@ function PreOpPage() {
       clearInterval(msgIntervalRef.current);
       const newPlan = generatePlan(planData);
       track("assessment_completed", { role: planData.userRole, riskLevel: newPlan.riskLevel });
+      const newProgress = initProgress(newPlan);
       setPlan(newPlan);
-      setProgress(initProgress(newPlan));
+      setProgress(newProgress);
       setMode(null);
       setViewMode(planData.userRole === "patient" ? "patient" : planData.userRole === "provider" ? "provider" : "both");
       setGenerating(false);
+      // Finishing or refining updates the same saved record under the same code
+      if (codeHash) savePlanWithCode(codeHash, planData, newPlan, null, newProgress);
     }, 10000);
   };
-  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setIntakeMode(null); setIsRefining(false); setProgress(null); setPlanId(null); setResumeData(null); };
+  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setIntakeMode(null); setIsRefining(false); setProgress(null); setAccessCode(null); setCodeHash(null); setResumeData(null); };
   const handleRefine = () => { setPlan(null); setIntakeMode("form"); setStep(0); setIsRefining(true); setProgress(null); window.scrollTo(0, 0); };
-  const handleResume = () => {
-    if (!resumeData) return;
-    setData(resumeData.data);
-    setPlan(resumeData.plan);
-    setProgress(resumeData.progress.items && Object.keys(resumeData.progress.items).length > 0 ? resumeData.progress : initProgress(resumeData.plan));
-    setPlanId(resumeData.planId);
-    setMode(null); // show choice screen
+
+  const applyResume = (result) => {
+    let storedName;
+    try { storedName = localStorage.getItem(FIRST_NAME_KEY) || undefined; } catch (_) {}
+    const merged = storedName ? { ...result.data, firstName: storedName } : result.data;
+    setData(merged);
+    // Disclaimer + consent were acknowledged when the plan was saved
+    sessionStorage.setItem("sr_disclaimer_ack", "1");
+    setDisclaimerAck(true);
+    if (result.plan) {
+      setPlan(result.plan);
+      setProgress(result.progress && result.progress.items && Object.keys(result.progress.items).length > 0 ? result.progress : initProgress(result.plan));
+      setMode(null); // show choice screen
+      setViewMode(merged.userRole === "patient" ? "patient" : merged.userRole === "provider" ? "provider" : "both");
+    } else {
+      // Partial save — re-open the pre-filled form at the saved step
+      setIntakeMode("form");
+      setStep(Math.min(result.currentStep ?? 0, STEPS.length - 1));
+    }
     setResumeData(null);
-    setViewMode(resumeData.data.userRole === "patient" ? "patient" : resumeData.data.userRole === "provider" ? "provider" : "both");
   };
-  const handleSignOut = async () => {
-    if (supabase) await supabase.auth.signOut();
-    setSession(null);
-    setPlanId(null);
+  const handleResume = () => { if (resumeData) applyResume(resumeData); };
+
+  // Resume via manually entered code (from ResumeWithCodeCard)
+  const handleCodeLoaded = (code, hash, result) => {
+    try {
+      localStorage.setItem(ACCESS_CODE_KEY, code);
+    } catch (_) {}
+    setAccessCode(code);
+    setCodeHash(hash);
+    applyResume(result);
+  };
+
+  const handleForgetDevice = () => {
+    try {
+      localStorage.removeItem(ACCESS_CODE_KEY);
+      localStorage.removeItem(FIRST_NAME_KEY);
+    } catch (_) {}
+    setAccessCode(null);
+    setCodeHash(null);
     setResumeData(null);
+  };
+
+  const handleDeleteSaved = async () => {
+    if (!window.confirm("Delete your saved plan from our server? This cannot be undone.")) return;
+    await deletePlanByCode(codeHash);
+    handleForgetDevice();
+  };
+
+  const persistPlan = async ({ partial }) => {
+    let code = accessCode;
+    let hash = codeHash;
+    const isFirstSave = !code;
+    if (isFirstSave) {
+      code = generateAccessCode();
+      hash = await hashCode(code);
+      setAccessCode(code);
+      setCodeHash(hash);
+      try { localStorage.setItem(ACCESS_CODE_KEY, code); } catch (_) {}
+    }
+    // First name stays on this device only — never sent to the server
+    try { if (data.firstName) localStorage.setItem(FIRST_NAME_KEY, data.firstName); } catch (_) {}
+    const ok = await savePlanWithCode(hash, data, partial ? null : plan, partial ? step : null, progress);
+    if (ok) {
+      if (isFirstSave) {
+        setCodeModalPartial(partial);
+        setShowCodeModal(true);
+      } else {
+        setSaveFlash(true);
+        setTimeout(() => setSaveFlash(false), 2500);
+      }
+    }
+    return ok;
   };
 
   const handleSavePlan = () => {
     setShowSaveConsent(false);
-    if (session) {
-      savePlanToSupabase(session.user.id, data, plan).then(id => {
-        if (id) {
-          setPlanId(id);
-          if (progress) saveProgressToSupabase(id, progress);
-        }
-      });
+    persistPlan({ partial: consentContextRef.current === "partial" });
+  };
+
+  const handleSaveAndContinue = () => {
+    if (codeHash) {
+      persistPlan({ partial: true });
     } else {
-      pendingSaveRef.current = true;
-      setShowAuth(true);
+      consentContextRef.current = "partial";
+      setShowSaveConsent(true);
     }
   };
 
@@ -6214,8 +6782,11 @@ function PreOpPage() {
     );
   }
 
-  // ── WELCOME BACK / RESUME ──
-  if (!plan && resumeData && !loadingSession) {
+  // ── WELCOME BACK / RESUME (same-device code found) ──
+  if (!plan && resumeData && intakeMode === null) {
+    const isPartialSave = !resumeData.plan;
+    let storedName;
+    try { storedName = localStorage.getItem(FIRST_NAME_KEY); } catch (_) {}
     return (
       <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -6223,9 +6794,9 @@ function PreOpPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "28px" }}>
             <SRLogo size={38} />
             <div>
-              <h1 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: 0 }}>Welcome back{resumeData.data.firstName ? `, ${resumeData.data.firstName}` : ""}</h1>
+              <h1 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: 0 }}>Welcome back{storedName ? `, ${storedName}` : ""}</h1>
               <p style={{ fontSize: "13px", color: SR.muted, margin: "4px 0 0" }}>
-                {session?.user?.email}
+                {accessCode ? `Access code SR-••••-••••-${accessCode.slice(-4)} found on this device` : "Saved plan found on this device"}
               </p>
             </div>
           </div>
@@ -6234,29 +6805,37 @@ function PreOpPage() {
             border: `1px solid ${SR.borderLight}`, boxShadow: SR.cardShadow, marginBottom: "16px",
           }}>
             <div style={{ fontSize: "15px", fontWeight: 600, color: SR.navy, marginBottom: "6px" }}>
-              You have a saved plan
+              {isPartialSave ? "You have an assessment in progress" : "You have a saved plan"}
             </div>
             <p style={{ fontSize: "13px", color: SR.textSecondary, lineHeight: 1.6, margin: "0 0 8px" }}>
-              {resumeData.data.surgeryType || "Surgery"} preparation plan
-              {(() => { const s = computeProgress(resumeData.progress, resumeData.plan); return s.total > 0 ? ` - ${s.pct}% complete (${s.done} of ${s.total} steps)` : ""; })()}
+              {isPartialSave
+                ? `Assessment in progress — step ${Math.min((resumeData.currentStep ?? 0) + 1, STEPS.length)} of ${STEPS.length}`
+                : <>
+                    {resumeData.data.surgeryType || "Surgery"} preparation plan
+                    {(() => { const s = computeProgress(resumeData.progress, resumeData.plan); return s.total > 0 ? ` - ${s.pct}% complete (${s.done} of ${s.total} steps)` : ""; })()}
+                  </>}
             </p>
             <button onClick={handleResume} style={{
               width: "100%", padding: "13px", borderRadius: "10px",
               background: SR.teal, color: SR.white, border: "none",
               fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
               marginTop: "8px",
-            }}>Resume my plan</button>
+            }}>{isPartialSave ? "Resume my assessment" : "Resume my plan"}</button>
           </div>
           <button onClick={() => { setResumeData(null); }} style={{
             width: "100%", padding: "13px", borderRadius: "10px",
             background: SR.white, color: SR.textSecondary, border: `1.5px solid ${SR.border}`,
             fontSize: "14px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font,
           }}>Start a new assessment</button>
-          <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <button onClick={handleSignOut} style={{
+          <div style={{ textAlign: "center", marginTop: "20px", display: "flex", justifyContent: "center", gap: "20px" }}>
+            <button onClick={handleForgetDevice} style={{
               background: "none", border: "none", color: SR.muted, fontSize: "12px",
               cursor: "pointer", fontFamily: SR.font, textDecoration: "underline",
-            }}>Sign out</button>
+            }}>Forget this device</button>
+            <button onClick={handleDeleteSaved} style={{
+              background: "none", border: "none", color: SR.danger, fontSize: "12px",
+              cursor: "pointer", fontFamily: SR.font, textDecoration: "underline",
+            }}>Delete my saved plan</button>
           </div>
         </div>
       </div>
@@ -6275,11 +6854,12 @@ function PreOpPage() {
             onTrackProgress={() => setMode("track")}
             onRefine={handleRefine}
             fromChat={intakeMode === "chat"}
-            session={session}
-            onSignIn={() => setShowAuth(true)}
-            onSignOut={handleSignOut}
+            saved={!!codeHash}
+            onSave={() => { consentContextRef.current = "plan"; setShowSaveConsent(true); }}
+            onShowCode={() => { setCodeModalPartial(false); setShowCodeModal(true); }}
           />
-          <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+          <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
+          <AccessCodeModal open={showCodeModal} code={accessCode} partial={codeModalPartial} onClose={() => setShowCodeModal(false)} />
         </>
       );
     }
@@ -6298,11 +6878,12 @@ function PreOpPage() {
           onLogValue={handleLogValue}
           onViewPlan={() => setMode("view")}
           onReset={reset}
-          session={session}
-          onSignIn={() => setShowAuth(true)}
-          onSignOut={handleSignOut}
+          saved={!!codeHash}
+          onSave={() => { consentContextRef.current = "plan"; setShowSaveConsent(true); }}
+          onShowCode={() => { setCodeModalPartial(false); setShowCodeModal(true); }}
         />
-        <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+        <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
+        <AccessCodeModal open={showCodeModal} code={accessCode} partial={codeModalPartial} onClose={() => setShowCodeModal(false)} />
       </>
     );
   }
@@ -6366,17 +6947,17 @@ function PreOpPage() {
                 border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
                 fontFamily: SR.font, transition: "all 0.2s",
               }}>Download PDF</button>
-              {planId ? (
-                <span style={{
-                  padding: "7px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 600,
+              {codeHash ? (
+                <button onClick={() => { setCodeModalPartial(false); setShowCodeModal(true); }} style={{
+                  padding: "7px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
                   color: SR.success, fontFamily: SR.font, display: "flex", alignItems: "center", gap: "5px",
                   border: `1.5px solid ${SR.success}20`, background: SR.tealLight,
                 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={SR.success} strokeWidth="2"/><path d="M8 12l3 3 5-5" stroke={SR.success} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   Plan saved
-                </span>
+                </button>
               ) : (
-                <button onClick={() => setShowSaveConsent(true)} style={{
+                <button onClick={() => { consentContextRef.current = "plan"; setShowSaveConsent(true); }} style={{
                   padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
                   border: `1.5px solid ${SR.navy}`, background: SR.navy, color: SR.white,
                   fontFamily: SR.font, transition: "all 0.2s",
@@ -6497,7 +7078,7 @@ function PreOpPage() {
         </div>
       </div>
       <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
-      <AuthModal open={showAuth} onClose={() => setShowAuth(false)} />
+      <AccessCodeModal open={showCodeModal} code={accessCode} partial={codeModalPartial} onClose={() => setShowCodeModal(false)} />
       </>
     );
   }
@@ -6685,7 +7266,7 @@ function PreOpPage() {
               }}
             >Continue</button>
           ) : (
-            <button onClick={generate} style={{
+            <button onClick={() => generate()} style={{
               padding: "11px 32px", borderRadius: "10px", border: "none",
               background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`,
               color: SR.white, cursor: "pointer",
@@ -6695,13 +7276,30 @@ function PreOpPage() {
           )}
         </div>
 
+        {/* Save and continue later */}
+        {supabase && Object.entries(data).some(([k, v]) => k !== "providerAck" && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)) && (
+          <div style={{ textAlign: "center", marginTop: "16px" }}>
+            <button onClick={handleSaveAndContinue} style={{
+              background: "none", border: "none", color: saveFlash ? SR.success : SR.teal,
+              fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
+              textDecoration: saveFlash ? "none" : "underline", padding: "4px 8px",
+            }}>{saveFlash ? "Progress saved" : "Save and continue later"}</button>
+          </div>
+        )}
+
         <div style={{ textAlign: "center", marginTop: "24px", fontSize: "10px", color: SR.muted }}>
           Powered by <span style={{ fontWeight: 700, color: SR.navy }}>SurgeryReady</span> • Health before healthcare™
         </div>
         </>}
 
         </>}
+
+        {(!disclaimerAck || intakeMode === null) && (
+          <ResumeWithCodeCard onLoaded={handleCodeLoaded} />
+        )}
       </div>
+      <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
+      <AccessCodeModal open={showCodeModal} code={accessCode} partial={codeModalPartial} onClose={() => setShowCodeModal(false)} />
     </div>
   );
 }
@@ -6723,28 +7321,32 @@ function PrivacyPolicyPage({ onNavigate }) {
           Back to home
         </button>
         <h1 style={{ fontSize: "28px", fontWeight: 700, color: BRAND.navy, margin: "0 0 6px" }}>Privacy Policy</h1>
-        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: May 11, 2026</p>
+        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: June 12, 2026</p>
 
         {[
           {
             title: "What we collect",
-            body: "SurgeryReady collects your email address when you create an account. Health information (medical history, medications, surgery details) is collected and stored only if you explicitly choose to save your plan. If you do not save your plan, no health data is retained on our servers after your session ends.",
+            body: "SurgeryReady does not require an account and does not collect your name or email address. If you choose to save your plan, your assessment answers (medical history, medications, surgery details) and generated plan are stored with no identifying information attached — only a random access code that you hold links to them. Your first name, if provided, stays in your browser and is never sent to our servers. If you do not save your plan, no health data is retained on our servers after your session ends.",
           },
           {
             title: "How we store it",
-            body: "Account and plan data are stored on Supabase, a US-based cloud database provider. Data is encrypted in transit and at rest. We do not store payment information.",
+            body: "Saved plan data is stored on Supabase, a US-based cloud database provider. Data is encrypted in transit and at rest. Saved plans are stored under a one-way cryptographic hash of your access code — we never store or see the code itself. We do not store payment information.",
           },
           {
             title: "How we use it",
-            body: "Your data is used solely to save and retrieve your surgical preparation plan across sessions. We do not sell, share, or rent your personal information to third parties. We do not use your health information for advertising.",
+            body: "Your data is used solely to save and retrieve your surgical preparation plan across sessions. We do not sell, share, or rent your information to third parties. We do not use your health information for advertising.",
+          },
+          {
+            title: "Access codes and recovery",
+            body: "Your access code is the only key to your saved plan. Because we store no contact information, we cannot look up or recover a lost code. Treat it like a password: keep a copy somewhere safe, and do not share it with anyone you would not want viewing your plan.",
           },
           {
             title: "Data retention",
-            body: "Your plan data is retained until you delete your account or request deletion by contacting us. You may request deletion of your data at any time by emailing support@surgeryready.net.",
+            body: "Saved plans are retained until you delete them. You can delete your saved plan at any time from within the app using your access code. For any other questions about your data, contact support@surgeryready.net.",
           },
           {
             title: "Educational tool notice",
-            body: "SurgeryReady is an educational health information tool. It is not a covered entity under HIPAA and does not provide medical advice, diagnosis, or treatment. The information you enter is used only to generate your personalized educational summary.",
+            body: "SurgeryReady is an educational health information tool. It is not a covered entity under HIPAA and does not provide medical advice, diagnosis, or treatment. Saved plans contain no names, contact details, or other direct identifiers — deidentified plan data is not protected health information — but we nonetheless treat it with the safeguards described above.",
           },
           {
             title: "Contact",
@@ -6777,7 +7379,7 @@ function TermsOfServicePage({ onNavigate }) {
           Back to home
         </button>
         <h1 style={{ fontSize: "28px", fontWeight: 700, color: BRAND.navy, margin: "0 0 6px" }}>Terms of Service</h1>
-        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: May 11, 2026</p>
+        <p style={{ fontSize: "13px", color: BRAND.muted, margin: "0 0 36px" }}>Effective date: June 12, 2026</p>
 
         {[
           {
@@ -6795,6 +7397,10 @@ function TermsOfServicePage({ onNavigate }) {
           {
             title: "Age requirement",
             body: "You must be 18 years of age or older to use SurgeryReady independently. Users under 18 may use the tool with parental or guardian consent and supervision.",
+          },
+          {
+            title: "Access codes",
+            body: "If you save your plan, you receive a private access code. You are responsible for safeguarding it. Anyone with the code can view and modify the associated plan. Because no contact information is stored with your plan, SurgeryReady cannot recover lost codes.",
           },
           {
             title: "Limitation of liability",
