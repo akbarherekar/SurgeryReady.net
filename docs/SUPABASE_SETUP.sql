@@ -17,11 +17,13 @@
 -- ═══════════════════════════════════════════════════════════════
 
 -- ── 1. TEARDOWN (clean cutover from the email-auth schema) ──
+-- Also drops anon_plans so this script is safe to re-run from scratch.
 drop trigger if exists on_auth_user_created on auth.users;
 drop function if exists public.handle_new_user();
 drop table if exists public.progress;
 drop table if exists public.plans;
 drop table if exists public.profiles;
+drop table if exists public.anon_plans;
 
 -- ── 2. ANON PLANS TABLE ──
 create table public.anon_plans (
