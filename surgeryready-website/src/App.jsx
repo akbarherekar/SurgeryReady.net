@@ -6666,6 +6666,11 @@ function PreOpPage() {
     }
   };
 
+  // At least one real answer given (in form or chat) — gates "Save and continue later"
+  const hasAnswers = Object.entries(data).some(([k, v]) =>
+    k !== "providerAck" && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)
+  );
+
   // Progress tracking handlers
   const handleToggleStep = useCallback((itemKey, stepIndex) => {
     setProgress(prev => {
@@ -7178,11 +7183,22 @@ function PreOpPage() {
         )}
 
         {intakeMode === "chat" && (
-          <ChatIntake
-            update={update}
-            onComplete={generate}
-            onSwitchToForm={() => setIntakeMode("form")}
-          />
+          <>
+            <ChatIntake
+              update={update}
+              onComplete={generate}
+              onSwitchToForm={() => setIntakeMode("form")}
+            />
+            {supabase && hasAnswers && (
+              <div style={{ textAlign: "center", marginTop: "16px" }}>
+                <button onClick={handleSaveAndContinue} style={{
+                  background: "none", border: "none", color: saveFlash ? SR.success : SR.teal,
+                  fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font,
+                  textDecoration: saveFlash ? "none" : "underline", padding: "4px 8px",
+                }}>{saveFlash ? "Progress saved" : "Save and continue later"}</button>
+              </div>
+            )}
+          </>
         )}
 
         {intakeMode === "form" && <>
@@ -7277,7 +7293,7 @@ function PreOpPage() {
         </div>
 
         {/* Save and continue later */}
-        {supabase && Object.entries(data).some(([k, v]) => k !== "providerAck" && v !== undefined && v !== "" && !(Array.isArray(v) && v.length === 0)) && (
+        {supabase && hasAnswers && (
           <div style={{ textAlign: "center", marginTop: "16px" }}>
             <button onClick={handleSaveAndContinue} style={{
               background: "none", border: "none", color: saveFlash ? SR.success : SR.teal,
