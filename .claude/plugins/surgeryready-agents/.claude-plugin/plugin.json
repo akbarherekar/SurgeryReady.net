@@ -1,0 +1,9 @@
+{
+  "name": "surgeryready-agents",
+  "version": "0.2.0",
+  "description": "SurgeryReady.net agent team: Clinical Researcher, Frontend Designer, Backend Engineer, Strategist, and Orchestrator — perioperative optimization platform",
+  "author": {
+    "name": "Akbar Herekar MD MPH",
+    "url": "https://surgeryready.net"
+  }
+}
