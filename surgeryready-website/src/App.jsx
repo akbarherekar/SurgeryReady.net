@@ -4439,6 +4439,231 @@ function generatePlan(d) {
   return { patient, provider, alerts, riskLevel };
 }
 
+// ───────── COMPREHENSIVE PDF BUILDER ─────────
+// Builds a complete standalone HTML document for "Your Perioperative Readiness Plan"
+// directly from the intake `data` and the `plan` returned by generatePlan().
+// Every value/sentence is copied verbatim from those objects — nothing is invented.
+function buildReadinessPlanHTML(data, plan) {
+  const d = data || {};
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const nl2br = (s) => esc(s).replace(/\n/g, "<br>");
+
+  // Value→label maps mirroring the intake form options (coded scalar fields only).
+  const LBL = {
+    userRole: { patient: "Patient", provider: "Provider" },
+    sex: { male: "Male", female: "Female" },
+    riskCategory: { low: "Low Risk", elevated: "Elevated Risk", high: "High Risk (Vascular/Cardiac)" },
+    duration: { short: "< 2 hours", medium: "2–6 hours", long: "> 6 hours" },
+    eras: { yes: "Yes", no: "No" },
+    bloodLoss: { minimal: "Minimal (< 200 mL)", moderate: "Moderate (200–500 mL)", significant: "Significant (> 500 mL)" },
+    cardiacEventMonths: { "<3": "< 3 months", "3-6": "3–6 months", "6-12": "6–12 months", ">12": "> 12 months" },
+    stentType: { BMS: "Bare-metal stent (BMS)", DES: "Drug-eluting stent (DES)", none: "No stent" },
+    onDAPT: { yes: "Yes (aspirin + P2Y12 inhibitor)", no: "No" },
+    hfType: { HFrEF: "HFrEF (reduced EF)", HFpEF: "HFpEF (preserved EF)" },
+    hasRecentEcho: { yes: "Yes", no: "No" },
+    rateControlled: { yes: "Yes", no: "No" },
+    smokingStatus: { never: "Never smoker", former_gt8: "Former (quit >8 weeks ago)", former_lt8: "Former (quit <8 weeks ago)", current: "Current smoker" },
+    alcoholUse: { none: "None / Rare", light: "Light (1–7 drinks/week)", moderate: "Moderate (8–14 drinks/week)", heavy: "Heavy (>14 drinks/week)" },
+    bingeDrinking: { yes: "Yes", no: "No" },
+    withdrawalHistory: { yes: "Yes", no: "No", unknown: "Unknown" },
+    glp1Phase: { yes: "Yes — still titrating up", no: "No — stable dose" },
+    glp1GI: { none: "None", mild: "Mild (occasional nausea)", active: "Active (nausea/vomiting/bloating)" },
+    exerciseLevel: { sedentary: "Sedentary — no regular exercise", light: "Light — walking 1–2x/week", moderate: "Moderate — 3–4x/week, moderate intensity", active: "Active — 5+x/week, vigorous" },
+    mets: { lt4: "< 4 METs", "4-7": "4–7 METs", gt7: "> 7 METs" },
+    tracksHRV: { yes: "Yes — wearable device", no: "No" },
+    proteinLevel: { low: "Low — minimal meat/protein sources", moderate: "Moderate — some protein each meal", high: "High — actively tracking 1.2+ g/kg/day" },
+    weightLoss: { no: "No", mild: "Yes — < 5% in 3 months", significant: "Yes — > 5% in 3 months" },
+    eatingPattern: { regular: "Regular — 3 meals/day", if: "Intermittent fasting — 16:8 or similar", restricted: "Calorie-restricted / dieting", irregular: "Irregular — skips meals frequently" },
+  };
+
+  const hasVal = (v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+  const disp = (key, v) => {
+    if (Array.isArray(v)) return esc(v.join(", "));
+    if (LBL[key] && LBL[key][v] != null) return esc(LBL[key][v]);
+    return esc(v);
+  };
+  const row = (key, label) => {
+    const v = d[key];
+    if (!hasVal(v)) return "";
+    return "<tr><td class='k'>" + esc(label) + "</td><td class='v'>" + disp(key, v) + "</td></tr>";
+  };
+  const group = (title, rowsHtml) => rowsHtml
+    ? "<h3 class='grp'>" + esc(title) + "</h3><table class='kv'>" + rowsHtml + "</table>" : "";
+
+  // ── Section 1: About You (intake inputs) ──
+  const bmi = (hasVal(d.height) && hasVal(d.weight))
+    ? (703 * parseFloat(d.weight) / (parseFloat(d.height) ** 2)).toFixed(1) : null;
+  const demoRows = row("firstName", "First name") + row("userRole", "Completing as")
+    + row("age", "Age") + row("sex", "Sex") + row("height", "Height (in)") + row("weight", "Weight (lbs)")
+    + (bmi ? "<tr><td class='k'>BMI</td><td class='v'>" + esc(bmi) + "</td></tr>" : "");
+  const surgRows = row("surgeryType", "Type of surgery") + row("riskCategory", "Surgical risk category")
+    + row("weeksUntil", "Weeks until surgery") + row("duration", "Expected duration")
+    + row("eras", "ERAS pathway available") + row("bloodLoss", "Expected blood loss")
+    + row("surgeryTags", "Surgery involves");
+  const medRows = row("cardiac", "Cardiac conditions") + row("respiratory", "Respiratory conditions")
+    + row("endocrine", "Endocrine conditions") + row("other", "Other conditions")
+    + row("cardiacEventMonths", "Time since cardiac event") + row("stentType", "Stent type")
+    + row("onDAPT", "On dual antiplatelet therapy") + row("hfType", "Heart failure type")
+    + row("hasRecentEcho", "Echo within last year") + row("rateControlled", "AF rate-controlled")
+    + row("smokingStatus", "Smoking status") + row("cigPerDay", "Cigarettes per day")
+    + row("alcoholUse", "Alcohol use") + row("bingeDrinking", "Binge drinking")
+    + row("withdrawalHistory", "Alcohol withdrawal history") + row("hemoglobin", "Hemoglobin (g/dL)")
+    + row("raiScore", "RAI frailty score");
+  const medsRows = row("cardioMeds", "Cardiovascular meds") + row("anticoag", "Anticoagulants / antiplatelets")
+    + row("diabetesMeds", "Diabetes meds") + row("painMeds", "Pain / substance-use meds")
+    + row("otherMeds", "Other meds") + row("glp1Phase", "GLP-1 RA dose phase")
+    + row("glp1GI", "GLP-1 RA GI symptoms");
+  const fitRows = row("exerciseLevel", "Exercise level") + row("dasiScore", "DASI score")
+    + row("mets", "Estimated METs") + row("vo2max", "VO₂max (mL/kg/min)")
+    + row("gripStrength", "Grip strength (kg)") + row("tracksHRV", "Tracks HRV")
+    + row("hrvValue", "Recent HRV (ms)") + row("thermalHabits", "Thermal conditioning");
+  const nutRows = row("proteinLevel", "Daily protein intake") + row("albumin", "Albumin (g/dL)")
+    + row("weightLoss", "Unintentional weight loss") + row("eatingPattern", "Eating pattern")
+    + row("supplements", "Supplements");
+
+  const section1 = "<section><h2>1 &middot; About You</h2>"
+    + "<p class='lead'>A summary of the information you provided. These inputs drive every recommendation below.</p>"
+    + group("Demographics", demoRows) + group("Surgery", surgRows)
+    + group("Medical history", medRows) + group("Medications", medsRows)
+    + group("Fitness &amp; function", fitRows) + group("Nutrition", nutRows)
+    + "</section>";
+
+  // ── Shared recommendation-card renderer ──
+  const orderP = { high: 0, medium: 1, low: 2 };
+  const sortRecs = (arr) => (arr || []).slice().sort((a, b) => (orderP[a.priority] ?? 9) - (orderP[b.priority] ?? 9));
+  const patPri = { high: "Important", medium: "Recommended", low: "Optional" };
+  const provPri = { high: "HIGH", medium: "MED", low: "LOW" };
+
+  const stepsHtml = (steps) => {
+    if (!steps || !steps.length) return "";
+    return "<div class='subhead'>Action Steps</div><ol class='steps'>" + steps.map((s) =>
+      "<li><div class='steptitle'>" + esc(s.title) + (s.timing ? " <span class='timing'>" + esc(s.timing) + "</span>" : "") + "</div>"
+      + (s.desc ? "<div class='stepdesc'>" + nl2br(s.desc) + "</div>" : "") + "</li>").join("") + "</ol>";
+  };
+  const targetHtml = (t) => t ? "<div class='target'><span class='tlabel'>Your Target</span>" + esc(t.label)
+    + (t.desc ? "<div class='tdesc'>" + nl2br(t.desc) + "</div>" : "") + "</div>" : "";
+  const evidenceHtml = (lm) => {
+    if (!lm) return "";
+    let h = "<div class='evidence'>";
+    if (lm.why) h += "<div class='subhead'>Why this matters</div><p>" + nl2br(lm.why) + "</p>";
+    if (lm.evidence) h += "<div class='subhead'>What the evidence shows</div><p>" + nl2br(lm.evidence) + "</p>";
+    if (lm.citations && lm.citations.length) {
+      h += "<div class='subhead'>Guideline sources</div><ol class='cites'>" + lm.citations.map((c) =>
+        "<li>" + esc(c.text) + (c.url ? "<div class='url'>" + esc(c.url) + "</div>" : "") + "</li>").join("") + "</ol>";
+    }
+    return h + "</div>";
+  };
+  const card = (rec, priMap) => "<div class='card'>"
+    + "<div class='badges'><span class='pri pri-" + esc(rec.priority) + "'>" + esc(priMap[rec.priority] || rec.priority) + "</span>"
+    + "<span class='domain'>" + esc(rec.domain) + "</span></div>"
+    + "<h3 class='ctitle'>" + esc(rec.title) + "</h3>"
+    + (rec.detail ? "<p class='detail'>" + nl2br(rec.detail) + "</p>" : "")
+    + stepsHtml(rec.steps) + targetHtml(rec.target) + evidenceHtml(rec.learnMore) + "</div>";
+
+  // ── Section 2: Patient-facing plan ──
+  const patCards = sortRecs(plan.patient).map((r) => card(r, patPri)).join("");
+  const section2 = "<section><h2>2 &middot; Your Readiness Plan</h2>"
+    + "<p class='lead'>Your personalized, patient-facing preparation plan — including the detailed action steps, targets, and the evidence behind each recommendation.</p>"
+    + (patCards || "<p class='empty'>No patient recommendations were generated.</p>") + "</section>";
+
+  // ── Section 3: Clinical / provider track ──
+  const riskDesc = plan.riskLevel === "low" ? "Standard preoperative pathway. Focus on patient preparation."
+    : plan.riskLevel === "elevated" ? "Enhanced evaluation recommended. Consider biomarkers and targeted optimization."
+    : "Comprehensive evaluation required. All provider protocols activated. Consider cardiology/specialty consultation.";
+  const alertsHtml = (plan.alerts && plan.alerts.length)
+    ? "<div class='alerts'>" + plan.alerts.map((a) =>
+        "<div class='alert alert-" + esc(a.type) + "'>" + esc(a.text) + "</div>").join("") + "</div>" : "";
+  const provCards = sortRecs(plan.provider).map((r) => card(r, provPri)).join("");
+  const section3 = "<section><h2>3 &middot; Clinical / Provider Track</h2>"
+    + "<div class='clin-disclaimer'><strong>Not physician-reviewed.</strong> This clinical track is generated by an automated algorithm. "
+    + "It has NOT been reviewed by a physician, is not medical advice, and must not be used to direct care. "
+    + "It is intended only as a discussion aid for a licensed clinician, who retains full clinical and legal responsibility for all decisions.</div>"
+    + "<div class='risk risk-" + esc(plan.riskLevel) + "'><strong>Perioperative Risk: " + esc((plan.riskLevel || "").toUpperCase()) + "</strong> &mdash; " + esc(riskDesc) + "</div>"
+    + alertsHtml + (provCards || "<p class='empty'>No provider recommendations were generated.</p>") + "</section>";
+
+  // ── Footer disclaimer (verbatim from the on-page plan footer) ──
+  const footer = "<footer>"
+    + "<p><strong>Important:</strong> This plan is for informational purposes only and does not constitute medical advice. "
+    + "Always consult your physician, surgeon, and anesthesiologist before making changes to your medications, diet, exercise routine, "
+    + "or other health behaviors. Individual circumstances vary — your care team has information about your health that this tool does not.</p>"
+    + "<p><strong>Clinical note:</strong> This tool generates recommendations based on population-level evidence and guidelines "
+    + "(2024 AHA/ACC, ASRA 5th Ed 2025, ESAIC 2025, Multi-Society GLP-1 RA Guidance 2024). It is a clinical decision support tool and does not "
+    + "replace physician judgment or establish a standard of care. The treating physician, surgeon, and anesthesiologist retain full clinical and legal "
+    + "responsibility for all decisions and patient outcomes. All recommendations must be reviewed, verified, and individualized by the responsible clinician. "
+    + "SurgeryReady assumes no liability for clinical outcomes resulting from use of this tool.</p>"
+    + "<p class='pw'>Powered by SurgeryReady — Health before healthcare</p></footer>";
+
+  const subParts = [d.firstName, d.surgeryType,
+    hasVal(d.weeksUntil) ? d.weeksUntil + " weeks until surgery" : null,
+    "Perioperative Risk: " + (plan.riskLevel || "").toUpperCase()].filter(hasVal).map(esc).join(" &middot; ");
+  const docTitle = (d.firstName ? esc(d.firstName) + "'s" : "Your") + " Perioperative Readiness Plan";
+  let genDate = "";
+  try { genDate = new Date().toLocaleDateString(); } catch (e) { genDate = ""; }
+
+  const styles = `
+*{box-sizing:border-box;}
+body{font-family:'DM Sans','Segoe UI',sans-serif;color:#1A2B3C;max-width:860px;margin:0 auto;padding:40px;line-height:1.55;}
+header{border-bottom:3px solid #0D7C66;padding-bottom:16px;margin-bottom:24px;}
+header h1{font-size:26px;color:#1B3A5C;margin:0 0 6px;}
+header .sub{font-size:13px;color:#4A6274;margin:0;}
+header .gen{font-size:11px;color:#7C8E9B;margin:4px 0 0;}
+section{margin-bottom:28px;}
+section>h2{font-size:19px;color:#1B3A5C;border-bottom:2px solid #DDE5E3;padding-bottom:6px;margin:0 0 12px;page-break-after:avoid;}
+.lead{font-size:13px;color:#4A6274;margin:0 0 16px;}
+h3.grp{font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#0D7C66;margin:16px 0 6px;}
+table.kv{width:100%;border-collapse:collapse;margin:0 0 8px;}
+table.kv td{padding:5px 8px;font-size:13px;vertical-align:top;border-bottom:1px solid #EDF1F0;}
+td.k{width:38%;color:#4A6274;font-weight:600;}
+td.v{color:#1A2B3C;}
+.card{border:1px solid #DDE5E3;border-radius:10px;padding:16px 18px;margin:0 0 14px;page-break-inside:avoid;}
+.badges{margin-bottom:6px;}
+.pri{font-size:10px;font-weight:700;padding:2px 8px;border-radius:5px;letter-spacing:0.4px;}
+.pri-high{background:#FFF5F5;color:#C53030;}
+.pri-medium{background:#FFFFF0;color:#B7791F;}
+.pri-low{background:#E6F5F0;color:#0D7C66;}
+.domain{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:#0D7C66;margin-left:8px;}
+.ctitle{font-size:16px;color:#1B3A5C;margin:4px 0 8px;}
+.detail{font-size:13px;color:#1A2B3C;margin:0 0 10px;}
+.subhead{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#1B3A5C;margin:12px 0 5px;}
+ol.steps{margin:0;padding-left:20px;}
+ol.steps li{margin-bottom:8px;font-size:13px;}
+.steptitle{font-weight:700;color:#1B3A5C;}
+.timing{font-weight:600;color:#0D7C66;font-size:11px;}
+.stepdesc{font-weight:400;color:#4A6274;font-size:12.5px;margin-top:2px;}
+.target{background:#1B3A5C;color:#fff;border-radius:10px;padding:12px 16px;margin:10px 0;font-size:14px;font-weight:600;}
+.target .tlabel{display:block;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:rgba(255,255,255,0.6);font-weight:700;margin-bottom:2px;}
+.target .tdesc{font-size:12px;font-weight:400;color:rgba(255,255,255,0.85);margin-top:4px;}
+.evidence{background:#F8FAFB;border:1px solid #EDF1F0;border-radius:8px;padding:10px 14px;margin-top:10px;}
+.evidence p{font-size:12.5px;color:#4A6274;margin:0 0 6px;}
+ol.cites{margin:0;padding-left:18px;}
+ol.cites li{font-size:11px;color:#4A6274;margin-bottom:4px;}
+ol.cites .url{font-size:10px;color:#0D7C66;word-break:break-all;}
+.clin-disclaimer{background:#FFF5F5;border:1.5px solid #C53030;border-radius:8px;padding:12px 16px;font-size:12px;color:#1A2B3C;margin-bottom:14px;line-height:1.6;}
+.risk{border-radius:8px;padding:10px 14px;font-size:12.5px;margin-bottom:12px;}
+.risk-low{background:#E6F5F0;color:#095C4B;}
+.risk-elevated{background:#FFFFF0;color:#B7791F;}
+.risk-high{background:#FFF5F5;color:#C53030;}
+.alerts{margin-bottom:14px;}
+.alert{border-radius:8px;padding:9px 14px;font-size:12.5px;margin-bottom:6px;}
+.alert-danger{background:#FFF5F5;color:#C53030;border:1px solid rgba(197,48,48,0.2);}
+.alert-warning{background:#FFFFF0;color:#B7791F;border:1px solid rgba(183,121,31,0.2);}
+.empty{font-size:13px;color:#7C8E9B;}
+footer{border-top:1px solid #DDE5E3;margin-top:28px;padding-top:14px;}
+footer p{font-size:11px;color:#7C8E9B;line-height:1.6;margin:0 0 8px;}
+footer .pw{text-align:center;font-weight:700;color:#1B3A5C;margin-top:6px;}
+@media print{body{padding:20px;max-width:none;}.card,table.kv,.target,.evidence{page-break-inside:avoid;}section>h2,h3.grp{page-break-after:avoid;}}
+`;
+
+  return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>" + docTitle + "</title>"
+    + "<link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' rel='stylesheet'>"
+    + "<style>" + styles + "</style></head><body>"
+    + "<header><h1>Your Perioperative Readiness Plan</h1>"
+    + (subParts ? "<p class='sub'>" + subParts + "</p>" : "")
+    + (genDate ? "<p class='gen'>Generated " + esc(genDate) + "</p>" : "")
+    + "</header>" + section1 + section2 + section3 + footer + "</body></html>";
+}
+
 // ───────── STEP ILLUSTRATIONS ─────────
 function StepIllustration({ type }) {
   const T = SR.teal; const N = SR.navy; const TL = SR.tealLight;
@@ -6941,11 +7166,12 @@ function PreOpPage() {
                 </button>
               )}
               <button onClick={() => {
-                const el = document.getElementById("readiness-plan-printable");
-                const title = (data.firstName ? data.firstName + "s" : "Your") + " Surgical Readiness Plan - SurgeryReady";
+                const html = buildReadinessPlanHTML(data, plan);
                 const w = window.open("", "_blank");
-                w.document.write("<html><head><title>" + title + "</title><link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' rel='stylesheet'><style>body{font-family:'DM Sans',sans-serif;color:#1A2B3C;padding:40px;max-width:1000px;margin:0 auto}@media print{body{padding:20px}button,.no-print{display:none!important}}</style></head><body>" + el.innerHTML + "</body></html>");
+                if (!w) return;
+                w.document.write(html);
                 w.document.close();
+                w.focus();
                 setTimeout(() => { w.print(); }, 600);
               }} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
