@@ -134,8 +134,9 @@ See `docs/ALGORITHM.md` for full spec. Summary:
   - VO₂max modal
   - Personalized forward-looking timeline (`TimelineView.jsx` + `src/data/timeline.js`)
   - Deidentified access-code persistence: save/resume via `SR-XXXX-XXXX-XXXX` codes (~59 bits entropy). SHA-256 hash of the code is the only server-side key — no accounts, no email, `firstName` never leaves the browser (kept in `localStorage` as `sr_first_name`, code as `sr_access_code`). All DB access goes through security-definer RPCs (`save_plan`, `load_plan`, `save_progress`, `delete_plan`) defined in `docs/SUPABASE_SETUP.sql`; anon clients have zero direct table access. Partial mid-form saves supported ("Save and continue later"); finishing or refining upserts the same row.
+  - Comprehensive PDF export ("Download PDF" in the plan view header): `buildReadinessPlanHTML(data, plan)` builds a full standalone HTML document ("Your Perioperative Readiness Plan") directly from the in-memory `data` + `plan` objects, then opens it in a new window and calls `window.print()` (browser print-to-PDF). Three sections — About You (all intake echoed verbatim), Your Readiness Plan (every patient card with action steps, targets, Why/Evidence/Citations), and Clinical / Provider Track (disclaimer-led risk summary, alerts, provider cards). All content copied verbatim from data/plan — nothing confabulated.
 - **Generation animation:** 10-second loading screen with progress bar (CSS `srProgress 10s`) and 5 motivational messages cycling every 2 seconds.
-- **Known constraint:** PDF export was removed due to JSX parsing error (template literal + embedded script tag). Do **not** reintroduce PDF generation using that pattern.
+- **PDF export pattern constraint:** The current PDF uses the new-window-then-`print()` approach (above). Do **not** revert to the old pattern that embedded a `<script>` tag inside a JSX template literal — that caused a JSX parsing error and is why the original PDF export was removed.
 - **InfoButton placement:** Must be inside their `Field` component as children, not outside — placing them outside creates layout gaps.
 
 ## Demo Patients

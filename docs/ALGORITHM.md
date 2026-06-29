@@ -142,8 +142,22 @@ Results rendered as expandable cards, one per clinical domain. Each card has:
 
 | Issue | Status |
 |---|---|
-| PDF export removed | Caused JSX parsing error: embedded `<script>` tag inside template literal. Do NOT reintroduce. |
+| PDF export pattern | Current export uses new-window + `window.print()` (see PDF Export below). Do NOT revert to the old pattern that embedded a `<script>` tag inside a JSX template literal — that caused the original JSX parsing error. |
 | InfoButton placement | Must be `Field` children, not siblings — avoids layout gap |
+
+---
+
+## PDF Export
+
+The plan view header has a **Download PDF** button. It calls `buildReadinessPlanHTML(data, plan)` — a builder (just above `PreOpPage` in `src/App.jsx`) that renders a complete standalone HTML document, **"Your Perioperative Readiness Plan,"** directly from the in-memory intake `data` and the `plan` object. The HTML is opened in a new window via `window.open`, written with `document.write`, and printed with `window.print()` after a 600 ms delay (browser print-to-PDF).
+
+Every value and sentence is copied **verbatim** from `data`/`plan` — nothing is invented. Coded scalar fields are mapped to human labels via the in-builder `LBL` map. Three sections:
+
+1. **About You** — all intake inputs echoed verbatim, grouped by step (demographics incl. computed BMI, surgery, medical, medications, fitness, nutrition).
+2. **Your Readiness Plan** — every patient recommendation including action steps, "Your Target" banners, and full Why / Evidence / Citations.
+3. **Clinical / Provider Track** — leads with a "not physician-reviewed, not medical advice" disclaimer, then risk summary, alerts, and full provider cards with evidence.
+
+This replaced an earlier `innerHTML`-dump approach that only captured the visible/collapsed DOM (anything behind popups or collapsed evidence panels was lost).
 
 ---
 
