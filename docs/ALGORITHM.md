@@ -1,7 +1,7 @@
 # ALGORITHM.md — Surgical Readiness Algorithm Spec
 
 **Live file:** `src/App.jsx` — `PreOpPage` component + `generatePlan()` + `TimelineView`  
-**Legacy standalone:** `Surgical_Readiness_Algorithm_2026-03-25_v4.jsx` (archived reference)  
+**Legacy standalone:** `Surgical_Readiness_Algorithm_2026-08-01_1430_v5.jsx` (archived reference; v4 of 2026-03-25 precedes IBW protein dosing)  
 **Version convention for standalone artifacts:** `Surgical_Readiness_Algorithm_YYYY-MM-DD_HHMM.jsx`
 
 ---
@@ -115,6 +115,28 @@ const STEP_NUMS = ["01", "02", "03", "04", "05", "06"];
 - Flags patients at risk for alcohol withdrawal syndrome (AWS)
 - High-risk → anesthesia/medicine co-management, consider prophylactic benzodiazepine protocol
 - CAGE questions embedded as intake screen
+
+### Protein Target — Ideal Body Weight Dosing
+
+Protein is dosed on the **lower of actual and ideal body weight**, so excess adipose tissue does not inflate the target (protein requirement scales with lean mass, per ESPEN).
+
+```
+ibwKg (Devine)   = (sex === "male" ? 50 : 45.5) + 2.3 × (heightInches − 60)
+                   only when height is 58–90 in and sex is male/female, else null
+proteinWeightKg  = (ibwKg && weightKg) ? min(weightKg, ibwKg) : (weightKg || 80)
+proteinTarget    = proteinWeightKg × 1.5   g/day
+```
+
+`weightKg = weightLbs × 0.453592`. The card copy names its basis explicitly via `proteinBasis`:
+
+| `proteinBasis` | Condition | Copy states |
+|---|---|---|
+| `ibw` | IBW < actual weight | Target calculated on ideal body weight (both values shown) |
+| `actual` | Actual weight ≤ IBW | Target calculated on actual weight (both values shown) |
+| `noIbw` | Weight present, height or sex missing | Calculated on actual weight; IBW could not be computed |
+| `default` | No weight at all (e.g. provider intake) | Uses an 80 kg reference weight; prompts for height/weight/sex |
+
+Provider cards for cirrhosis and frailty quote the ESPEN 1.2–1.5 g/kg range, also on ideal body weight.
 
 ### DASI → VO₂max Estimation
 

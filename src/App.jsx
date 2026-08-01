@@ -2870,7 +2870,17 @@ function generatePlan(d) {
   const weeks = parseInt(d.weeksUntil) || 4;
   const age = parseInt(d.age) || 50;
   const bmi = d.height && d.weight ? (703 * parseFloat(d.weight) / (parseFloat(d.height) ** 2)) : null;
-  const weightKg = d.weight ? parseFloat(d.weight) * 0.453592 : 80;
+  const weightKg = d.weight ? parseFloat(d.weight) * 0.453592 : null;
+  // Ideal body weight (Devine): male 50 kg + 2.3 kg per inch over 60"; female 45.5 kg + 2.3 kg per inch.
+  const heightIn = d.height ? parseFloat(d.height) : null;
+  const ibwKg = (heightIn && heightIn >= 58 && heightIn <= 90 && (d.sex === "male" || d.sex === "female"))
+    ? (d.sex === "male" ? 50 : 45.5) + 2.3 * (heightIn - 60)
+    : null;
+  // Protein is dosed on the lower of actual and ideal body weight so that excess adipose
+  // tissue does not inflate the target. basis drives the explanatory copy on the card.
+  const proteinBasis = (ibwKg && weightKg) ? (ibwKg < weightKg ? "ibw" : "actual")
+    : weightKg ? "noIbw" : "default";
+  const proteinWeightKg = (ibwKg && weightKg) ? Math.min(weightKg, ibwKg) : (weightKg || 80);
   const cardiac = d.cardiac || [];
   const respiratory = d.respiratory || [];
   const endocrine = d.endocrine || [];
@@ -2931,10 +2941,10 @@ function generatePlan(d) {
           why: "Exercise triggers hormesis — a controlled biological stress that forces your body to adapt, rebuild, and grow more resilient. Prehabilitation increases cardiorespiratory reserve (VO2max), builds muscle mass, activates heat shock proteins that protect tissues under surgical stress, and stimulates mitochondrial biogenesis. Each session creates measurable adaptations that directly improve your tolerance of the surgical insult.",
           evidence: "A 2023 JAMA Network Open systematic review of prehabilitation across orthopedic surgical populations found significant improvements in preoperative function, muscle strength, and quality of life, with postoperative benefits extending to 6 weeks (knee replacement) and 6 months (lumbar surgery). Critically, prehabilitation doses exceeding 500 total minutes significantly reduced the need for postoperative rehabilitation — lower doses did not reach this threshold. HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity continuous training. A separate meta-analysis of 10 RCTs confirmed protective benefits against all-cause complications in upper abdominal surgery.",
           citations: [
-            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
-            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
-            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
-            { text: "Calabrese EJ. Preconditioning is hormesis. Pharmacol Res. 2016;110:218–225.", url: "https://www.sciencedirect.com/science/article/abs/pii/S1043661815301924" },
+            { text: "Punnoose A, et al. Prehabilitation for patients undergoing orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pubmed.ncbi.nlm.nih.gov/37052919/" },
+            { text: "Amirkhosravi F, et al. Multimodal prehabilitation and postoperative outcomes in upper abdominal surgery: systematic review and meta-analysis of 10 RCTs. Sci Rep. 2024;14:16012.", url: "https://pubmed.ncbi.nlm.nih.gov/38992072/" },
+            { text: "Waterland JL, et al. Efficacy of prehabilitation including exercise on postoperative outcomes following abdominal cancer surgery: systematic review and meta-analysis. Front Surg. 2021;8:628848.", url: "https://pubmed.ncbi.nlm.nih.gov/33816546/" },
+            { text: "Calabrese EJ. Preconditioning is hormesis part II: How the conditioning dose mediates protection. Pharmacol Res. 2016;110:265–275.", url: "https://pubmed.ncbi.nlm.nih.gov/26748033/" },
           ],
         },
       });
@@ -2951,9 +2961,9 @@ function generatePlan(d) {
           why: "Exercise is the single most evidence-backed intervention in surgical preparation. Your cardiorespiratory fitness (VO2max) is one of the strongest predictors of postoperative outcomes — and it is modifiable even in weeks. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Resistance training builds the muscle reserves that buffer the inevitable catabolism of surgical recovery.",
           evidence: "A 2023 JAMA Network Open systematic review confirmed prehabilitation improved function, strength, and quality of life across orthopedic surgical populations. Prehabilitation exceeding 500 total minutes significantly reduced postoperative rehabilitation needs — lower doses did not reach this threshold. A meta-analysis of abdominal cancer surgery patients showed prehabilitation improved walking distance by 33 meters and reduced hospital length of stay by 3.68 days.",
           citations: [
-            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
-            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
-            { text: "Assessing cardiorespiratory fitness in clinical settings. Prog Cardiovasc Dis. 2024.", url: "https://www.sciencedirect.com/science/article/abs/pii/S0033062024000306" },
+            { text: "Punnoose A, et al. Prehabilitation for patients undergoing orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pubmed.ncbi.nlm.nih.gov/37052919/" },
+            { text: "Waterland JL, et al. Efficacy of prehabilitation including exercise on postoperative outcomes following abdominal cancer surgery: systematic review and meta-analysis. Front Surg. 2021;8:628848.", url: "https://pubmed.ncbi.nlm.nih.gov/33816546/" },
+            { text: "Harber MP, et al. Assessing cardiorespiratory fitness in clinical and community settings. Prog Cardiovasc Dis. 2024;83:36–42.", url: "https://pubmed.ncbi.nlm.nih.gov/38417771/" },
           ],
         },
       });
@@ -2971,9 +2981,9 @@ function generatePlan(d) {
           why: "At a moderate fitness level, your foundation is solid — the opportunity is to sharpen it. HIIT (high-intensity interval training) creates a greater cardiovascular stimulus per unit time than steady-state exercise, driving VO2max improvements more efficiently. Grip strength is a validated biomarker of overall physiological reserve, consistently predicting postoperative complications, hospital length of stay, and discharge disposition. Tapering before surgery — like an athlete before competition — ensures you arrive rested and primed, not fatigued.",
           evidence: "Evidence consistently shows HIIT sustained greater physical fitness at 2 months post-surgery compared to moderate-intensity continuous training. Grip strength is associated with postoperative complications across surgical specialties and has been validated as a frailty surrogate. The AHA advocates cardiorespiratory fitness as a clinical vital sign: each 1.0 mL/kg/min increase in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events.",
           citations: [
-            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
-            { text: "Grip strength: an indispensable biomarker for older adults. PMC. 2019.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
-            { text: "Assessing cardiorespiratory fitness in clinical settings. Prog Cardiovasc Dis. 2024.", url: "https://www.sciencedirect.com/science/article/abs/pii/S0033062024000306" },
+            { text: "Amirkhosravi F, et al. Multimodal prehabilitation and postoperative outcomes in upper abdominal surgery: systematic review and meta-analysis of 10 RCTs. Sci Rep. 2024;14:16012.", url: "https://pubmed.ncbi.nlm.nih.gov/38992072/" },
+            { text: "Bohannon RW. Grip strength: an indispensable biomarker for older adults. Clin Interv Aging. 2019;14:1681–1691.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
+            { text: "Harber MP, et al. Assessing cardiorespiratory fitness in clinical and community settings. Prog Cardiovasc Dis. 2024;83:36–42.", url: "https://pubmed.ncbi.nlm.nih.gov/38417771/" },
           ],
         },
       });
@@ -2990,8 +3000,8 @@ function generatePlan(d) {
           why: "High fitness is one of the strongest predictors of surgical outcome — your cardiovascular reserve is a direct buffer against the physiological insult of surgery. The risk at this level is over-preparation: pushing too hard in the final weeks can arrive at surgery with accumulated fatigue, muscle damage markers, or overtraining syndrome. Strategic tapering preserves your peak capacity while ensuring full recovery before the day of surgery.",
           evidence: "Athletic periodization principles translate directly to surgical preparation. Marathon runners and competitive athletes reduce training volume by 20–30% in the final 1–2 weeks before a race, arriving with elevated glycogen stores, reduced inflammation, and peak neuromuscular readiness. The same principle applies to surgery. Prehabilitation literature consistently identifies that more total prehab minutes improve outcomes — but quality of fitness on the day of surgery matters most.",
           citations: [
-            { text: "Punnoose A, et al. Prehabilitation for orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC10102876/" },
-            { text: "Gardner E. 10 Ways to Recover From a Marathon. Yale Medicine.", url: "https://www.yalemedicine.org/news/10-ways-recover-from-marathon" },
+            { text: "Punnoose A, et al. Prehabilitation for patients undergoing orthopedic surgery: systematic review and meta-analysis. JAMA Netw Open. 2023;6(4):e238050.", url: "https://pubmed.ncbi.nlm.nih.gov/37052919/" },
+            { text: "MacMillan C. 10 Ways To Recover From a Marathon. Yale Medicine. 2022.", url: "https://www.yalemedicine.org/news/10-ways-recover-from-marathon" },
           ],
         },
       });
@@ -3009,8 +3019,8 @@ function generatePlan(d) {
           why: "Even short windows of structured exercise create meaningful physiological adaptation. The body responds to aerobic stress within days by improving mitochondrial efficiency, increasing capillary density in muscle, and reducing resting inflammatory markers. Resistance training preserves lean mass and builds the functional reserves that buffer the catabolic insult of surgery. Every session — even with limited time — contributes measurable biological benefit.",
           evidence: "Prehabilitation research consistently demonstrates that even 2–4 week programs significantly improve preoperative function and reduce postoperative recovery time. A meta-analysis of abdominal cancer surgery found prehabilitation improved 6-minute walk distance by 33 meters and reduced hospital length of stay by 3.68 days — with benefit even from shorter programs. The total prehab dose (minutes) is the strongest predictor of outcome benefit.",
           citations: [
-            { text: "Prehabilitation for abdominal cancer surgery: meta-analysis. Front Surg. 2021;8:628848.", url: "https://www.frontiersin.org/journals/surgery/articles/10.3389/fsurg.2021.628848/" },
-            { text: "Multimodal prehabilitation in upper abdominal surgery: meta-analysis of 10 RCTs. Sci Rep. 2024;14:16069.", url: "https://www.nature.com/articles/s41598-024-66633-6" },
+            { text: "Waterland JL, et al. Efficacy of prehabilitation including exercise on postoperative outcomes following abdominal cancer surgery: systematic review and meta-analysis. Front Surg. 2021;8:628848.", url: "https://pubmed.ncbi.nlm.nih.gov/33816546/" },
+            { text: "Amirkhosravi F, et al. Multimodal prehabilitation and postoperative outcomes in upper abdominal surgery: systematic review and meta-analysis of 10 RCTs. Sci Rep. 2024;14:16012.", url: "https://pubmed.ncbi.nlm.nih.gov/38992072/" },
           ],
         },
       });
@@ -3021,18 +3031,26 @@ function generatePlan(d) {
         why: "Exercise is one of the most powerful preparation tools — but in the setting of recent MI or uncontrolled hypertension, unguided exercise increases the risk of a cardiac event before surgery. Your physician needs to evaluate your current cardiac stability and determine a safe starting point. Even gentle, supervised activity during this window can preserve function and reduce deconditioning.",
         evidence: "The 2024 AHA/ACC perioperative guidelines identify active cardiac conditions (unstable angina, recent MI, severe valvular disease, decompensated heart failure) as major risk factors requiring evaluation and stabilization before elective surgery. Exercise testing and supervised cardiac rehabilitation can be initiated safely once your care team has cleared you.",
         citations: [
-          { text: "2024 AHA/ACC Perioperative Cardiovascular Management Guidelines. Circulation. 2024.", url: "" },
-          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+          { text: "Thompson A, et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150(19):e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
         ],
       },
     });
   }
 
   // ── PATIENT TRACK: NUTRITION ──
-  const proteinTarget = (weightKg * 1.5).toFixed(0);
+  const proteinTarget = (proteinWeightKg * 1.5).toFixed(0);
+  const proteinBasisNote =
+    proteinBasis === "ibw"
+      ? `Your ideal body weight is ~${ibwKg.toFixed(0)} kg (Devine formula, from your height and sex), below your recorded weight of ~${weightKg.toFixed(0)} kg. Protein needs track lean body mass rather than total weight, so your target is calculated on ideal body weight.`
+      : proteinBasis === "actual"
+      ? `Your recorded weight of ~${weightKg.toFixed(0)} kg is at or below your ideal body weight of ~${ibwKg.toFixed(0)} kg, so your target is calculated on your actual weight.`
+      : proteinBasis === "noIbw"
+      ? `Calculated on your recorded weight of ~${weightKg.toFixed(0)} kg. Height and sex were not both provided, so ideal body weight could not be calculated — add them for a target based on lean body mass.`
+      : `No weight was provided, so this uses a typical reference weight of 80 kg. Add your height, weight, and sex for a target based on your ideal body weight.`;
   patient.push({
-    domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg)`,
-    detail: `Current weight ~${weightKg.toFixed(0)} kg → target 1.2–2.0 g/kg/day. Aim for ${proteinTarget}g as the middle of the range. Distribute across 3–4 meals. Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein. If current intake is low, increase gradually over 1 week.`,
+    domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg ${proteinBasis === "ibw" ? "ideal body weight" : "body weight"})`,
+    detail: `${proteinBasisNote} Target range is 1.2–2.0 g/kg/day; ${proteinTarget}g is the middle of that range. Distribute across 3–4 meals. Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein. If current intake is low, increase gradually over 1 week.`,
     steps: [
       { title: `Spread ${proteinTarget}g across 3–4 meals`, desc: `Protein synthesis is maximized in 25–40g doses per meal. Skipping meals means losing critical muscle-building windows that protect you during recovery. Plan every meal around a protein anchor.`, icon: "protein", timing: "Every meal, every day" },
       { title: "Prioritize high-quality sources", desc: "Best sources by protein density: chicken breast (31g/100g), Greek yogurt (17g/cup), eggs (6g each), salmon (25g/100g cooked), lentils (18g/cup), cottage cheese (14g/half cup), whey protein (25g/scoop).", icon: "protein", timing: "Daily" },
@@ -3041,12 +3059,12 @@ function generatePlan(d) {
     target: { label: `${proteinTarget}g protein every day`, desc: `~${Math.round(parseFloat(proteinTarget) / 4)}g per meal · start immediately and maintain through the morning before surgery` },
     learnMore: {
       why: "Surgery triggers accelerated protein catabolism — without adequate protein reserves before surgery, your body breaks down muscle to fuel the stress response, the inflammatory cascade, and wound repair. Preloading protein means your body has the raw material to maintain immune function, support tissue healing, and preserve the muscle you will need during recovery. Protein synthesis occurs in 25–40g per-meal doses; spreading intake across 3–4 meals is more effective than front- or back-loading.",
-      evidence: "ESPEN (European Society for Clinical Nutrition and Metabolism) guidelines establish 1.2–2.0 g/kg/day as the perioperative protein target. Higher preoperative protein intake is associated with reduced complications and better functional recovery, particularly in older adults undergoing major surgery. Between 30–50% of surgical patients have some degree of nutritional risk, frequently unrecognized — sarcopenia can exist even in apparently well-nourished patients and is a powerful independent predictor of postoperative complications.",
+      evidence: "ESPEN (European Society for Clinical Nutrition and Metabolism) guidelines establish 1.2–2.0 g/kg/day as the perioperative protein target. Because protein requirements scale with lean body mass rather than total body mass, ESPEN advises dosing on ideal or adjusted body weight in overweight and obese patients — otherwise the target overestimates need. Higher preoperative protein intake is associated with reduced complications and better functional recovery, particularly in older adults undergoing major surgery. Between 30–50% of surgical patients have some degree of nutritional risk, frequently unrecognized — sarcopenia can exist even in apparently well-nourished patients and is a powerful independent predictor of postoperative complications.",
       citations: [
-        { text: "Weimann A, et al. ESPEN guideline: Clinical nutrition in surgery. Clin Nutr. 2017;36(3):623–650.", url: "" },
-        { text: "Cruz-Jentoft AJ, et al. Sarcopenia: revised European consensus on definition and diagnosis. Age Ageing. 2019;48(1):16–31.", url: "" },
-        { text: "Deutz NE, et al. Protein intake and exercise for optimal muscle function with aging. Clin Nutr. 2014;33(6):929–936.", url: "" },
-        { text: "Correia & Waitzberg. Impact of malnutrition on morbidity, mortality, LOS, and costs. Curr Opin Clin Nutr Metab Care. 2003;6(5):519–523.", url: "" },
+        { text: "Weimann A, et al. ESPEN guideline: Clinical nutrition in surgery. Clin Nutr. 2017;36(3):623–650.", url: "https://pubmed.ncbi.nlm.nih.gov/28385477/" },
+        { text: "Cruz-Jentoft AJ, et al. Sarcopenia: revised European consensus on definition and diagnosis. Age Ageing. 2019;48(1):16–31.", url: "https://pubmed.ncbi.nlm.nih.gov/30312372/" },
+        { text: "Deutz NE, et al. Protein intake and exercise for optimal muscle function with aging: recommendations from the ESPEN Expert Group. Clin Nutr. 2014;33(6):929–936.", url: "https://pubmed.ncbi.nlm.nih.gov/24814383/" },
+        { text: "Correia MI, Waitzberg DL. The impact of malnutrition on morbidity, mortality, length of hospital stay and costs evaluated through a multivariate model analysis. Clin Nutr. 2003;22(3):235–239.", url: "https://pubmed.ncbi.nlm.nih.gov/12765661/" },
       ],
     },
   });
@@ -3057,9 +3075,9 @@ function generatePlan(d) {
         why: "Immunonutrition formulas enriched with arginine, omega-3 fatty acids, and nucleotides actively modulate the immune response to surgical stress. Arginine supports T-cell function and collagen synthesis for wound healing. Omega-3 fatty acids shift the inflammatory cascade toward resolution rather than excess. Nucleotides support the rapid proliferation of immune cells needed to defend against perioperative infection.",
         evidence: "A 2019 systematic review and meta-analysis of 16 RCTs (1,387 GI cancer patients) found that preoperative immunonutrition for a minimum of 3 days significantly reduced infectious complications (OR 0.46, 95% CI 0.30–0.69) — roughly half the infection rate compared to standard nutrition. A 2024 retrospective cohort study (SUPREMO, 620 patients) confirmed reduced infectious complications (OR 0.54), lower ICU admission rates, and reduced need for mechanical ventilation with complete preoperative immunonutrition.",
         citations: [
-          { text: "Wong CS, et al. Impact of preoperative immune modulating nutrition on outcomes in GI cancer surgery. Ann Surg. 2019;270(2):229–236.", url: "" },
-          { text: "SUPREMO retrospective cohort: complete preoperative immunonutrition. 2024.", url: "https://www.sciencedirect.com/science/article/pii/S2405457724015559" },
-          { text: "Probst P, et al. Meta-analysis of immunonutrition in major abdominal surgery. Br J Surg. 2017;104:1594–1608.", url: "" },
+          { text: "Adiamah A, et al. The impact of preoperative immune modulating nutrition on outcomes in patients undergoing surgery for gastrointestinal cancer: systematic review and meta-analysis. Ann Surg. 2019;270(2):247–256.", url: "https://pubmed.ncbi.nlm.nih.gov/30817349/" },
+          { text: "Chona Chona M, et al. Preoperative immunonutrition and postoperative outcomes in patients with cancer undergoing major abdominal surgery: retrospective cohort study (SUPREMO). Clin Nutr ESPEN. 2025;65:324–330.", url: "https://pubmed.ncbi.nlm.nih.gov/39681165/" },
+          { text: "Probst P, et al. Meta-analysis of immunonutrition in major abdominal surgery. Br J Surg. 2017;104:1594–1608.", url: "https://pubmed.ncbi.nlm.nih.gov/28940219/" },
         ],
       },
     });
@@ -3071,8 +3089,8 @@ function generatePlan(d) {
       evidence: "A systematic review of 17 RCTs (1,445 patients) found that preoperative carbohydrate drinks significantly improved insulin resistance and patient comfort — including hunger, thirst, malaise, anxiety, and nausea — with no aspiration events reported. A 2022 Bayesian network meta-analysis of 23 RCTs identified low-dose carbohydrate loading given 3 hours before surgery as most strongly associated with reduced insulin resistance (WMD: −4.04, 95% CrI: −5.67 to −2.40). A 2024 RCT in colorectal surgery confirmed reduced insulin resistance, lower inflammatory markers, and shorter hospital stays.",
       citations: [
         { text: "Bilku DK, et al. Role of preoperative carbohydrate loading: systematic review. Ann R Coll Surg Engl. 2014;96(1):15–22.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5137663/" },
-        { text: "Tong X, et al. Effects of preoperative carbohydrate loading: Bayesian network meta-analysis. Front Nutr. 2022;9:951676.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9726728/" },
-        { text: "Kumar SM, et al. Effect of preoperative oral carbohydrate loading on postoperative insulin resistance. J Gastrointest Surg. 2024;28(10):1654–1660.", url: "" },
+        { text: "Tong E, et al. Effects of preoperative carbohydrate loading on recovery after elective surgery: Bayesian network meta-analysis. Front Nutr. 2022;9:951676.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9726728/" },
+        { text: "Kumar SM, et al. Effect of preoperative oral carbohydrate loading on postoperative insulin resistance in elective colorectal surgery: a randomized controlled trial. J Gastrointest Surg. 2024;28(10):1654–1660.", url: "https://pubmed.ncbi.nlm.nih.gov/39142436/" },
       ],
     },
   });
@@ -3086,9 +3104,9 @@ function generatePlan(d) {
         evidence: "Mitchell et al. (2010) demonstrated that 2–4 weeks of 30% dietary restriction or brief water-only fasting protected kidneys and liver against ischemia-reperfusion injury, with protection emerging within 1 day and extending across organs. Rickenbacher et al. (2014) showed 1-day fasting protected the liver through SIRT1-mediated downregulation of HMGB1 — a potent inflammatory cytokine — via autophagy. Godar et al. (2015) found intermittent fasting over 6 weeks markedly reduced myocardial infarct size through repetitive autophagy stimulation. A key distinction: strategic intermittent fasting activates protective pathways; prolonged starvation worsens catabolism — the two are biologically different.",
         citations: [
           { text: "Mitchell JR, et al. Short-term dietary restriction and fasting precondition against ischemia reperfusion injury in mice. Aging Cell. 2010;9(1):40–53.", url: "https://pubmed.ncbi.nlm.nih.gov/19878145/" },
-          { text: "Rickenbacher A, et al. Fasting protects liver from ischemic injury through Sirt1-mediated downregulation of HMGB1. J Hepatol. 2014;61(2):301–308.", url: "" },
-          { text: "Godar RJ, et al. Repetitive stimulation of autophagy-lysosome machinery by intermittent fasting preconditions the myocardium. Autophagy. 2015;11(9):1537–1560.", url: "" },
-          { text: "Robertson LT, Mitchell JR. Is overnight fasting before surgery too much or not enough? GeroScience. 2017;39(5-6):543–556.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5722208/" },
+          { text: "Rickenbacher A, et al. Fasting protects liver from ischemic injury through Sirt1-mediated downregulation of circulating HMGB1 in mice. J Hepatol. 2014;61(2):301–308.", url: "https://pubmed.ncbi.nlm.nih.gov/24751831/" },
+          { text: "Godar RJ, et al. Repetitive stimulation of autophagy-lysosome machinery by intermittent fasting preconditions the myocardium to ischemia-reperfusion injury. Autophagy. 2015;11(9):1537–1560.", url: "https://pubmed.ncbi.nlm.nih.gov/26103523/" },
+          { text: "Longchamp A, Mitchell JR, et al. Is overnight fasting before surgery too much or not enough? A mini-review. Gerontology. 2017;63(3):228–237.", url: "https://pubmed.ncbi.nlm.nih.gov/28052287/" },
         ],
       },
     });
@@ -3098,8 +3116,8 @@ function generatePlan(d) {
         why: "In diabetes, fasting without close monitoring can precipitate hypoglycemia or, in patients on certain medications, euglycemic diabetic ketoacidosis (DKA). The metabolic benefits of fasting — AMPK activation, autophagy, ketogenesis — are achievable through other means: exercise, glycemic optimization, and carbohydrate loading per ERAS protocol provide meaningful metabolic preparation without the risks of unmonitored fasting.",
         evidence: "ERAS protocols specifically recommend against prolonged fasting in favor of carbohydrate loading, which improves insulin sensitivity and reduces the stress response in diabetic surgical patients. Perioperative glucose targets of 140–180 mg/dL (intraoperative) are supported by the Society of Thoracic Surgeons and ERAS guidelines. SGLT2 inhibitors must be held 3–4 days before surgery due to euglycemic DKA risk — fasting would compound this risk.",
         citations: [
-          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
-          { text: "Robertson LT, Mitchell JR. Is overnight fasting before surgery too much or not enough? GeroScience. 2017;39(5-6):543–556.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC5722208/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+          { text: "Longchamp A, Mitchell JR, et al. Is overnight fasting before surgery too much or not enough? A mini-review. Gerontology. 2017;63(3):228–237.", url: "https://pubmed.ncbi.nlm.nih.gov/28052287/" },
         ],
       },
     });
@@ -3115,10 +3133,10 @@ function generatePlan(d) {
           why: "Heat exposure dramatically increases expression of heat shock proteins (HSP70, HSP90) — molecular chaperones that stabilize proteins under stress, protect against ischemia-reperfusion injury, and slow muscle atrophy. Cold water immersion (≤15°C) triggers a surge in norepinephrine (up to 530% above baseline) and trains the autonomic nervous system to rapidly toggle between sympathetic and parasympathetic activation — precisely the flexibility that determines how well you tolerate surgical stress and anesthesia induction. Contrast therapy (alternating heat and cold) maximally exercises the vasomotor system.",
           evidence: "The KIHD cohort study of 2,315 Finnish men followed for 20.7 years found sauna use 4–7 times per week was associated with 40% reduced all-cause mortality, 50% reduced fatal cardiovascular disease, and 63% reduced sudden cardiac death — with dose-response for both frequency (4–7x/week vs. once/week) and session duration (>19 min provided substantially greater protection than <11 min). A 2025 systematic review and meta-analysis of 11 RCTs (3,177 participants) confirmed cold water immersion produces significant acute inflammatory signaling followed by significant stress reduction at 12 hours (SMD: −1.00), improved quality of life, and 29% reduced sickness absence. Important caveat: no RCT has directly tested thermal conditioning as a preoperative intervention.",
           citations: [
-            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
+            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "https://pubmed.ncbi.nlm.nih.gov/25705824/" },
             { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
             { text: "Effects of cold-water immersion on health and wellbeing: systematic review and meta-analysis. PLOS ONE. 2025;20(1):e0317615.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11778651/" },
-            { text: "Cold-water immersion: neurohormesis and implications for clinical neurosciences. J Neuropsych Clin Neurosci. 2024.", url: "https://psychiatryonline.org/doi/full/10.1176/appi.neuropsych.20240053" },
+            { text: "López-Ojeda W, Hurley RA. Cold-Water Immersion: Neurohormesis and Possible Implications for Clinical Neurosciences. J Neuropsychiatry Clin Neurosci. 2024;36(3):A4-177.", url: "https://pubmed.ncbi.nlm.nih.gov/38986020/" },
           ],
         },
       });
@@ -3128,9 +3146,9 @@ function generatePlan(d) {
           why: "Your existing thermal practice is already building the biological foundation for surgical resilience. Heat shock proteins (HSPs) generated through sauna act as molecular chaperones — stabilizing proteins under the extreme stress of surgery, protecting against ischemia-reperfusion injury, and slowing muscle atrophy. Cold exposure trains your autonomic nervous system's ability to rapidly toggle between activation states, building the flexibility that anesthesia and surgical stress demand. Reducing intensity in the final 3 days prevents cumulative fatigue from affecting your arrival state.",
           evidence: "The KIHD cohort study found a clear dose-response: 4–7 sauna sessions per week of >19 minutes each provided substantially greater protection than shorter or less frequent sessions (40% reduction in all-cause mortality). Heat exposure additionally produces cardiovascular conditioning that mimics moderate exercise — raising heart rate to 100–150 bpm, increasing cardiac output, and expanding plasma volume. Trained individuals show lower inflammatory responses to subsequent heat exposure, meaning your body is mounting more efficient stress responses.",
           citations: [
-            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "" },
+            { text: "Laukkanen T, et al. Sauna bathing and fatal cardiovascular and all-cause mortality: KIHD cohort. JAMA Intern Med. 2015;175(4):542–548.", url: "https://pubmed.ncbi.nlm.nih.gov/25705824/" },
             { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan. Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
-            { text: "Lee E, et al. Effects of regular sauna bathing with exercise on cardiovascular function: RCT. Am J Physiol. 2022.", url: "https://journals.physiology.org/doi/full/10.1152/ajpregu.00076.2022" },
+            { text: "Lee E, et al. Effects of regular sauna bathing in conjunction with exercise on cardiovascular function: a multi-arm, randomized controlled trial. Am J Physiol Regul Integr Comp Physiol. 2022;323(3):R289–R299.", url: "https://pubmed.ncbi.nlm.nih.gov/35785965/" },
           ],
         },
       });
@@ -3141,7 +3159,7 @@ function generatePlan(d) {
         why: "Heat and cold exposure produce significant acute cardiovascular demands — sauna raises heart rate to 100–150 bpm and dramatically alters peripheral vascular resistance. Cold immersion triggers sudden sympathetic activation with sharp rises in blood pressure and heart rate. In the setting of active cardiac disease, these acute hemodynamic changes can precipitate ischemia, arrhythmia, or other serious events. The preparation benefit does not outweigh the risk.",
         evidence: "Contraindications to sauna and thermal stress exposure include unstable angina, recent MI, decompensated heart failure, severe aortic stenosis, and uncontrolled hypertension. The 2024 AHA/ACC perioperative guidelines identify these as conditions requiring stabilization before elective procedures. Other preparation modalities — structured gentle exercise, protein nutrition, carbohydrate loading, and sleep optimization — provide substantial benefit without cardiovascular risk.",
         citations: [
-          { text: "2024 AHA/ACC Perioperative Cardiovascular Management Guidelines. Circulation. 2024.", url: "" },
+          { text: "Thompson A, et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150(19):e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
           { text: "Patrick RP, Johnson TL. Sauna use as a lifestyle practice to extend healthspan (contraindications). Exp Gerontol. 2021;154:111509.", url: "https://pubmed.ncbi.nlm.nih.gov/34363927/" },
         ],
       },
@@ -3163,8 +3181,8 @@ function generatePlan(d) {
       evidence: "A 2025 Scientific Reports study demonstrated that preoperative psychological preparation significantly improved immunity and surgical outcomes — confirming that the stress response begins before the OR. Preoperative HRV — the biomarker most directly improved by breathing practice and sleep — is validated in a systematic review of 63 studies as predicting intraoperative hypotension, postoperative pneumonia, and arrhythmia. The surgical stress response mirrors marathon running physiology: the same IL-6, CRP, troponin elevation, and immune suppression ('open window') patterns appear — and in both cases, the prepared, rested body tolerates the insult significantly better.",
       citations: [
         { text: "Impact of stress and preoperative psychological preparation on immunity and surgical outcomes. Sci Rep. 2025;15:26253.", url: "https://www.nature.com/articles/s41598-025-01869-4" },
-        { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review (63 studies). J Clin Monit Comput. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
-        { text: "Cristescu T, et al. The Surgical Stress Response and Anesthesia: Narrative Review. J Clin Med. 2024;13(10):3017.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11121777/" },
+        { text: "Frandsen MN, et al. Preoperative heart rate variability as a predictor of perioperative outcomes: a systematic review without meta-analysis. J Clin Monit Comput. 2022;36:947–960.", url: "https://pubmed.ncbi.nlm.nih.gov/35092527/" },
+        { text: "Ivascu R, et al. The Surgical Stress Response and Anesthesia: A Narrative Review. J Clin Med. 2024;13(10):3017.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11121777/" },
       ],
     },
   });
@@ -3189,9 +3207,9 @@ function generatePlan(d) {
         why: "HRV (heart rate variability) measures the variation in milliseconds between consecutive heartbeats and reflects how well your autonomic nervous system adapts to demands. Higher HRV means your nervous system can shift efficiently between sympathetic (stress response) and parasympathetic (recovery) activation — exactly the adaptability that determines how well you tolerate anesthesia induction, hemodynamic shifts during surgery, and the recovery period.",
         evidence: "A 2022 systematic review of 63 studies established preoperative HRV as clinically relevant for predicting perioperative outcomes. Lower RMSSD and HF power independently predicted postoperative pneumonia in lung cancer surgery patients. DFA α1 predicted postoperative atrial fibrillation. Lower total power predicted intraoperative hypotension under general anesthesia. HRV remains depressed for up to 28 days after cardiac surgery (CABG) — making preoperative autonomic reserve a critical buffer. HRV is modifiable through aerobic exercise, sleep optimization, and breathing practice.",
         citations: [
-          { text: "Preoperative HRV as predictor of perioperative outcomes: systematic review. J Clin Monit Comput. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9293802/" },
-          { text: "Preoperative HRV predicts postoperative pneumonia in lung cancer surgery. PMC. 2025.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11883988/" },
-          { text: "Perioperative HRV in major urologic surgery. Sci Rep. 2024.", url: "https://www.nature.com/articles/s41598-024-62930-2" },
+          { text: "Frandsen MN, et al. Preoperative heart rate variability as a predictor of perioperative outcomes: a systematic review without meta-analysis. J Clin Monit Comput. 2022;36:947–960.", url: "https://pubmed.ncbi.nlm.nih.gov/35092527/" },
+          { text: "Lai Y, et al. Preoperative heart rate variability as a predictor of postoperative pneumonia and lung function recovery in surgical lung cancer patients. BMC Cancer. 2025;25:404.", url: "https://pubmed.ncbi.nlm.nih.gov/40045322/" },
+          { text: "Ryan T, et al. Discriminatory ability of perioperative heart rate variability in predicting postoperative complications in major urologic surgery. Sci Rep. 2024;14:11965.", url: "https://pubmed.ncbi.nlm.nih.gov/38796614/" },
         ],
       },
     });
@@ -3201,9 +3219,9 @@ function generatePlan(d) {
       why: "Grip strength is one of the most validated biomarkers in surgical medicine — consistently associated with postoperative complications, hospital length of stay, discharge disposition, and overall mortality. Cardiorespiratory fitness (estimated from walking endurance) is among the strongest single predictors of surgical outcomes. Tracking these weekly gives you objective evidence that your preparation is working — and early warning if something isn't.",
       evidence: "The AHA advocates cardiorespiratory fitness as a clinical vital sign. Each 1.0 mL/kg/min improvement in VO2max is associated with 9–15% improved survival and 21% fewer cardiovascular events. Grip strength is validated across surgical specialties as predicting complications and LOS. A 2024 study confirmed VO2max negatively correlates with frailty scores (r = −0.40, p = 0.03). Wearable device data integrated into frailty indices improved predictive accuracy to 81%.",
       citations: [
-        { text: "VO2max, 6-minute walk, and muscle strength correlate with frailty in US veterans. Front Physiol. 2024.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11427282/" },
-        { text: "Grip strength: an indispensable biomarker for older adults. PMC. 2019.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
-        { text: "Wearable-derived frailty prediction model. PMC. 2022.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9798526/" },
+        { text: "Seldeen KL, et al. VO2max, 6-minute walk, and muscle strength each correlate with frailty in US veterans. Front Physiol. 2024.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC11427282/" },
+        { text: "Bohannon RW. Grip strength: an indispensable biomarker for older adults. Clin Interv Aging. 2019;14:1681–1691.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC6778477/" },
+        { text: "Soley N, et al. Risk for poor post-operative quality of life among wearable use subgroups in an All of Us research cohort. Pac Symp Biocomput. 2023.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC9798526/" },
       ],
     },
   });
@@ -3216,8 +3234,8 @@ function generatePlan(d) {
           why: "Smoking impairs oxygen delivery at every level of the respiratory chain. Carboxyhemoglobin — formed when carbon monoxide binds hemoglobin — renders up to 5–15% of your blood's oxygen-carrying capacity non-functional. Nicotine causes sustained vasoconstriction, reducing perfusion to healing wound edges. Smoking suppresses the immune surveillance needed to fight perioperative infection and delays every phase of wound healing.",
           evidence: "The good news: many effects begin reversing within hours. Carbon monoxide clears within 24–48 hours of stopping — directly improving tissue oxygenation. Airway reactivity begins improving within 1–2 weeks. Ciliary function recovers in 2–4 weeks. Immune and wound healing improvement requires 6–8 weeks — making your current window ideal. The perioperative period is one of the highest-motivation moments for permanent cessation: studies consistently show higher long-term quit rates when cessation is tied to surgery.",
           citations: [
-            { text: "ERAS protocols: smoking cessation as high-quality evidence element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
-            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
       });
@@ -3227,8 +3245,8 @@ function generatePlan(d) {
           why: "Every day of cessation creates measurable biological improvement. Within 24–48 hours, carbon monoxide clears and functional hemoglobin increases — your blood can carry more oxygen immediately. Within 1–2 weeks, airway reactivity begins normalizing and cilia in the airways resume their mucociliary clearance function, reducing pulmonary complication risk. Each additional smoke-free week compounds the benefit.",
           evidence: "Even 4 weeks of preoperative cessation significantly reduces wound infection, pulmonary complications, and impaired healing compared to continued smoking. Carbon monoxide normalization within 24–48 hours has direct, measurable effects on tissue oxygenation during surgery and anesthetic drug metabolism. Nicotine replacement therapy (NRT) maintains compliance without the CO and combustion toxin burden.",
           citations: [
-            { text: "ERAS protocols: smoking cessation as high-quality evidence element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
-            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
       });
@@ -3238,8 +3256,8 @@ function generatePlan(d) {
           why: "Carbon monoxide — the key toxic gas in cigarette smoke — binds hemoglobin with 240 times the affinity of oxygen. In heavy smokers, 5–15% of circulating hemoglobin is bound to CO and rendered non-functional for oxygen delivery. Stopping smoking allows CO to clear and oxyhemoglobin to return to normal within 24–48 hours, directly improving the oxygenation of every tissue — including surgical wound edges — during your operation.",
           evidence: "The immediate, measurable benefit of even brief cessation before surgery is well-established. Carboxyhemoglobin normalization within 24–48 hours provides direct benefit to tissue oxygenation and anesthetic drug metabolism. Nicotine replacement therapy can maintain abstinence without the CO and combustion toxin burden. The ERAS evidence base identifies smoking cessation as one of the highest-quality, most strongly recommended preoperative interventions.",
           citations: [
-            { text: "ERAS protocols: smoking cessation — strong recommendation with high-quality evidence. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
-            { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
       });
@@ -3250,8 +3268,8 @@ function generatePlan(d) {
         why: "You have already completed the hardest step. In the first 8 weeks after cessation, your airway is actively remodeling: cilia that were paralyzed by cigarette toxins are resuming mucociliary clearance, airway inflammation is decreasing, and bronchial reactivity is normalizing. Each additional week smoke-free builds more biological resilience before surgery.",
         evidence: "Ciliary function and mucociliary clearance begin recovering within 2–4 weeks of cessation. Airway hyperreactivity decreases progressively over the first 8 weeks. Immune function and wound healing mechanisms continue to improve with extended cessation. Note: in the first 8 weeks after cessation, airway reactivity may remain slightly elevated compared to never-smokers — standard airway management precautions apply and should be communicated to your anesthesiologist.",
         citations: [
-          { text: "ERAS protocols: smoking cessation evidence base. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
-          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+          { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
         ],
       },
     });
@@ -3264,8 +3282,8 @@ function generatePlan(d) {
         why: "Heavy alcohol use disrupts virtually every system involved in surgical recovery. It suppresses immune function (2–5x higher infection rates), impairs platelet function and coagulation (increasing bleeding risk), stresses the liver (affecting how anesthetic drugs are metabolized), and depletes key nutrients: thiamine, folate, and magnesium — all critical for recovery. If alcohol is suddenly unavailable after surgery (while in the hospital or ICU), withdrawal can emerge 6–24 hours after the last drink — becoming life-threatening at the most vulnerable moment.",
         evidence: "Heavy alcohol use is associated with 2–5x higher perioperative infection rates, significantly increased wound complications, immune suppression, hepatic dysfunction altering drug metabolism, and coagulopathy increasing bleeding risk. At least 4 weeks of cessation is needed to meaningfully reduce these risks. The surgical stress mirrors marathon physiology — the same cytokine and immune pathways — and alcohol compromises the body's ability to mount an appropriate response to either.",
         citations: [
-          { text: "Systemic response to surgery. Anaesthesia & Intensive Care Medicine. 2023;24(1).", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
-          { text: "ERAS protocols: alcohol cessation element. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
+          { text: "Systemic response to surgery. Surgery (Oxford). 2023;41(2):76–80.", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
+          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
         ],
       },
     });
@@ -3275,8 +3293,8 @@ function generatePlan(d) {
         why: "Even moderate alcohol use alters the hepatic cytochrome P450 enzymes responsible for metabolizing many anesthetic agents and medications, potentially causing unpredictable drug responses during and after surgery. Alcohol affects platelet function (reducing the ability to form clots) and modestly impairs immune surveillance in the wound healing window. Stopping 2+ weeks before surgery allows these effects to normalize.",
         evidence: "Alcohol interacts with hepatic enzyme systems that metabolize propofol, fentanyl, benzodiazepines, and other perioperative drugs — potentially requiring anesthesiologists to adjust dosing. Even moderate use is documented in anesthesia notes as affecting drug metabolism. Stopping at least 48 hours before surgery allows platelet function to normalize and reduces acute effects.",
         citations: [
-          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
-          { text: "Bisch SP, et al. ERAS guidelines and outcomes: meta-analysis of RCTs. JAMA Netw Open. 2024;7(6):e2418611.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
+          { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
         ],
       },
     });
@@ -3286,7 +3304,7 @@ function generatePlan(d) {
         why: "Even light alcohol interacts with the hepatic enzyme systems that metabolize anesthetic drugs and affects platelet aggregation (the blood's ability to clot at wound sites). Stopping 48 hours before surgery allows these effects to clear and ensures the most predictable anesthetic response.",
         evidence: "Alcohol is metabolized by cytochrome P450 2E1 (CYP2E1) and other hepatic enzymes — the same pathways used by many anesthetic agents. Even moderate use is documented in anesthesia records as potentially affecting drug metabolism. 48 hours provides sufficient clearance for light use.",
         citations: [
-          { text: "Systemic response to surgery. Anaesthesia & Intensive Care Medicine. 2023;24(1).", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
+          { text: "Systemic response to surgery. Surgery (Oxford). 2023;41(2):76–80.", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
         ],
       },
     });
@@ -3302,9 +3320,9 @@ function generatePlan(d) {
         why: "Anemia reduces the oxygen-carrying capacity of blood. During surgery — when tissues are cut, blood vessels are clamped, and the body's metabolic demands increase — having adequate hemoglobin is critical for every organ receiving enough oxygen. Preoperative anemia is one of the strongest independent predictors of the need for blood transfusion, and transfusion itself carries its own risks: immune reactions, infection transmission, and extended hospital stay.",
         evidence: "Between 30–50% of surgical patients have some degree of nutritional risk, and anemia is frequently unrecognized even in high-income settings. Iron-rich dietary interventions combined with vitamin C for absorption optimization can improve hemoglobin before surgery. When dietary correction is insufficient, physicians can prescribe oral iron or IV iron (ferric carboxymaltose allows single-dose correction). The perioperative target for elective surgery is generally hemoglobin ≥10–13 g/dL depending on expected blood loss.",
         citations: [
-          { text: "Correia & Waitzberg. Impact of malnutrition on morbidity, mortality, LOS, and costs. Curr Opin Clin Nutr Metab Care. 2003;6(5):519–523.", url: "" },
-          { text: "ERAS protocols: preoperative anemia management — high-quality evidence, strong recommendation. J Robotic Surg. 2025.", url: "https://link.springer.com/article/10.1007/s11701-025-02506-y" },
-          { text: "Wang H, et al. Surgical stress response: physiological review. Cureus. 2025.", url: "https://www.cureus.com/articles/437189" },
+          { text: "Correia MI, Waitzberg DL. The impact of malnutrition on morbidity, mortality, length of hospital stay and costs evaluated through a multivariate model analysis. Clin Nutr. 2003;22(3):235–239.", url: "https://pubmed.ncbi.nlm.nih.gov/12765661/" },
+          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+          { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
         ],
       },
     });
@@ -3401,9 +3419,9 @@ function generatePlan(d) {
         why: "CAD and prior MI markedly amplify perioperative MACE risk via catecholamine surge, hypercoagulability, and systemic inflammation. The 2024 AHA/ACC guideline replaces subjective METs estimation with the validated DASI questionnaire and introduces BNP/NT-proBNP thresholds (>92 or >300 pg/mL) for selective echo referral. Beta-blockers must NOT be started within 7 days of surgery — the POISE trial showed acute initiation reduces MI but significantly increases stroke and all-cause mortality.",
         evidence: "POISE (Lancet 2008, n=8,351) demonstrated perioperative beta-blocker initiation reduced non-fatal MI by 27% but increased stroke by 100% and total mortality. MANAGE (Lancet 2018, n=1,754) showed dabigatran 110 mg BID significantly reduced major vascular complications in patients with MINS. The 2024 AHA/ACC perioperative guideline codifies these findings into current Class recommendations.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
           { text: "Devereaux PJ et al. Effects of extended-release metoprolol succinate (POISE). Lancet. 2008;371:1839–47.", url: "https://pubmed.ncbi.nlm.nih.gov/18479744/" },
-          { text: "Devereaux PJ et al. Dabigatran in patients with MINS (MANAGE). Lancet. 2018;391:2325–34.", url: "https://pubmed.ncbi.nlm.nih.gov/30025699/" },
+          { text: "Devereaux PJ et al. Dabigatran in patients with myocardial injury after non-cardiac surgery (MANAGE). Lancet. 2018;391:2325–2334.", url: "https://pubmed.ncbi.nlm.nih.gov/29900874/" },
         ],
       },
     });
@@ -3425,7 +3443,7 @@ function generatePlan(d) {
         evidence: "The 2022 AHA/ACC Heart Failure Guideline (Heidenreich et al., Circulation 2022) establishes GDMT for HFrEF including quadruple therapy. The 2024 AHA/ACC Perioperative Guideline integrates HF-specific risk stratification using BNP thresholds and echo criteria to guide surgical timing.",
         citations: [
           { text: "Heidenreich PA et al. 2022 AHA/ACC Heart Failure Guideline. Circulation. 2022;145:e895–e1032.", url: "https://pubmed.ncbi.nlm.nih.gov/35363499/" },
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
         ],
       },
     });
@@ -3454,8 +3472,8 @@ function generatePlan(d) {
         why: "Severe symptomatic aortic stenosis is the highest-risk valvular lesion — it carries a Class III indication for elective noncardiac surgery without prior valve intervention. Mechanical valve patients require bridging anticoagulation per ASRA 5th Ed during warfarin hold periods. HCM patients are uniquely sensitive to preload reduction, afterload drop, and tachycardia — all common perioperative occurrences.",
         evidence: "The 2021 AHA/ACC Valvular Heart Disease Guideline (Otto et al., Circulation 2021) and 2024 AHA/ACC Perioperative Guideline both provide Class I recommendations for echo within 1 year of surgery in patients with known or suspected moderate-severe VHD.",
         citations: [
-          { text: "Otto CM et al. 2021 AHA/ACC Guideline for the Management of Patients With Valvular Heart Disease. Circulation. 2021;143:e72–e227.", url: "https://pubmed.ncbi.nlm.nih.gov/34353922/" },
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Otto CM et al. 2020 ACC/AHA Guideline for the Management of Patients With Valvular Heart Disease. Circulation. 2021;143:e72–e227.", url: "https://pubmed.ncbi.nlm.nih.gov/33332150/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
         ],
       },
     });
@@ -3475,8 +3493,8 @@ function generatePlan(d) {
         why: "Severe uncontrolled hypertension (DBP >110) increases perioperative risk through end-organ damage to the heart, kidneys, and cerebral vasculature. The perioperative concern is less the absolute BP value and more the presence of end-organ damage — fundoscopic changes, proteinuria, ECG changes, or elevated creatinine. Clonidine must never be stopped abruptly perioperatively as rebound hypertensive crisis can occur.",
         evidence: "The 2024 AHA/ACC Perioperative Guideline (Class 2b) recommends considering deferral when SBP ≥180 or DBP ≥110 with evidence of end-organ damage. ESAIC 2025 provides additional guidance on perioperative BP targets and antihypertensive management for noncardiac surgery.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
-          { text: "ESAIC 2025 Guidelines for Perioperative Care. Eur J Anaesthesiol. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
+          { text: "Lamperti M, et al. Preoperative assessment of adults undergoing elective noncardiac surgery: Updated guidelines from the European Society of Anaesthesiology and Intensive Care. Eur J Anaesthesiol. 2025;42(1):1–35.", url: "https://pubmed.ncbi.nlm.nih.gov/39492705/" },
         ],
       },
     });
@@ -3542,8 +3560,8 @@ function generatePlan(d) {
         why: "Recent stroke creates a perioperative window of heightened vulnerability — cerebral autoregulation is impaired for weeks post-event, making the brain critically dependent on adequate perfusion pressure. The 2024 AHA/ACC guideline recommends delaying elective surgery ≥3 months after stroke (Class 2a) to allow autoregulation to recover and reduce recurrent stroke risk.",
         evidence: "The 2024 AHA/ACC Perioperative Guideline and Glance et al. (JAMA Surg 2022) both demonstrate that the risk of perioperative stroke is highest within the first 3 months following a cerebrovascular event, with risk declining substantially after 9 months.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
-          { text: "Glance LG et al. Perioperative major adverse cardiovascular events after noncardiac surgery in patients with prior stroke. JAMA Surg. 2022.", url: "https://pubmed.ncbi.nlm.nih.gov/35044421/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
+          { text: "Glance LG et al. Association of Time Elapsed Since Ischemic Stroke With Risk of Recurrent Stroke in Older Patients Undergoing Elective Nonneurologic, Noncardiac Surgery. JAMA Surg. 2022;157(8):e222236.", url: "https://pubmed.ncbi.nlm.nih.gov/35767247/" },
         ],
       },
     });
@@ -3563,7 +3581,7 @@ function generatePlan(d) {
         why: "Electromagnetic interference (EMI) from electrosurgery can inhibit pacemaker output in demand mode or inappropriately trigger/inhibit ICD therapies. Pacemaker-dependent patients without a reprogramming plan may develop hemodynamically significant pauses. ICD anti-tachycardia therapies must be deactivated before surgery — failure to do so risks inappropriate shocks triggered by electrocautery artifact.",
         evidence: "The 2024 AHA/ACC Perioperative Guideline and Crossley et al. Heart Rhythm Society Expert Consensus (2011) provide comprehensive CIED management protocols including interrogation requirements, reprogramming thresholds, and magnet behavior documentation.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
           { text: "Crossley GH et al. The Heart Rhythm Society Expert Consensus on Perioperative Management of CIED. Heart Rhythm. 2011;8:1114–1154.", url: "https://pubmed.ncbi.nlm.nih.gov/21722856/" },
         ],
       },
@@ -3589,7 +3607,7 @@ function generatePlan(d) {
         evidence: "GOLD 2025 provides updated COPD management standards including inhaler optimization. ESAIC 2025 perioperative guidelines specifically address PPC risk reduction strategies, smoking cessation timelines, and the limited role of preoperative spirometry outside thoracic surgery.",
         citations: [
           { text: "Global Initiative for Chronic Obstructive Lung Disease (GOLD). 2025 GOLD Report.", url: "https://goldcopd.org/2025-gold-report/" },
-          { text: "ESAIC 2025 Guidelines for Perioperative Care. Eur J Anaesthesiol. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Lamperti M, et al. Preoperative assessment of adults undergoing elective noncardiac surgery: Updated guidelines from the European Society of Anaesthesiology and Intensive Care. Eur J Anaesthesiol. 2025;42(1):1–35.", url: "https://pubmed.ncbi.nlm.nih.gov/39492705/" },
         ],
       },
     });
@@ -3611,7 +3629,7 @@ function generatePlan(d) {
         why: "OSA increases perioperative risk through episodic hypoxemia, hypercarbia, and upper airway obstruction — particularly in the postoperative period when REM sleep rebound occurs on nights 2–3 following surgery. Opioids suppress ventilatory drive and worsen upper airway collapse, making opioid-sparing multimodal analgesia essential. STOP-BANG ≥5 has sensitivity >90% for moderate-severe OSA.",
         evidence: "Chung et al. (Anesth Analg 2016) validated the STOP-BANG questionnaire as a perioperative OSA screening tool with sensitivity >90% for moderate-severe OSA at a cutoff of ≥3. CPAP adherence preoperatively is associated with reduced postoperative respiratory complications.",
         citations: [
-          { text: "Chung F et al. STOP-Bang Questionnaire: A Practical Approach to Screen for Obstructive Sleep Apnea. Anesth Analg. 2016;123:227–229.", url: "https://pubmed.ncbi.nlm.nih.gov/26895655/" },
+          { text: "Chung F, Abdullah HR, Liao P. STOP-Bang Questionnaire: A Practical Approach to Screen for Obstructive Sleep Apnea. Chest. 2016;149(3):631–638.", url: "https://pubmed.ncbi.nlm.nih.gov/26378880/" },
         ],
       },
     });
@@ -3631,7 +3649,7 @@ function generatePlan(d) {
         why: "Unexplained dyspnea before surgery represents unquantified cardiopulmonary risk. BNP/NT-proBNP is the most sensitive biomarker to differentiate cardiac from pulmonary etiology — an elevated value warrants echo before proceeding with elevated-risk surgery. The DASI questionnaire provides an objective functional capacity estimate that outperforms subjective METs assessment.",
         evidence: "The 2024 AHA/ACC Perioperative Guideline recommends BNP/NT-proBNP measurement (Class 2b) in patients with unexplained dyspnea undergoing elevated-risk noncardiac surgery to guide further cardiac workup.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
         ],
       },
     });
@@ -3651,7 +3669,7 @@ function generatePlan(d) {
         why: "Perioperative bronchospasm occurs in approximately 2% of asthmatic patients and is far more likely with uncontrolled disease. Desflurane is a potent airway irritant and bronchoconstrictive agent — it must be avoided. Histamine-releasing NMBAs (atracurium, mivacurium) can precipitate bronchospasm; rocuronium with sugammadex reversal is the preferred neuromuscular blocking strategy.",
         evidence: "GINA 2024 defines well-controlled asthma as the threshold for elective surgery. Anesthesia-specific guidance emphasizes sevoflurane as the preferred inhalational agent and rocuronium/sugammadex as the preferred NMBA strategy in asthmatic patients.",
         citations: [
-          { text: "Global Initiative for Asthma (GINA). 2024 GINA Main Report.", url: "https://ginasthma.org/2024-gina-main-report/" },
+          { text: "Global Initiative for Asthma (GINA). 2024 GINA Main Report.", url: "https://ginasthma.org/2024-report/" },
         ],
       },
     });
@@ -3719,10 +3737,10 @@ function generatePlan(d) {
         why: "Perioperative hyperglycemia (>180 mg/dL) is independently associated with surgical site infection, impaired wound healing, and increased 30-day mortality. HbA1c tiering stratifies SSI risk: Tier 3 carries ~2.4× odds, Tier 4 ~3.0×. ADA 2026 targets 100–180 mg/dL intraop; Portland Protocol targets 125–175 for cardiac surgery and has shown 50% reduction in CABG mortality when achieved. T1DM basal insulin must never be withheld — DKA develops within 4–6 h of cessation.",
         evidence: "ADA Standards of Medical Care in Diabetes 2026 establishes perioperative glucose targets and medication management protocols. The Portland Diabetic Project (Furnary et al., STS) demonstrates that maintaining glucose 125–175 in cardiac surgery reduces deep sternal wound infection (1.3% at 100–150 vs 6.7% at 250–300). SAMBA 2024 and JBDS/CPOC 2023 provide anesthesia- and diabetology-society-specific perioperative guidance. NICE-SUGAR showed intensive 80–110 targets increased mortality — 140–180 is the intraop standard.",
         citations: [
-          { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2026. Diabetes Care. 2026;49(Suppl 1).", url: "https://diabetesjournals.org/care" },
-          { text: "Joshi GP et al. SAMBA Consensus on Perioperative Glucose Management. Anesth Analg. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
-          { text: "Furnary AP et al. Continuous insulin infusion reduces mortality in diabetics after CABG. J Thorac Cardiovasc Surg. 2003.", url: "https://pubmed.ncbi.nlm.nih.gov/12928661/" },
-          { text: "Dhatariya K et al. JBDS/CPOC Perioperative Diabetes Guidelines. Diabet Med. 2023.", url: "https://onlinelibrary.wiley.com/journal/14645491" },
+          { text: "American Diabetes Association. Standards of Care in Diabetes—2026. Diabetes Care. 2026;49(Suppl 1).", url: "https://diabetesjournals.org/care/issue/49/Supplement_1" },
+          { text: "Rajan N et al. Society for Ambulatory Anesthesia Updated Consensus Statement on Perioperative Blood Glucose Management in Adult Patients With Diabetes Mellitus Undergoing Ambulatory Surgery. Anesth Analg. 2024;139(3):459–477.", url: "https://pubmed.ncbi.nlm.nih.gov/38517760/" },
+          { text: "Furnary AP et al. Continuous insulin infusion reduces mortality in patients with diabetes undergoing coronary artery bypass grafting. J Thorac Cardiovasc Surg. 2003;125(5):1007–1021.", url: "https://pubmed.ncbi.nlm.nih.gov/12771873/" },
+          { text: "Centre for Perioperative Care (CPOC) / Joint British Diabetes Societies. Guideline for Perioperative Care for People with Diabetes Mellitus Undergoing Elective and Emergency Surgery. Updated October 2023.", url: "https://cpoc.org.uk/guidelines-and-resources/guidelines/guideline-diabetes" },
         ],
       },
     });
@@ -3772,9 +3790,9 @@ function generatePlan(d) {
           why: "Each diabetes drug class has distinct pharmacokinetics and perioperative risks. Generic 'hold all diabetes meds' under-treats continuation candidates (DPP-4i, continued-GLP-1) and over-treats stop candidates (glyburide's long half-life, SGLT2i euDKA window). The matrix captures agent-specific decisions with renal dose-adjustments and restart criteria.",
           evidence: "2024 multi-society GLP-1 guidance (ADA/ASA/ASGE/ASMBS) updates blanket 7-day hold to risk-factor-gated continuation. ADA 2026, SAMBA 2024, and JBDS/CPOC 2023 provide the drug-class matrix. Glyburide carries the highest periop hypoglycemia risk of the sulfonylureas due to long half-life, active metabolites, and renal clearance.",
           citations: [
-            { text: "Multi-Society Clinical Practice Guidance on Perioperative GLP-1 RA Management. Surg Endosc. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39688735/" },
-            { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2026.", url: "https://diabetesjournals.org/care" },
-            { text: "Dhatariya K et al. JBDS/CPOC Perioperative Diabetes Guidelines. Diabet Med. 2023.", url: "https://onlinelibrary.wiley.com/journal/14645491" },
+            { text: "Kindel TL et al. Multi-society clinical practice guidance for the safe use of glucagon-like peptide-1 receptor agonists in the perioperative period. Surg Endosc. 2025;39:180–183.", url: "https://pubmed.ncbi.nlm.nih.gov/39370500/" },
+            { text: "American Diabetes Association. Standards of Care in Diabetes—2026. Diabetes Care. 2026;49(Suppl 1).", url: "https://diabetesjournals.org/care/issue/49/Supplement_1" },
+            { text: "Centre for Perioperative Care (CPOC) / Joint British Diabetes Societies. Guideline for Perioperative Care for People with Diabetes Mellitus Undergoing Elective and Emergency Surgery. Updated October 2023.", url: "https://cpoc.org.uk/guidelines-and-resources/guidelines/guideline-diabetes" },
           ],
         },
       });
@@ -3822,7 +3840,7 @@ function generatePlan(d) {
         why: "GLP-1 receptor agonists dramatically slow gastric emptying — semaglutide can delay emptying for days to weeks, even in patients who have followed standard NPO guidelines. This creates a risk of pulmonary aspiration of undigested food during induction. The multi-society guidance recommends holding weekly agents 7 days preoperatively and considering gastric ultrasound to confirm an empty stomach in high-risk patients.",
         evidence: "A 2023–2025 multi-society consensus (ADA, ASGE, ASMBS, OMA, TOS — published in Surg Endosc 2025) recommends holding weekly GLP-1 RA agents 1 week before elective surgery. Case reports of pulmonary aspiration despite appropriate NPO fasting in GLP-1 RA patients prompted these recommendations.",
         citations: [
-          { text: "Multi-Society Guidance on Perioperative GLP-1 RA Management. Surg Endosc. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39688735/" },
+          { text: "Kindel TL et al. Multi-society clinical practice guidance for the safe use of glucagon-like peptide-1 receptor agonists in the perioperative period. Surg Endosc. 2025;39:180–183.", url: "https://pubmed.ncbi.nlm.nih.gov/39370500/" },
           { text: "American Diabetes Association. Standards of Medical Care in Diabetes — 2025. Diabetes Care. 2025;48(Suppl 1).", url: "https://diabetesjournals.org/care/issue/48/Supplement_1" },
         ],
       },
@@ -3842,8 +3860,8 @@ function generatePlan(d) {
         why: "SGLT2 inhibitors suppress glucose-coupled ketone clearance — perioperative fasting and surgical stress can precipitate euglycemic DKA (euDKA) in patients who do not hold the drug. EuDKA is insidious because blood glucose may be near-normal, masking the diagnosis if providers do not check ketones. Hold times are 3–4 days depending on agent (ertugliflozin requires 4 days due to longer half-life).",
         evidence: "The 2024 AHA/ACC Perioperative Guideline provides Class I recommendations for SGLT2i hold timing. Dixit et al. (JAMA Surg 2025) document the incidence and clinical features of perioperative euDKA and support point-of-care ketone testing as the mandatory screening tool.",
         citations: [
-          { text: "Fleisher LA et al. 2024 AHA/ACC Guideline for Perioperative Cardiovascular Management. Circulation. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
-          { text: "Dixit A et al. SGLT2 Inhibitors and Perioperative Euglycemic DKA. JAMA Surg. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39320289/" },
+          { text: "Thompson A et al. 2024 AHA/ACC/ACS/ASNC/HRS/SCA/SCCT/SCMR/SVM Guideline for Perioperative Cardiovascular Management for Noncardiac Surgery. Circulation. 2024;150:e351–e442.", url: "https://pubmed.ncbi.nlm.nih.gov/39316661/" },
+          { text: "Dixit AA, et al. Preoperative SGLT2 Inhibitor Use and Postoperative Diabetic Ketoacidosis. JAMA Surg. 2025;160(4):423–430.", url: "https://pubmed.ncbi.nlm.nih.gov/39969891/" },
         ],
       },
     });
@@ -3900,7 +3918,7 @@ function generatePlan(d) {
         why: "Chronic corticosteroid use suppresses the hypothalamic-pituitary-adrenal (HPA) axis. Under surgical stress, the normally intact HPA axis produces 75–150 mg of cortisol equivalent — patients with HPA suppression cannot mount this response. Addisonian crisis perioperatively can cause refractory hypotension and cardiovascular collapse. Stress-dose coverage is calibrated to surgical magnitude: minor, moderate, or major.",
         evidence: "Woodcock et al. (Anaesthesia 2020) and Bornstein et al. Endocrine Society Guideline (JCEM 2016) both support cortisol coverage based on clinical indicators of HPA suppression (dose ≥20 mg/d prednisone ≥3 weeks, or any dose with signs of adrenal insufficiency) rather than routine stimulation testing.",
         citations: [
-          { text: "Woodcock T et al. Guidelines for the management of glucocorticoids during the peri-operative period. Anaesthesia. 2020;75:654–663.", url: "https://pubmed.ncbi.nlm.nih.gov/31903587/" },
+          { text: "Woodcock T et al. Guidelines for the management of glucocorticoids during the peri-operative period for patients with adrenal insufficiency. Anaesthesia. 2020;75:654–663.", url: "https://pubmed.ncbi.nlm.nih.gov/32017012/" },
           { text: "Bornstein SR et al. Diagnosis and Treatment of Primary Adrenal Insufficiency. JCEM. 2016;101:364–389.", url: "https://pubmed.ncbi.nlm.nih.gov/26760044/" },
         ],
       },
@@ -3958,7 +3976,8 @@ function generatePlan(d) {
         why: "Preoperative anemia is among the most modifiable perioperative risk factors. Iron deficiency anemia responds to IV iron (ferric carboxymaltose) within 2–4 weeks — sufficient time for meaningful Hgb correction in most elective surgical schedules. The TRICC trial established that a restrictive transfusion trigger (Hgb ≤7 g/dL) is non-inferior to a liberal trigger in most ICU patients, shifting practice toward patient blood management.",
         evidence: "The ICCAMS consensus (Ann Surg 2023) and BSH guidelines (Br J Haematol 2024) establish evidence-based perioperative anemia management protocols, including IV iron indications by ferritin/TSAT thresholds. TRICC (NEJM 1999, n=838) demonstrated safety of restrictive transfusion triggers in critically ill patients.",
         citations: [
-          { text: "Richards T et al. ICCAMS Consensus on Perioperative Iron Deficiency and Anemia. Ann Surg. 2023.", url: "https://pubmed.ncbi.nlm.nih.gov/37772477/" },
+          { text: "Shander A et al. Recommendations From the International Consensus Conference on Anemia Management in Surgical Patients (ICCAMS). Ann Surg. 2023;277:581–590.", url: "https://pubmed.ncbi.nlm.nih.gov/36134567/" },
+          { text: "Hands K et al. Identification and management of preoperative anaemia in adults: A British Society for Haematology Guideline update. Br J Haematol. 2024;205(1):88–99.", url: "https://pubmed.ncbi.nlm.nih.gov/38664944/" },
           { text: "Hébert PC et al. A Multicenter Randomized Controlled Clinical Trial of Transfusion Requirements (TRICC). NEJM. 1999;340:409–417.", url: "https://pubmed.ncbi.nlm.nih.gov/9971864/" },
         ],
       },
@@ -4023,13 +4042,13 @@ function generatePlan(d) {
         wk12: `Even 24–48 h helps. NRT patch + gum. No smoking on DOS. COHb normalizes 12–24 h.`,
         dos: "Verify cessation. NRT patch on admission. Incentive spirometer at bedside.",
         readiness: heavy ? `HEAVY (≥20/d): consider PFTs if lung resection, optimize bronchodilators, enhanced postop monitoring.` : "NRT plan documented. Cessation timeline on file.",
-      }, "Mills Arch Intern Med 2011; Wong Anesth Analg 2017"),
+      }, "Mills Am J Med 2011; Wong SPAQI Anesth Analg 2020"),
       learnMore: {
         why: "Smoking impairs pulmonary mucociliary clearance, increases carboxyhemoglobin, reduces tissue oxygen delivery, and impairs wound healing through microvascular effects. Cessation ≥8 weeks before surgery allows near-complete ciliary recovery and immune restoration. Even 24–48 hours of cessation normalizes carboxyhemoglobin and improves oxygen delivery — meaningful even on the day of surgery.",
-        evidence: "Mills et al. (Arch Intern Med 2011) meta-analysis of 25 RCTs found cessation ≥4 weeks reduced postoperative pulmonary complications by 23%, and ≥8 weeks by 47%. Wong et al. (Anesth Analg 2017) confirmed dose-dependent benefit of cessation duration on perioperative outcomes.",
+        evidence: "Mills et al. (Am J Med 2011) meta-analysis of 25 RCTs found cessation ≥4 weeks reduced postoperative pulmonary complications by 23%, and ≥8 weeks by 47%. The SPAQI consensus statement on perioperative smoking cessation (Anesth Analg 2020) confirms the dose-dependent benefit of cessation duration on perioperative outcomes.",
         citations: [
-          { text: "Mills E et al. Smoking cessation reduces postoperative complications: a systematic review and meta-analysis. Am J Med. 2011;124:144–154.", url: "https://pubmed.ncbi.nlm.nih.gov/21272753/" },
-          { text: "Wong J et al. Stopping smoking before surgery remains beneficial even in the short term. Anesth Analg. 2017.", url: "https://pubmed.ncbi.nlm.nih.gov/27167465/" },
+          { text: "Mills E et al. Smoking cessation reduces postoperative complications: a systematic review and meta-analysis. Am J Med. 2011;124(2):144–154.e8.", url: "https://pubmed.ncbi.nlm.nih.gov/21295194/" },
+          { text: "Wong J et al. Society for Perioperative Assessment and Quality Improvement (SPAQI) Consensus Statement on Perioperative Smoking Cessation. Anesth Analg. 2020;131:955–968.", url: "https://pubmed.ncbi.nlm.nih.gov/31764157/" },
         ],
       },
     });
@@ -4037,9 +4056,9 @@ function generatePlan(d) {
     provider.push({ domain: "Smoking", priority: "medium", title: "Recent Smoking Cessation (<8 wk)", detail: "Patient quit <8 wk ago. Reinforce abstinence, continue NRT if in use. Incentive spirometry education. Airway reactivity remains increased first 8 wk — standard precautions for airway management.",
       learnMore: {
         why: "Airway hyperreactivity persists for up to 8 weeks after smoking cessation due to residual mucosal inflammation. During this window, bronchospasm risk during intubation and extubation is elevated compared to never-smokers. Mucociliary clearance recovers within 2–4 weeks; immune function within 6–8 weeks.",
-        evidence: "Wong et al. (Anesth Analg 2017) demonstrated that even recent cessation of <8 weeks provides benefit over continued smoking, and all cessation provides progressive risk reduction. Reinforcing abstinence in this window is clinically meaningful.",
+        evidence: "The SPAQI consensus statement (Anesth Analg 2020) supports that even recent cessation of <8 weeks provides benefit over continued smoking, and all cessation provides progressive risk reduction. Reinforcing abstinence in this window is clinically meaningful.",
         citations: [
-          { text: "Wong J et al. Stopping smoking before surgery remains beneficial even in the short term. Anesth Analg. 2017.", url: "https://pubmed.ncbi.nlm.nih.gov/27167465/" },
+          { text: "Wong J et al. Society for Perioperative Assessment and Quality Improvement (SPAQI) Consensus Statement on Perioperative Smoking Cessation. Anesth Analg. 2020;131:955–968.", url: "https://pubmed.ncbi.nlm.nih.gov/31764157/" },
         ],
       },
     });
@@ -4060,7 +4079,7 @@ function generatePlan(d) {
         why: "Heavy alcohol use causes hepatic enzyme induction (CYP2E1), increasing anesthetic metabolism and opioid requirements. Perioperative abstinence triggers alcohol withdrawal syndrome (AWS) typically 6–72 hours after the last drink — often occurring postoperatively when the patient has been NPO. PAWSS score ≥4 predicts complicated withdrawal with 93% sensitivity. Thiamine is mandatory: Wernicke encephalopathy can be precipitated by glucose administration without thiamine.",
         evidence: "Maldonado et al. validated the PAWSS (Prediction of Alcohol Withdrawal Severity Scale) in Alcohol Alcohol 2014, demonstrating 93% sensitivity and 99% specificity for severe AWS at a score of ≥4. CIWA-Ar is the validated monitoring instrument for titrating benzodiazepine rescue.",
         citations: [
-          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol Alcohol. 2014;49:125–134.", url: "https://pubmed.ncbi.nlm.nih.gov/24699255/" },
+          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol. 2014;48(4):375–390.", url: "https://pubmed.ncbi.nlm.nih.gov/24657098/" },
         ],
       },
     });
@@ -4070,7 +4089,7 @@ function generatePlan(d) {
         why: "Even moderate alcohol use (>14 drinks/week) causes subclinical hepatic enzyme induction and can affect drug metabolism. Perioperative abstinence — even 2 weeks — reduces the risk of subclinical withdrawal and allows partial immune and platelet function recovery.",
         evidence: "Perioperative alcohol cessation counseling is supported by multiple observational studies showing reduced wound complication rates with ≥2 weeks of preoperative abstinence. CMP screening identifies early hepatic dysfunction that may affect coagulation and drug clearance.",
         citations: [
-          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol Alcohol. 2014;49:125–134.", url: "https://pubmed.ncbi.nlm.nih.gov/24699255/" },
+          { text: "Maldonado JR et al. The Prediction of Alcohol Withdrawal Severity Scale (PAWSS). Alcohol. 2014;48(4):375–390.", url: "https://pubmed.ncbi.nlm.nih.gov/24657098/" },
         ],
       },
     });
@@ -4083,7 +4102,7 @@ function generatePlan(d) {
         why: "Buprenorphine was historically held perioperatively over concerns that its high opioid receptor affinity would block full agonist analgesics. Current evidence and 2021+ consensus guidelines are clear: continuation is preferred. Discontinuation carries major risk of OUD relapse and undertreated pain. Full mu-agonists can be titrated to effect alongside continued buprenorphine at typical maintenance doses (≤16–24 mg/d).",
         evidence: "Kohan et al. (Reg Anesth Pain Med 2021, PMID 34385292) present the ASRA/ASA/AAAM/ASAM consensus statement recommending continuation of buprenorphine perioperatively, with lower opioid requirements and equivalent pain scores compared to patients whose buprenorphine was held.",
         citations: [
-          { text: "Kohan L et al. Buprenorphine Management in the Perioperative Period: ASRA/ASA/AAAM/ASAM Consensus. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+          { text: "Kohan L et al. Buprenorphine management in the perioperative period: educational review and recommendations from a multisociety expert panel. Reg Anesth Pain Med. 2021;46(10):840–859.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
         ],
       },
     });
@@ -4094,7 +4113,7 @@ function generatePlan(d) {
         why: "Methadone maintenance must be continued perioperatively to prevent withdrawal and OUD relapse. Methadone prolongs the QTc interval — ECG is mandatory before surgery and QTc >500 ms triggers dose reduction and cardiology consultation. IV conversion (50% of oral dose divided q6–8 h) is required when the patient is NPO.",
         evidence: "ASRA/ASA/AAAM/ASAM consensus guidance (2021, PMID 34385292) recommends continuation of methadone maintenance perioperatively with appropriate IV conversion and QTc monitoring.",
         citations: [
-          { text: "Kohan L et al. Methadone Management in the Perioperative Period. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+          { text: "O'Rourke MJ et al. Preoperative Management of Opioid and Nonopioid Analgesics: Society for Perioperative Assessment and Quality Improvement (SPAQI) Consensus Statement. Mayo Clin Proc. 2021;96(5):1325–1341.", url: "https://pubmed.ncbi.nlm.nih.gov/33618850/" },
         ],
       },
     });
@@ -4106,7 +4125,7 @@ function generatePlan(d) {
         why: "Naltrexone is a competitive opioid antagonist — if not held appropriately before surgery, it blocks all opioid analgesia including emergency analgesics. Extended-release naltrexone (Vivitrol) has a 28-day duration of action and requires a 30-day hold for elective surgery to allow receptor availability. Oral naltrexone clears in 72 hours.",
         evidence: "ASRA/ASA consensus guidance recommends holding oral naltrexone 72 h before surgery and XR naltrexone ≥30 days. For emergency surgery on a naltrexone-blocked patient, opioid-free strategies (regional anesthesia, ketamine, dexmedetomidine, NSAIDs) are the only available analgesic options.",
         citations: [
-          { text: "Kohan L et al. Naltrexone and Opioid Antagonist Management Perioperatively. Reg Anesth Pain Med. 2021;46:840–859. PMID 34385292.", url: "https://pubmed.ncbi.nlm.nih.gov/34385292/" },
+          { text: "Goel A et al. Perioperative Naltrexone Management: A Scoping Review by the Perioperative Pain and Addiction Interdisciplinary Network. Anesthesiology. 2024;141(2):388–399.", url: "https://pubmed.ncbi.nlm.nih.gov/38980158/" },
         ],
       },
     });
@@ -4126,7 +4145,7 @@ function generatePlan(d) {
       domain: "Hepatic", priority: "high", title: `Cirrhosis${childPugh ? " — Child-Pugh " + childPugh : ""}`,
       detail: timedDetail({
         ge8: riskLine + " Hepatology consult for decompensated cirrhosis.",
-        wk47: "Coagulopathy: TEG/ROTEM-guided. Platelets <50K → transfuse. Avoid FFP for INR alone. Ascites: paracentesis if tense (albumin 6–8 g/L if >5 L drained). Nutrition: 1.2–1.5 g/kg protein.",
+        wk47: "Coagulopathy: TEG/ROTEM-guided. Platelets <50K → transfuse. Avoid FFP for INR alone. Ascites: paracentesis if tense (albumin 6–8 g/L if >5 L drained). Nutrition: 1.2–1.5 g/kg ideal body weight protein.",
         dos: "TEG/ROTEM available. Ascites decompressed. Nutrition optimized. Ammonia/lactulose plan.",
         readiness: childPugh === "C" ? "NOT MET: Child-Pugh C contraindicated." : "Coagulation, volume, nutrition optimized.",
       }, "ACG Guideline 2025; VOCAL-Penn Mahmud 2020"),
@@ -4134,7 +4153,7 @@ function generatePlan(d) {
         why: "Cirrhosis impairs synthetic function (coagulopathy, hypoalbuminemia), portal circulation (varices, ascites), and detoxification — all of which are directly relevant to surgical outcomes. Child-Pugh C cirrhosis carries 30-day surgical mortality >80% for major procedures. INR alone is unreliable for guiding transfusion in cirrhosis — TEG/ROTEM provides the only accurate coagulation assessment in this population.",
         evidence: "The ACG Clinical Guideline on cirrhosis and VOCAL-Penn risk score (Mahmud et al. 2020) provide validated risk stratification and management recommendations. Child-Pugh and MELD scoring systems predict perioperative mortality, with MELD >20 associated with >50% mortality for elective surgery.",
         citations: [
-          { text: "Northup PG et al. ACG Clinical Guideline: Coagulation in Cirrhosis. Am J Gastroenterol. 2021;116:1248–1272.", url: "https://pubmed.ncbi.nlm.nih.gov/34003804/" },
+          { text: "O'Shea RS et al. AGA Clinical Practice Guideline on the Management of Coagulation Disorders in Patients With Cirrhosis. Gastroenterology. 2021;161:1615–1627.", url: "https://pubmed.ncbi.nlm.nih.gov/34579936/" },
         ],
       },
     });
@@ -4156,7 +4175,7 @@ function generatePlan(d) {
         why: "CKD magnifies multiple perioperative risks: renally-cleared drugs (morphine, tramadol, succinylcholine, metformin) accumulate to toxic levels; DOAC hold windows must be extended based on CrCl; contrast nephropathy can precipitate acute-on-chronic kidney injury. Dialysis patients require timing of their last session within 24 hours preoperatively and electrolyte verification — hyperkalemia (K+ >5.5) is a contraindication to proceeding.",
         evidence: "KDIGO 2012 defines CKD staging and perioperative kidney protection strategies. ASRA 5th Ed (2025) provides eGFR-adjusted DOAC hold tables. BigpAK-2 (Lancet 2026) established perioperative kidney protection protocols.",
         citations: [
-          { text: "KDIGO. Clinical Practice Guideline for the Evaluation and Management of CKD. Kidney Int Suppl. 2013;3:1–150.", url: "https://kdigo.org/guidelines/ckd-evaluation-and-management/" },
+          { text: "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease. Kidney Int. 2024;105(4S):S117–S314.", url: "https://pubmed.ncbi.nlm.nih.gov/38490803/" },
           { text: "Kopp SL et al. ASRA 5th Edition Anticoagulation Guidelines. Reg Anesth Pain Med. 2025.", url: "https://pubmed.ncbi.nlm.nih.gov/39880411/" },
         ],
       },
@@ -4205,7 +4224,7 @@ function generatePlan(d) {
         why: "MG patients have unpredictable neuromuscular junction sensitivity — standard NMBA doses can cause prolonged paralysis and respiratory failure. Non-depolarizing NMBAs must be dosed at 10–25% of normal (never succinylcholine in unstable MG — risk of life-threatening hyperkalemia). Quantitative TOF monitoring is mandatory for reversal decisions. Aminoglycosides, Mg2+, and fluoroquinolones can precipitate myasthenic crisis and must be avoided.",
         evidence: "Daum et al. (BJA Education 2021) provides comprehensive anaesthetic management of MG patients, covering MGFA classification, NMBA pharmacology in MG, and postoperative ventilatory risk assessment based on FVC.",
         citations: [
-          { text: "Daum M et al. Anaesthetic management of patients with myasthenia gravis. BJA Educ. 2021;21:414–419.", url: "https://pubmed.ncbi.nlm.nih.gov/33551985/" },
+          { text: "Daum P, Smelt J, Ibrahim IR. Perioperative management of myasthenia gravis. BJA Educ. 2021;21(11):414–419.", url: "https://pubmed.ncbi.nlm.nih.gov/34707886/" },
         ],
       },
     });
@@ -4225,7 +4244,7 @@ function generatePlan(d) {
         why: "AED discontinuation perioperatively can precipitate breakthrough seizures or status epilepticus. All AEDs should be continued through the perioperative period without interruption. IV equivalents must be prepared for NPO patients — seizure threshold drugs (phenytoin, valproate, levetiracetam) are all available in parenteral formulation. Meperidine and tramadol lower seizure threshold and must be avoided.",
         evidence: "The American Epilepsy Society guidelines and published AED perioperative management protocols support continuation of all antiepileptic drugs throughout surgery, with parenteral alternatives for NPO patients.",
         citations: [
-          { text: "American Epilepsy Society. Perioperative Management of Antiseizure Medications.", url: "https://www.aesnet.org/" },
+          { text: "Smiley M, Key B, Sawicki CM, Wade SD. Perioperative Management of Patients With Seizure Disorders: Part II. Anesth Prog. 2025;72(3):189–198.", url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12418356/" },
         ],
       },
     });
@@ -4248,8 +4267,8 @@ function generatePlan(d) {
         why: "Cancer surgery carries compounding perioperative risks: myelosuppression from recent chemotherapy, VTE from the malignant state, and cardiotoxicity from anthracyclines or immune checkpoint inhibitors. ICI-associated myocarditis has a case fatality rate of 25–40% — troponin screening before surgery in exposed patients is mandatory. Bevacizumab impairs surgical wound healing and must be held 6–8 weeks before elective surgery.",
         evidence: "ESC 2022 Cardio-Oncology Guidelines (Eur Heart J 2022) provide comprehensive cardiotoxicity monitoring and management protocols. ASCO VTE Guidelines (JCO 2023) establish Khorana-score-based thromboprophylaxis algorithms for cancer surgery patients.",
         citations: [
-          { text: "Lyon AR et al. 2022 ESC Guidelines on Cardio-Oncology. Eur Heart J. 2022;43:4229–4361.", url: "https://pubmed.ncbi.nlm.nih.gov/36017585/" },
-          { text: "Key NS et al. Venous Thromboembolism Prophylaxis and Treatment in Patients with Cancer. J Clin Oncol. 2023;41:3063–3071.", url: "https://pubmed.ncbi.nlm.nih.gov/36943943/" },
+          { text: "Lyon AR et al. 2022 ESC Guidelines on Cardio-Oncology. Eur Heart J. 2022;43:4229–4361.", url: "https://pubmed.ncbi.nlm.nih.gov/36017568/" },
+          { text: "Key NS et al. Venous Thromboembolism Prophylaxis and Treatment in Patients With Cancer: ASCO Guideline Update. J Clin Oncol. 2023;41:3063–3071.", url: "https://pubmed.ncbi.nlm.nih.gov/37075273/" },
         ],
       },
     });
@@ -4269,7 +4288,7 @@ function generatePlan(d) {
       domain: "Frailty/Age", priority: "high", title: `Elderly ≥${age >= 75 ? "75" : "65"} / Frailty`,
       detail: timedDetail({
         ge8: `${raiLine} ${miniCogLine} Polypharmacy review per Beers 2023. Albumin, grip, protein. Advance care planning.`,
-        wk47: "Nutritional optimization (1.2–1.5 g/kg protein). Physical prehabilitation if time permits.",
+        wk47: "Nutritional optimization (1.2–1.5 g/kg ideal body weight protein). Physical prehabilitation if time permits.",
         dos: "ESAIC delirium bundle: orientation cues, sleep hygiene, early mobilization, hydration, sensory aids (glasses/hearing aids). BIS 40–60. AVOID benzos, anticholinergics. Consider dexmedetomidine. Multimodal analgesia.",
         readiness: "Frailty documented. Delirium bundle orders active. Advance directives on file. Routine age-based EKG NOT indicated (ESAIC 2025).",
       }, "Aldecoa Eur J Anaesthesiol 2024; Varley JAMA Surg 2023"),
@@ -4277,8 +4296,8 @@ function generatePlan(d) {
         why: "Frailty is a physiological syndrome of reduced reserve that predicts postoperative complications, delirium, prolonged hospital stay, and mortality independently of age and comorbidity. The Risk Analysis Index (RAI-C) is a validated 14-item perioperative frailty tool scoring 0–81: RAI ≥30 (normal risk) warrants close monitoring; RAI ≥37 (frail) indicates geriatric assessment and prehabilitation; RAI ≥45 (very frail) warrants goals-of-care discussion and advance directives. Benzodiazepines and anticholinergic medications are major delirium precipitants and must be avoided perioperatively in elderly patients.",
         evidence: "Aldecoa et al. (Eur J Anaesthesiol 2024) provides the ESAIC delirium prevention guidelines, validating the multicomponent bundle approach. Varley et al. (JAMA Surg 2023) demonstrate frailty as an independent predictor of 30-day outcomes in surgical patients.",
         citations: [
-          { text: "Aldecoa C et al. European Society of Anaesthesiology and Intensive Care Evidence-Based and Consensus-Based Guideline on Postoperative Delirium. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37916500/" },
-          { text: "Varley PR et al. Frailty and Surgical Outcomes. JAMA Surg. 2023.", url: "https://pubmed.ncbi.nlm.nih.gov/37285114/" },
+          { text: "Aldecoa C, et al. Update of the European Society of Anaesthesiology and Intensive Care Medicine evidence-based and consensus-based guideline on postoperative delirium in adult patients. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37599617/" },
+          { text: "Varley PR et al. Association of Routine Preoperative Frailty Assessment With 1-Year Postoperative Mortality. JAMA Surg. 2023;158:475–483.", url: "https://pubmed.ncbi.nlm.nih.gov/36811872/" },
         ],
       },
     });
@@ -4299,8 +4318,8 @@ function generatePlan(d) {
         why: "Periprosthetic joint infection (PJI) is catastrophic — it requires implant removal, prolonged antibiotic therapy, and repeat surgery. Preoperative decolonization of S. aureus carriers (identified by nasal swab) with mupirocin and CHG reduces SSI risk by 50–60% in joint replacement. Preoperative anemia (Hgb <13) is a strong independent predictor of transfusion and PJI.",
         evidence: "AAOS/ICM 2018 and AAHKS 2022 guidelines establish S. aureus decolonization protocols, VTE prophylaxis algorithms, and anemia management targets for arthroplasty patients. Universal decolonization is preferred over targeted decolonization due to improved adherence and outcomes.",
         citations: [
-          { text: "American Academy of Orthopaedic Surgeons / International Consensus Meeting on Musculoskeletal Infection. 2018.", url: "https://www.aaos.org/quality/quality-programs/hip-and-knee-replacement/" },
-          { text: "American Association of Hip and Knee Surgeons. 2022 VTE Prevention Guidelines.", url: "https://www.aahks.org/care-for-hips-knees/do-i-need-a-joint-replacement/thrombosis-prevention/" },
+          { text: "Schwarz EM, Parvizi J, Gehrke T, et al. 2018 International Consensus Meeting on Musculoskeletal Infection: Research Priorities from the General Assembly Questions. J Orthop Res. 2019;37:997–1006.", url: "https://pubmed.ncbi.nlm.nih.gov/30977537/" },
+          { text: "The ICM-VTE Hip & Knee Delegates. Recommendations from the International Consensus Meeting on Venous Thromboembolism: Hip & Knee. J Bone Joint Surg Am. 2022;104(Suppl 1):180–231.", url: "https://pubmed.ncbi.nlm.nih.gov/35315610/" },
         ],
       },
     });
@@ -4320,8 +4339,8 @@ function generatePlan(d) {
         why: "Vascular surgery carries the highest perioperative MACE risk of any noncardiac surgery. Despite this, the CARP trial definitively demonstrated that preoperative coronary revascularization does NOT improve outcomes — the priority is medical optimization and postoperative MINS surveillance. Myocardial injury after noncardiac surgery (MINS) occurs in 8–18% of vascular patients and is detected only by hs-troponin monitoring.",
         evidence: "CARP (NEJM 2004, n=510) showed that preoperative revascularization before vascular surgery did not reduce long-term mortality or MI. MANAGE (Lancet 2018) demonstrated that dabigatran reduces MACE in patients who develop MINS.",
         citations: [
-          { text: "McFalls EO et al. Coronary-Artery Revascularization before Elective Major Vascular Surgery (CARP). NEJM. 2004;351:2795–2804.", url: "https://pubmed.ncbi.nlm.nih.gov/15548778/" },
-          { text: "Devereaux PJ et al. Dabigatran in patients with myocardial injury after non-cardiac surgery (MANAGE). Lancet. 2018;391:2325–34.", url: "https://pubmed.ncbi.nlm.nih.gov/30025699/" },
+          { text: "McFalls EO et al. Coronary-Artery Revascularization before Elective Major Vascular Surgery (CARP). NEJM. 2004;351:2795–2804.", url: "https://pubmed.ncbi.nlm.nih.gov/15625331/" },
+          { text: "Devereaux PJ et al. Dabigatran in patients with myocardial injury after non-cardiac surgery (MANAGE). Lancet. 2018;391:2325–2334.", url: "https://pubmed.ncbi.nlm.nih.gov/29900874/" },
         ],
       },
     });
@@ -4340,13 +4359,13 @@ function generatePlan(d) {
         ge8: hfrefContinue ? "HFrEF: CONTINUE as GDMT (Class 2a)." : "HTN-only: hold 24 h before elevated-risk surgery (Class 2b, STOP-or-NOT).",
         dos: hfrefContinue ? "CONTINUE through surgery." : "Hold morning of surgery. Continue all other antihypertensives.",
         readiness: "RESTART within 48 h postop. CRITICAL: 25% never restarted — document restart order.",
-      }, "STOP-or-NOT JAMA 2024; POISE-3 NEJM 2022"),
+      }, "STOP-or-NOT JAMA 2024; POISE-3 Ann Intern Med 2023"),
       learnMore: {
         why: "ACEi/ARB block the renin-angiotensin system, which becomes critically important for maintaining BP under anesthetic vasodilation — their continuation risks refractory intraoperative hypotension in hypertension-only patients (STOP-or-NOT). However, in HFrEF, ACEi/ARB are GDMT and should be continued. A critical safety gap: 25% of patients whose ACEi/ARB are held perioperatively never have them restarted — leaving them off GDMT long-term.",
-        evidence: "STOP-or-NOT (JAMA 2024) and POISE-3 (NEJM 2022) provide the definitive evidence base for ACEi/ARB perioperative management, establishing that holding in HTN-only patients (not HFrEF) reduces intraoperative hypotension without increasing MACE.",
+        evidence: "STOP-or-NOT (JAMA 2024) and POISE-3 (Ann Intern Med 2023) provide the definitive evidence base for ACEi/ARB perioperative management, establishing that holding in HTN-only patients (not HFrEF) reduces intraoperative hypotension without increasing MACE.",
         citations: [
-          { text: "STOP-or-NOT Trial. Continuation vs. Discontinuation of ACE Inhibitors/ARBs Before Surgery. JAMA. 2024.", url: "https://pubmed.ncbi.nlm.nih.gov/38265461/" },
-          { text: "Sessler DI et al. Perioperative Angiotensin-Converting–Enzyme Inhibitors (POISE-3). NEJM. 2022;386:1999–2010.", url: "https://pubmed.ncbi.nlm.nih.gov/35443108/" },
+          { text: "Legrand M et al. Continuation vs Discontinuation of Renin-Angiotensin System Inhibitors Before Major Noncardiac Surgery: The Stop-or-Not Randomized Clinical Trial. JAMA. 2024;332:970–978.", url: "https://pubmed.ncbi.nlm.nih.gov/39212270/" },
+          { text: "Marcucci M et al. Hypotension-Avoidance Versus Hypertension-Avoidance Strategies in Noncardiac Surgery (POISE-3). Ann Intern Med. 2023;176:605–614.", url: "https://pubmed.ncbi.nlm.nih.gov/37094336/" },
         ],
       },
     });
@@ -4378,8 +4397,8 @@ function generatePlan(d) {
         why: "VTE (DVT/PE) is the most common preventable cause of hospital death. The Caprini score stratifies surgical patients into 5 risk tiers — from minimal (early ambulation only) to very high (combined pharmacologic + mechanical + extended prophylaxis ≤30 days). IPC devices are recommended for ALL patients intraoperatively regardless of pharmacologic status. Timing of pharmacologic prophylaxis must be coordinated with ASRA 5th Ed neuraxial anesthesia intervals.",
         evidence: "Pannucci et al. (Mayo Clin Proc 2020) validate the Caprini risk assessment model in surgical patients. CHEST 2012 guidelines established pharmacologic plus mechanical prophylaxis as superior to either alone for high-risk patients.",
         citations: [
-          { text: "Pannucci CJ et al. Validation of the Caprini Risk Assessment Model in Academic Surgical Patients. Ann Surg. 2011;253:1053–1058.", url: "https://pubmed.ncbi.nlm.nih.gov/21178766/" },
-          { text: "Guyatt GH et al. Antithrombotic Therapy and Prevention of Thrombosis, 9th ed. CHEST. 2012;141(2 Suppl):7S–47S.", url: "https://pubmed.ncbi.nlm.nih.gov/22315267/" },
+          { text: "Pannucci CJ et al. Individualized Venous Thromboembolism Risk Stratification Using the 2005 Caprini Score. Ann Surg. 2017;265:1094–1103.", url: "https://pubmed.ncbi.nlm.nih.gov/28106607/" },
+          { text: "Guyatt GH et al. Executive summary: Antithrombotic Therapy and Prevention of Thrombosis, 9th ed: ACCP Evidence-Based Clinical Practice Guidelines. CHEST. 2012;141(2 Suppl):7S–47S.", url: "https://pubmed.ncbi.nlm.nih.gov/22315257/" },
         ],
       },
     });
@@ -4398,7 +4417,7 @@ function generatePlan(d) {
         why: "Postoperative delirium (POD) affects 15–50% of surgical patients ≥65 and is associated with prolonged ICU stay, cognitive decline, and increased 1-year mortality. Benzodiazepines and anticholinergics are the strongest pharmacologic precipitants and must be avoided. BIS monitoring targeting 40–60 reduces POD by limiting anesthetic overdose. Dexmedetomidine provides sedation with far lower delirium risk than benzodiazepines.",
         evidence: "Aldecoa et al. (Eur J Anaesthesiol 2024;41:81–108) provides the ESAIC evidence-based guideline on postoperative delirium, validating the multicomponent prevention bundle and specific pharmacologic recommendations including BIS targets and dexmedetomidine.",
         citations: [
-          { text: "Aldecoa C et al. European Society of Anaesthesiology and Intensive Care Evidence-Based and Consensus-Based Guideline on Postoperative Delirium. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37916500/" },
+          { text: "Aldecoa C, et al. Update of the European Society of Anaesthesiology and Intensive Care Medicine evidence-based and consensus-based guideline on postoperative delirium in adult patients. Eur J Anaesthesiol. 2024;41:81–108.", url: "https://pubmed.ncbi.nlm.nih.gov/37599617/" },
         ],
       },
     });

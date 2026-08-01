@@ -62,7 +62,7 @@ CLAUDE.md               # ← you are here
 
 **Active standalone artifact (versioned separately):**
 ```
-Surgical_Readiness_Algorithm_2026-03-25_v4.jsx   ← CANONICAL CURRENT VERSION
+Surgical_Readiness_Algorithm_2026-08-01_1430_v5.jsx   ← CANONICAL CURRENT VERSION
 ```
 This file is treated as a **standalone artifact** — it must never be cross-imported from other components. Edit it independently and version with timestamps (`YYYY-MM-DD_HHMM`).
 
@@ -126,6 +126,7 @@ See `docs/ALGORITHM.md` for full spec. Summary:
 - **Key clinical modules:**
   - Chat intake: `ChatIntake` component + `CHAT_QUESTIONS` array (18 questions, quick-reply chips, multi-select, branching)
   - Refine My Plan: after plan generation, "Add more details" (from chat) or "Refine details" (from plan view) re-enters the pre-filled 6-step form with a refinement banner
+  - Protein target: dosed on the lower of actual and Devine ideal body weight (1.5 g/kg); the card names its basis explicitly and falls back to actual weight, then an 80 kg reference, when height/sex/weight are missing
   - Anemia protocols: 4 severity tiers by hemoglobin (Hb)
   - Smoking cessation with timeline branching
   - Alcohol use with withdrawal risk detection (PAWSS/CIWA-Ar screening)

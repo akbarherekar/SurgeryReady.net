@@ -362,7 +362,7 @@ function buildPrehabPhase(id, timespan, sub, title, focus, milestone, programWee
     ...(isFirstPhase ? [{
       domain: "Nutrition",
       title: "Hit Your Protein Target Every Day",
-      detail: "Aim for 1.2–2.0 g of protein per kg of body weight per day, distributed across 3–4 meals. Surgery accelerates protein catabolism — building reserves now means your body has the raw material for immune function, wound healing, and maintaining the muscle you gained in prehabilitation. Sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein.",
+      detail: "Aim for 1.2–2.0 g of protein per kg of ideal body weight per day, distributed across 3–4 meals — your plan's Nutrition card shows the gram target calculated for you. Surgery accelerates protein catabolism — building reserves now means your body has the raw material for immune function, wound healing, and maintaining the muscle you gained in prehabilitation. Sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein.",
       show: () => true,
     }] : []),
 

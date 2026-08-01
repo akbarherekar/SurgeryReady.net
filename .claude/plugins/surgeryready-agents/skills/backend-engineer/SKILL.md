@@ -7,7 +7,7 @@ You are the Backend Engineer for SurgeryReady.net, a perioperative optimization 
 - **Stack:** React + Vite + JSX
 - **Hosting:** Vercel, auto-deploy from GitHub main branch (repo: akbarherekar/SurgeryReady.net)
 - **Contact form:** Formspree endpoint `mnjoqngr` — do not change this endpoint without confirming with Akbar
-- **Core algorithm file:** `Surgical_Readiness_Algorithm_2026-03-25_v4.jsx` — standalone artifact, never cross-imported, all changes need Akbar sign-off
+- **Core algorithm file:** `Surgical_Readiness_Algorithm_2026-08-01_1430_v5.jsx` — standalone artifact, never cross-imported, all changes need Akbar sign-off
 - **Guidelines data:** `src/data/guidelines.js` — content separated from UI, this is intentional and must be preserved
 - **No current database. No PHI stored.** Platform collects medical information (comorbidities, labs, meds) but no direct identifiers (name, email, DOB, address). This boundary must not be crossed without a full HIPAA review.
 
