@@ -3234,7 +3234,8 @@ function generatePlan(d) {
           why: "Smoking impairs oxygen delivery at every level of the respiratory chain. Carboxyhemoglobin — formed when carbon monoxide binds hemoglobin — renders up to 5–15% of your blood's oxygen-carrying capacity non-functional. Nicotine causes sustained vasoconstriction, reducing perfusion to healing wound edges. Smoking suppresses the immune surveillance needed to fight perioperative infection and delays every phase of wound healing.",
           evidence: "The good news: many effects begin reversing within hours. Carbon monoxide clears within 24–48 hours of stopping — directly improving tissue oxygenation. Airway reactivity begins improving within 1–2 weeks. Ciliary function recovers in 2–4 weeks. Immune and wound healing improvement requires 6–8 weeks — making your current window ideal. The perioperative period is one of the highest-motivation moments for permanent cessation: studies consistently show higher long-term quit rates when cessation is tied to surgery.",
           citations: [
-            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+            { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
             { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
@@ -3245,7 +3246,8 @@ function generatePlan(d) {
           why: "Every day of cessation creates measurable biological improvement. Within 24–48 hours, carbon monoxide clears and functional hemoglobin increases — your blood can carry more oxygen immediately. Within 1–2 weeks, airway reactivity begins normalizing and cilia in the airways resume their mucociliary clearance function, reducing pulmonary complication risk. Each additional smoke-free week compounds the benefit.",
           evidence: "Even 4 weeks of preoperative cessation significantly reduces wound infection, pulmonary complications, and impaired healing compared to continued smoking. Carbon monoxide normalization within 24–48 hours has direct, measurable effects on tissue oxygenation during surgery and anesthetic drug metabolism. Nicotine replacement therapy (NRT) maintains compliance without the CO and combustion toxin burden.",
           citations: [
-            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+            { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
             { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
@@ -3256,7 +3258,8 @@ function generatePlan(d) {
           why: "Carbon monoxide — the key toxic gas in cigarette smoke — binds hemoglobin with 240 times the affinity of oxygen. In heavy smokers, 5–15% of circulating hemoglobin is bound to CO and rendered non-functional for oxygen delivery. Stopping smoking allows CO to clear and oxyhemoglobin to return to normal within 24–48 hours, directly improving the oxygenation of every tissue — including surgical wound edges — during your operation.",
           evidence: "The immediate, measurable benefit of even brief cessation before surgery is well-established. Carboxyhemoglobin normalization within 24–48 hours provides direct benefit to tissue oxygenation and anesthetic drug metabolism. Nicotine replacement therapy can maintain abstinence without the CO and combustion toxin burden. The ERAS evidence base identifies smoking cessation as one of the highest-quality, most strongly recommended preoperative interventions.",
           citations: [
-            { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+            { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+            { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
             { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
           ],
         },
@@ -3268,7 +3271,8 @@ function generatePlan(d) {
         why: "You have already completed the hardest step. In the first 8 weeks after cessation, your airway is actively remodeling: cilia that were paralyzed by cigarette toxins are resuming mucociliary clearance, airway inflammation is decreasing, and bronchial reactivity is normalizing. Each additional week smoke-free builds more biological resilience before surgery.",
         evidence: "Ciliary function and mucociliary clearance begin recovering within 2–4 weeks of cessation. Airway hyperreactivity decreases progressively over the first 8 weeks. Immune function and wound healing mechanisms continue to improve with extended cessation. Note: in the first 8 weeks after cessation, airway reactivity may remain slightly elevated compared to never-smokers — standard airway management precautions apply and should be communicated to your anesthesiologist.",
         citations: [
-          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+          { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
           { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
         ],
       },
@@ -3283,7 +3287,8 @@ function generatePlan(d) {
         evidence: "Heavy alcohol use is associated with 2–5x higher perioperative infection rates, significantly increased wound complications, immune suppression, hepatic dysfunction altering drug metabolism, and coagulopathy increasing bleeding risk. At least 4 weeks of cessation is needed to meaningfully reduce these risks. The surgical stress mirrors marathon physiology — the same cytokine and immune pathways — and alcohol compromises the body's ability to mount an appropriate response to either.",
         citations: [
           { text: "Systemic response to surgery. Surgery (Oxford). 2023;41(2):76–80.", url: "https://www.sciencedirect.com/science/article/abs/pii/S026393192200254X" },
-          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+          { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
         ],
       },
     });
@@ -3321,7 +3326,8 @@ function generatePlan(d) {
         evidence: "Between 30–50% of surgical patients have some degree of nutritional risk, and anemia is frequently unrecognized even in high-income settings. Iron-rich dietary interventions combined with vitamin C for absorption optimization can improve hemoglobin before surgery. When dietary correction is insufficient, physicians can prescribe oral iron or IV iron (ferric carboxymaltose allows single-dose correction). The perioperative target for elective surgery is generally hemoglobin ≥10–13 g/dL depending on expected blood loss.",
         citations: [
           { text: "Correia MI, Waitzberg DL. The impact of malnutrition on morbidity, mortality, length of hospital stay and costs evaluated through a multivariate model analysis. Clin Nutr. 2003;22(3):235–239.", url: "https://pubmed.ncbi.nlm.nih.gov/12765661/" },
-          { text: "Long X, et al. Evidence-based practice and future development of enhanced recovery after surgery (ERAS): a multidimensional assessment based on the GRADE system. J Robot Surg. 2025;19(1):358.", url: "https://pubmed.ncbi.nlm.nih.gov/40622655/" },
+          { text: "Gustafsson UO et al. Guidelines for perioperative care in elective colorectal surgery: Enhanced Recovery After Surgery (ERAS) Society recommendations 2025. Surgery. 2025;184:109397.", url: "https://pubmed.ncbi.nlm.nih.gov/40783294/" },
+          { text: "Sauro KM, et al. Enhanced Recovery After Surgery Guidelines and Hospital Length of Stay, Readmission, Complications, and Mortality: A Meta-Analysis of Randomized Clinical Trials. JAMA Netw Open. 2024;7(6):e2417310.", url: "https://pubmed.ncbi.nlm.nih.gov/38888922/" },
           { text: "Acharya K, et al. Surgical Stress Response: A Physiological Review of the Endocrine, Immune, and Metabolic Changes. Cureus. 2025;17(12):e100101.", url: "https://pubmed.ncbi.nlm.nih.gov/41589142/" },
         ],
       },
