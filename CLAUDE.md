@@ -124,7 +124,7 @@ See `docs/ALGORITHM.md` for full spec. Summary:
 - **Steps (6):** Patient Info → Surgery Details → Medical History → Medications → Fitness Baseline → Nutrition
 - **Role selection:** Patient vs. Provider at step 1, drives branching throughout
 - **Key clinical modules:**
-  - Chat intake: `ChatIntake` component + `CHAT_QUESTIONS` array (18 questions, quick-reply chips, multi-select, branching)
+  - Chat intake: `ChatIntake` component + `CHAT_QUESTIONS` array (76 questions, quick-reply chips, multi-select, inline DASI, skippable optional fields). Full field parity with the form — every key `generatePlan()` reads is reachable from chat, and conditional questions appear only when prior answers make them relevant. **Chat option `value`s must match the form's `MultiChip`/`Select` vocabulary exactly** — `generatePlan()` uses exact array membership, so a divergent string silently drops the pathway. `CHAT_QUESTIONS` is scanned forward only: a conditional question must come after everything its condition reads.
   - Refine My Plan: after plan generation, "Add more details" (from chat) or "Refine details" (from plan view) re-enters the pre-filled 6-step form with a refinement banner
   - Protein target: dosed on the lower of actual and Devine ideal body weight (1.5 g/kg); the card names its basis explicitly and falls back to actual weight, then an 80 kg reference, when height/sex/weight are missing
   - Anemia protocols: 4 severity tiers by hemoglobin (Hb)

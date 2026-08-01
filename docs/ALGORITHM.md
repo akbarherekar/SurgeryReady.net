@@ -25,10 +25,17 @@ State: `intakeMode` — `null` (picker) | `"chat"` | `"form"` inside `PreOpPage`
 
 A scripted chatbot that populates the same `formData` fields as the step form. Questions defined in the `CHAT_QUESTIONS` array (just above `PreOpPage` in `src/App.jsx`).
 
-**Fields collected in chat (18 questions):**
-firstName, userRole, age, sex, height/weight, surgeryType, weeksUntil, cardiac (multi-select), respiratory (multi-select), endocrine (multi-select), hemoglobin, anticoag (multi-select), diabetesMeds (conditional on diabetes), smokingStatus, alcoholUse, exerciseLevel, proteinLevel, weightLoss
+**Coverage: 76 questions, full parity with the form.** Every field `generatePlan()` reads is now obtainable through chat. Roughly 30 of the questions are unconditional; the rest are conditional clinical detail that appears only when the answers so far make it relevant — the conversational equivalent of the form's "Clinical Detail (optional — unlocks more specific recommendations)" section.
 
-**Fields NOT asked in chat (set to safe defaults):** riskCategory (`"elevated"`), duration (`"medium"`), eras (`"no"`), bloodLoss (`"moderate"`), eatingPattern (`"regular"`), and all detailed conditional clinical fields (dasiScore, a1cValue, egfrValue, albumin, etc.).
+**Option values must match the form's vocabulary exactly.** `generatePlan()` matches many conditions with exact array membership (e.g. `cardiac.includes("CAD/Angina")`, `painMeds.includes("Buprenorphine (Suboxone/Subutex)")`), so a chat option whose `value` differs from the form's `MultiChip` item silently drops the entire pathway. Chat option `label`s stay patient-friendly; only the `value`s are the shared coded vocabulary. The `chatFlags` helpers just above `CHAT_QUESTIONS` mirror `StepMedical`'s `hasCAD` / `hasHF` / `hasDiabetes` … gate flags one-for-one — change them together.
+
+**Ordering constraint:** `findNextQIdx` scans forward only, so a conditional question must appear *after* every question its `condition` reads. A question placed before its dependency is silently unreachable.
+
+**Derived rather than asked** (in `handleConfirm`, so the chat never asks what it can infer): `dmType` from the `endocrine` selection, `onDialysis` from `other`. `bloodLoss` is now asked outright rather than defaulted.
+
+**Skippable questions:** questions marked `skippable: true` render a Skip button, matching the form's "Leave any field blank if unknown". Used for optional numeric/lab values (`insulinTDD`, `timeInRange`, `chemoWeeksAgo`, `raiScore`, `gripStrength`, `hrvValue`).
+
+**DASI in chat:** the `dasi` question type renders all 12 `DASI_QUESTIONS` as inline Yes/No rows with a live running score, then writes `dasiScore`, `vo2max`, and `mets` in one step — the same three fields the form's `DASIModal` applies. The separate `mets` question is conditioned on `!d.dasiScore`, so it is only asked when DASI was skipped.
 
 **Physician routing:** Selecting "I'm a physician" in chat shows a message and switches to form mode after 1.8 s.
 

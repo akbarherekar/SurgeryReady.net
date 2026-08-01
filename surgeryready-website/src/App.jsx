@@ -5782,6 +5782,35 @@ function PlanChoiceScreen({ plan, data, progress, onViewPlan, onTrackProgress, o
 
 
 /* ─── Chat Intake ─── */
+// ─── CHAT INTAKE QUESTION SCRIPT ───
+// Option `value` strings MUST match the form's MultiChip/Select vocabulary exactly
+// (StepMedical categories, StepMedications medGroups) — generatePlan matches many of
+// them with exact array membership, so a divergent string silently drops the pathway.
+// CHAT_QUESTIONS is scanned forward only, so a conditional question must appear after
+// every question its condition reads.
+const inArr = (arr, ...vals) => (arr || []).some(v => vals.includes(v));
+const chatFlags = {
+  cad:      (d) => inArr(d.cardiac, "CAD/Angina", "Prior MI (within 6 months)", "Prior PCI/stent"),
+  stent:    (d) => inArr(d.cardiac, "Prior PCI/stent"),
+  hf:       (d) => inArr(d.cardiac, "CHF", "HFrEF", "HFpEF"),
+  af:       (d) => inArr(d.cardiac, "Arrhythmia/AF", "Atrial fibrillation / flutter"),
+  stroke:   (d) => inArr(d.cardiac, "Prior stroke"),
+  osa:      (d) => inArr(d.respiratory, "OSA (diagnosed)", "OSA (suspected/STOP-BANG ≥3)"),
+  osaDiag:  (d) => inArr(d.respiratory, "OSA (diagnosed)"),
+  diabetes: (d) => (d.endocrine || []).some(e => e.includes("Diabetes") || e.includes("HbA1c")),
+  pheo:     (d) => inArr(d.endocrine, "Pheochromocytoma"),
+  steroid:  (d) => inArr(d.endocrine, "Chronic steroid use", "Adrenal insufficiency / Addison's") || inArr(d.otherMeds, "Corticosteroids"),
+  ckd:      (d) => inArr(d.other, "Chronic kidney disease (CKD)", "On dialysis", "Renal insufficiency/dialysis"),
+  dialysis: (d) => inArr(d.other, "On dialysis", "Renal insufficiency/dialysis"),
+  cirrhosis:(d) => inArr(d.other, "Cirrhosis/liver disease"),
+  ra:       (d) => inArr(d.other, "Rheumatoid arthritis / autoimmune", "Rheumatoid arthritis"),
+  mg:       (d) => inArr(d.other, "Myasthenia gravis"),
+  seizure:  (d) => inArr(d.other, "Seizure disorder / epilepsy", "Seizure disorder"),
+  cancer:   (d) => inArr(d.other, "Active cancer/chemo") || inArr(d.surgeryTags, "Cancer resection"),
+  anemia:   (d) => inArr(d.other, "Anemia (Hgb <13)") || (d.hemoglobin && parseFloat(d.hemoglobin) < 12),
+  geriatric:(d) => (parseInt(d.age) || 0) >= 65,
+};
+
 const CHAT_QUESTIONS = [
   // ── ABOUT YOU ──────────────────────────────────────────────────────────────
   {
@@ -5822,7 +5851,7 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "heightWeight",
-    ask: "What is your height and weight?",
+    ask: "What is your height and weight? This is used to calculate your ideal body weight for protein targets.",
     type: "heightWeight",
     fields: ["height", "weight"],
     condition: (d) => d.userRole !== "provider",
@@ -5894,6 +5923,19 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "bloodLoss",
+    ask: "Has your team said how much blood loss to expect? This affects anemia and transfusion planning.",
+    type: "quickReply",
+    field: "bloodLoss",
+    options: [
+      { label: "Minimal (less than 200 mL)", value: "minimal" },
+      { label: "Moderate (200–500 mL)", value: "moderate" },
+      { label: "Significant (more than 500 mL)", value: "significant" },
+      { label: "Not sure", value: "moderate" },
+    ],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
     id: "eras",
     ask: "Has your care team mentioned an Enhanced Recovery After Surgery (ERAS) protocol for your procedure?",
     type: "quickReply",
@@ -5908,19 +5950,23 @@ const CHAT_QUESTIONS = [
   // ── HEART CONDITIONS ────────────────────────────────────────────────────────
   {
     id: "cardiac",
-    ask: "Do you have any heart conditions? Select all that apply.",
+    ask: "Do you have any heart or circulation conditions? Select all that apply.",
     type: "multiSelect",
     field: "cardiac",
     options: [
       { label: "None", value: "none", exclusive: true },
-      { label: "Heart failure", value: "Heart failure" },
-      { label: "Coronary artery disease or Angina", value: "Coronary artery disease" },
-      { label: "Atrial fibrillation", value: "Atrial fibrillation (AF)" },
-      { label: "Hypertension", value: "Hypertension (uncontrolled, DBP>110)" },
-      { label: "Recent heart attack or stent (within 6 months)", value: "Recent MI/stent (<6 months)" },
-      { label: "Prior stent or heart procedure (more than 6 months ago)", value: "Prior PCI/stent" },
-      { label: "Heart valve disease", value: "Valve disease" },
-      { label: "Pacemaker or AICD", value: "Pacemaker/AICD" },
+      { label: "Heart failure", value: "CHF" },
+      { label: "Coronary artery disease or angina", value: "CAD/Angina" },
+      { label: "Atrial fibrillation or irregular heartbeat", value: "Atrial fibrillation / flutter" },
+      { label: "High blood pressure that is not well controlled", value: "Uncontrolled HTN (DBP >110)" },
+      { label: "Heart attack within the last 6 months", value: "Prior MI (within 6 months)" },
+      { label: "Prior stent or heart procedure", value: "Prior PCI/stent" },
+      { label: "Heart valve disease", value: "Valvular disease" },
+      { label: "Narrowed aortic valve with symptoms (chest pain, fainting)", value: "Severe aortic stenosis (symptomatic)" },
+      { label: "Narrowed aortic valve without symptoms", value: "Severe aortic stenosis (asymptomatic)" },
+      { label: "Mechanical (artificial) heart valve", value: "Mechanical valve" },
+      { label: "Cardiomyopathy or thickened heart muscle", value: "Cardiomyopathy/HCM" },
+      { label: "Pacemaker or defibrillator (AICD)", value: "Pacemaker/AICD" },
       { label: "Prior stroke or TIA", value: "Prior stroke" },
       { label: "Pulmonary hypertension", value: "Pulmonary hypertension" },
       { label: "Peripheral vascular disease", value: "Peripheral vascular disease" },
@@ -5937,7 +5983,19 @@ const CHAT_QUESTIONS = [
       { label: "HFpEF (preserved ejection fraction)", value: "HFpEF" },
       { label: "Not sure", value: "HFrEF" },
     ],
-    condition: (d) => d.cardiac?.some(c => c.includes("Heart failure") || c === "CHF" || c === "HFrEF" || c === "HFpEF"),
+    condition: (d) => chatFlags.hf(d),
+  },
+  {
+    id: "hasRecentEcho",
+    ask: "Have you had an echocardiogram (heart ultrasound) within the last year?",
+    type: "quickReply",
+    field: "hasRecentEcho",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "" },
+    ],
+    condition: (d) => chatFlags.hf(d),
   },
   {
     id: "rateControlled",
@@ -5949,7 +6007,7 @@ const CHAT_QUESTIONS = [
       { label: "No", value: "no" },
       { label: "Not sure", value: "yes" },
     ],
-    condition: (d) => d.cardiac?.some(c => c.includes("Atrial fibrillation") || c.includes("Arrhythmia")),
+    condition: (d) => chatFlags.af(d),
   },
   {
     id: "cardiacEventMonths",
@@ -5961,8 +6019,22 @@ const CHAT_QUESTIONS = [
       { label: "3–6 months ago", value: "3-6" },
       { label: "6–12 months ago", value: "6-12" },
       { label: "More than 12 months ago", value: ">12" },
+      { label: "Not sure", value: "" },
     ],
-    condition: (d) => d.cardiac?.some(c => c.includes("MI") || c.includes("stent") || c.includes("PCI") || c.includes("Coronary")),
+    condition: (d) => chatFlags.cad(d),
+  },
+  {
+    id: "stentType",
+    ask: "Do you know what type of stent you have? This changes how long antiplatelet medication must continue.",
+    type: "quickReply",
+    field: "stentType",
+    options: [
+      { label: "Drug-eluting stent (DES)", value: "DES" },
+      { label: "Bare-metal stent (BMS)", value: "BMS" },
+      { label: "No stent — bypass or angioplasty only", value: "none" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.stent(d),
   },
   {
     id: "onDAPT",
@@ -5974,7 +6046,20 @@ const CHAT_QUESTIONS = [
       { label: "No", value: "no" },
       { label: "Not sure", value: "no" },
     ],
-    condition: (d) => d.cardiac?.some(c => c.includes("stent") || c.includes("PCI")),
+    condition: (d) => chatFlags.stent(d),
+  },
+  {
+    id: "strokeMonths",
+    ask: "How long ago was your stroke or TIA?",
+    type: "quickReply",
+    field: "strokeMonths",
+    options: [
+      { label: "Less than 3 months ago", value: "<3" },
+      { label: "3–9 months ago", value: "3-9" },
+      { label: "More than 9 months ago", value: ">9" },
+      { label: "Not sure", value: "" },
+    ],
+    condition: (d) => chatFlags.stroke(d),
   },
   // ── BREATHING & SLEEP ───────────────────────────────────────────────────────
   {
@@ -5985,9 +6070,9 @@ const CHAT_QUESTIONS = [
     options: [
       { label: "None", value: "none", exclusive: true },
       { label: "Asthma", value: "Asthma" },
-      { label: "COPD", value: "COPD/Emphysema" },
-      { label: "Sleep apnea (diagnosed, uses CPAP)", value: "Obstructive sleep apnea (diagnosed)" },
-      { label: "Sleep apnea (suspected or high snoring risk)", value: "Obstructive sleep apnea (suspected/STOP-BANG ≥3)" },
+      { label: "COPD or emphysema", value: "COPD/Emphysema" },
+      { label: "Sleep apnea (diagnosed, uses CPAP)", value: "OSA (diagnosed)" },
+      { label: "Sleep apnea (suspected or high snoring risk)", value: "OSA (suspected/STOP-BANG ≥3)" },
       { label: "Unexplained shortness of breath", value: "Unexplained dyspnea" },
     ],
     condition: (d) => d.userRole !== "provider",
@@ -6003,7 +6088,7 @@ const CHAT_QUESTIONS = [
       { label: "5–8 (high risk)", value: "6" },
       { label: "I don't know", value: "" },
     ],
-    condition: (d) => d.respiratory?.some(r => r.includes("sleep apnea") || r.includes("OSA")),
+    condition: (d) => chatFlags.osa(d),
   },
   {
     id: "cpapAdherent",
@@ -6014,7 +6099,7 @@ const CHAT_QUESTIONS = [
       { label: "Yes, consistently", value: "yes" },
       { label: "No or inconsistently", value: "no" },
     ],
-    condition: (d) => d.respiratory?.some(r => r.includes("Obstructive sleep apnea (diagnosed)")),
+    condition: (d) => chatFlags.osaDiag(d),
   },
   // ── METABOLIC CONDITIONS ────────────────────────────────────────────────────
   {
@@ -6026,10 +6111,11 @@ const CHAT_QUESTIONS = [
       { label: "None", value: "none", exclusive: true },
       { label: "Type 2 diabetes", value: "Type 2 Diabetes" },
       { label: "Type 1 diabetes", value: "Type 1 Diabetes" },
-      { label: "Obesity (BMI at or above 35)", value: "Obesity (BMI≥35)" },
-      { label: "Thyroid condition", value: "Thyroid disease" },
+      { label: "Poorly controlled diabetes (HbA1c above 8%)", value: "HbA1c > 8" },
       { label: "Chronic steroid use (prednisone, etc.)", value: "Chronic steroid use" },
-      { label: "Poorly controlled diabetes (HbA1c above 8%)", value: "HbA1c >8 (poorly controlled)" },
+      { label: "Adrenal insufficiency or Addison's disease", value: "Adrenal insufficiency / Addison's" },
+      { label: "Pheochromocytoma or adrenal tumour", value: "Pheochromocytoma" },
+      { label: "Other adrenal disease", value: "Adrenal disease" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
@@ -6054,15 +6140,20 @@ const CHAT_QUESTIONS = [
     field: "other",
     options: [
       { label: "None", value: "none", exclusive: true },
-      { label: "Chronic kidney disease (CKD)", value: "CKD (chronic kidney disease)" },
+      { label: "Chronic kidney disease (CKD)", value: "Chronic kidney disease (CKD)" },
+      { label: "On dialysis", value: "On dialysis" },
       { label: "Liver disease or cirrhosis", value: "Cirrhosis/liver disease" },
       { label: "Anemia (diagnosed)", value: "Anemia (Hgb <13)" },
       { label: "Bleeding disorder", value: "Bleeding disorder" },
+      { label: "Sickle cell disease", value: "Sickle cell disease" },
       { label: "Seizure disorder or epilepsy", value: "Seizure disorder / epilepsy" },
+      { label: "Myasthenia gravis", value: "Myasthenia gravis" },
       { label: "Rheumatoid arthritis or autoimmune disease", value: "Rheumatoid arthritis / autoimmune" },
-      { label: "Active cancer or receiving chemotherapy", value: "Active cancer/receiving chemotherapy" },
+      { label: "Active cancer or receiving chemotherapy", value: "Active cancer/chemo" },
       { label: "Frailty or recent falls", value: "Frailty/recent falls" },
       { label: "Difficult airway history", value: "Difficult airway history" },
+      { label: "Malignant hyperthermia (personal or family history)", value: "History of MH" },
+      { label: "Down syndrome", value: "Down syndrome" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
@@ -6077,7 +6168,18 @@ const CHAT_QUESTIONS = [
       { label: "Below 30 (significantly reduced)", value: "20" },
       { label: "I don't know", value: "" },
     ],
-    condition: (d) => d.other?.some(o => o.includes("kidney") || o.includes("CKD")) || d.endocrine?.some(e => e.includes("Diabetes")),
+    condition: (d) => chatFlags.ckd(d) || chatFlags.diabetes(d),
+  },
+  {
+    id: "onDialysis",
+    ask: "Are you currently receiving dialysis?",
+    type: "quickReply",
+    field: "onDialysis",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+    ],
+    condition: (d) => chatFlags.ckd(d) && !chatFlags.dialysis(d),
   },
   {
     id: "ferritinValue",
@@ -6090,7 +6192,19 @@ const CHAT_QUESTIONS = [
       { label: "Above 100 ng/mL", value: "150" },
       { label: "I don't know", value: "" },
     ],
-    condition: (d) => d.other?.some(o => o.includes("Anemia")) || (d.hemoglobin && parseFloat(d.hemoglobin) < 12),
+    condition: (d) => chatFlags.anemia(d),
+  },
+  {
+    id: "tsatValue",
+    ask: "Do you know your transferrin saturation (TSAT, shown as a percentage on iron studies)?",
+    type: "quickReply",
+    field: "tsatValue",
+    options: [
+      { label: "Below 20% (low)", value: "15" },
+      { label: "20% or above", value: "28" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.anemia(d),
   },
   {
     id: "ironDeficiency",
@@ -6102,7 +6216,123 @@ const CHAT_QUESTIONS = [
       { label: "No", value: "no" },
       { label: "Not sure", value: "unknown" },
     ],
-    condition: (d) => d.other?.some(o => o.includes("Anemia")) || (d.hemoglobin && parseFloat(d.hemoglobin) < 12),
+    condition: (d) => chatFlags.anemia(d),
+  },
+  {
+    id: "childPughClass",
+    ask: "Has your liver specialist given you a Child-Pugh class? This grades how well your liver is compensating.",
+    type: "quickReply",
+    field: "childPughClass",
+    options: [
+      { label: "Class A", value: "A" },
+      { label: "Class B", value: "B" },
+      { label: "Class C", value: "C" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.cirrhosis(d),
+  },
+  {
+    id: "pyridostigmineUse",
+    ask: "Are you taking pyridostigmine (Mestinon) for your myasthenia gravis?",
+    type: "quickReply",
+    field: "pyridostigmineUse",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "Not sure", value: "" },
+    ],
+    condition: (d) => chatFlags.mg(d),
+  },
+  {
+    id: "aedMeds",
+    ask: "Which seizure medications are you taking? These are normally continued right through surgery.",
+    type: "multiSelect",
+    field: "aedMeds",
+    options: [
+      { label: "Not sure / none", value: "none", exclusive: true },
+      { label: "Levetiracetam (Keppra)", value: "Levetiracetam (Keppra)" },
+      { label: "Phenytoin (Dilantin)", value: "Phenytoin" },
+      { label: "Valproate (Depakote)", value: "Valproate" },
+      { label: "Lacosamide (Vimpat)", value: "Lacosamide" },
+      { label: "Lamotrigine (Lamictal)", value: "Lamotrigine" },
+      { label: "Carbamazepine (Tegretol)", value: "Carbamazepine" },
+      { label: "Another seizure medication", value: "Other" },
+    ],
+    condition: (d) => chatFlags.seizure(d),
+  },
+  {
+    id: "biologicMeds",
+    ask: "Are you on any biologic medications for your arthritis or autoimmune condition? These are usually held for one dosing interval before surgery.",
+    type: "multiSelect",
+    field: "biologicMeds",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "TNF inhibitor (Humira, Enbrel, Remicade)", value: "TNFi (etanercept/adalimumab/infliximab)" },
+      { label: "Tocilizumab (Actemra)", value: "IL-6i (tocilizumab)" },
+      { label: "Secukinumab (Cosentyx)", value: "IL-17i (secukinumab)" },
+      { label: "Ustekinumab (Stelara)", value: "IL-23i (ustekinumab)" },
+      { label: "JAK inhibitor (Xeljanz, Olumiant)", value: "JAK inhibitor (tofacitinib/baricitinib)" },
+      { label: "Rituximab (Rituxan)", value: "Rituximab" },
+      { label: "Abatacept (Orencia)", value: "Abatacept" },
+    ],
+    condition: (d) => chatFlags.ra(d),
+  },
+  {
+    id: "conventionalDMARDs",
+    ask: "And any of these conventional DMARDs? These are usually continued through surgery.",
+    type: "multiSelect",
+    field: "conventionalDMARDs",
+    options: [
+      { label: "None", value: "none", exclusive: true },
+      { label: "Methotrexate", value: "Methotrexate (MTX)" },
+      { label: "Hydroxychloroquine (Plaquenil)", value: "Hydroxychloroquine (HCQ)" },
+      { label: "Sulfasalazine", value: "Sulfasalazine (SSZ)" },
+      { label: "Leflunomide (Arava)", value: "Leflunomide" },
+      { label: "Apremilast (Otezla)", value: "Apremilast" },
+    ],
+    condition: (d) => chatFlags.ra(d),
+  },
+  {
+    id: "chemoWeeksAgo",
+    ask: "How many weeks has it been since your last chemotherapy treatment? Enter a number, or skip if this does not apply.",
+    type: "number",
+    field: "chemoWeeksAgo",
+    placeholder: "e.g., 6",
+    skippable: true,
+    condition: (d) => chatFlags.cancer(d),
+  },
+  {
+    id: "anthracyclineExposure",
+    ask: "Has your chemotherapy included an anthracycline — doxorubicin (Adriamycin), epirubicin, or daunorubicin? These can affect the heart.",
+    type: "quickReply",
+    field: "anthracyclineExposure",
+    options: [
+      { label: "Yes", value: "yes" },
+      { label: "No", value: "no" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.cancer(d),
+  },
+  {
+    id: "miniCogNormal",
+    ask: "Has a doctor done a memory or thinking screen (such as the Mini-Cog or MoCA) recently?",
+    type: "quickReply",
+    field: "miniCogNormal",
+    options: [
+      { label: "Yes — the result was normal", value: "yes" },
+      { label: "Yes — the result was abnormal", value: "no" },
+      { label: "No / not done", value: "" },
+    ],
+    condition: (d) => chatFlags.geriatric(d),
+  },
+  {
+    id: "raiScore",
+    ask: "If your care team gave you a frailty score (Risk Analysis Index, 0–81), enter it here. Skip if you do not have one.",
+    type: "number",
+    field: "raiScore",
+    placeholder: "e.g., 32",
+    skippable: true,
+    condition: (d) => chatFlags.geriatric(d),
   },
   // ── MEDICATIONS ─────────────────────────────────────────────────────────────
   {
@@ -6114,11 +6344,12 @@ const CHAT_QUESTIONS = [
       { label: "None", value: "none", exclusive: true },
       { label: "Aspirin", value: "Aspirin" },
       { label: "Warfarin (Coumadin)", value: "Warfarin" },
-      { label: "Apixaban (Eliquis)", value: "Apixaban" },
-      { label: "Rivaroxaban (Xarelto)", value: "Rivaroxaban" },
-      { label: "Clopidogrel (Plavix)", value: "Clopidogrel" },
+      { label: "Apixaban (Eliquis)", value: "Apixaban (Eliquis)" },
+      { label: "Rivaroxaban (Xarelto)", value: "Rivaroxaban (Xarelto)" },
+      { label: "Dabigatran (Pradaxa)", value: "Dabigatran (Pradaxa)" },
+      { label: "Enoxaparin injections (Lovenox)", value: "Enoxaparin (LMWH)" },
+      { label: "Clopidogrel (Plavix)", value: "Clopidogrel (Plavix)" },
       { label: "Ticagrelor (Brilinta)", value: "Ticagrelor" },
-      { label: "Other blood thinner", value: "Other anticoag" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
@@ -6133,7 +6364,7 @@ const CHAT_QUESTIONS = [
       { label: "ARB (losartan, valsartan)", value: "ARB" },
       { label: "Beta-blocker (metoprolol, atenolol)", value: "Beta-blocker" },
       { label: "Statin (atorvastatin, rosuvastatin)", value: "Statin" },
-      { label: "Diuretic (furosemide, HCTZ)", value: "Diuretic (Lasix/HCTZ)" },
+      { label: "Diuretic / water pill (furosemide, HCTZ)", value: "Diuretic (Lasix/HCTZ)" },
       { label: "Calcium channel blocker (amlodipine)", value: "Calcium channel blocker" },
       { label: "Digoxin", value: "Digoxin" },
     ],
@@ -6141,19 +6372,54 @@ const CHAT_QUESTIONS = [
   },
   {
     id: "diabetesMeds",
-    ask: "Which diabetes medications are you taking? Select all that apply.",
+    ask: "Which diabetes medications are you taking? Select all that apply — brand names are in brackets.",
     type: "multiSelect",
     field: "diabetesMeds",
     options: [
       { label: "None", value: "none", exclusive: true },
-      { label: "GLP-1 (Ozempic, Wegovy, Mounjaro)", value: "GLP-1 RAs" },
-      { label: "SGLT2 inhibitor (Jardiance, Farxiga)", value: "SGLT2 inhibitors" },
-      { label: "Insulin", value: "Insulin" },
+      { label: "Semaglutide (Ozempic, Wegovy, Rybelsus)", value: "GLP-1 RA (semaglutide/Ozempic)" },
+      { label: "Liraglutide (Victoza, Saxenda)", value: "GLP-1 RA (liraglutide/Victoza)" },
+      { label: "Tirzepatide (Mounjaro, Zepbound)", value: "Tirzepatide (Mounjaro)" },
+      { label: "Empagliflozin (Jardiance)", value: "SGLT2 inhibitor (empagliflozin/Jardiance)" },
+      { label: "Dapagliflozin (Farxiga)", value: "SGLT2 inhibitor (dapagliflozin/Farxiga)" },
+      { label: "Canagliflozin (Invokana)", value: "SGLT2 inhibitor (canagliflozin/Invokana)" },
+      { label: "Ertugliflozin (Steglatro)", value: "SGLT2 inhibitor (ertugliflozin/Steglatro)" },
       { label: "Metformin", value: "Metformin" },
-      { label: "Sulfonylurea (glipizide, glimepiride)", value: "Sulfonylurea (glipizide)" },
-      { label: "Other diabetes medication", value: "Other diabetes med" },
+      { label: "Glipizide", value: "Sulfonylurea (glipizide)" },
+      { label: "Glimepiride (Amaryl)", value: "Sulfonylurea (glimepiride)" },
+      { label: "Glyburide", value: "Sulfonylurea (glyburide)" },
+      { label: "Sitagliptin / linagliptin (Januvia, Tradjenta)", value: "DPP-4 inhibitor (sitagliptin/linagliptin/saxagliptin)" },
+      { label: "Pioglitazone (Actos)", value: "Thiazolidinedione (pioglitazone)" },
+      { label: "Long-acting insulin (Lantus, Levemir, Tresiba)", value: "Insulin (basal)" },
+      { label: "Mealtime insulin or insulin pump", value: "Insulin (bolus/pump)" },
+      { label: "Premixed insulin (70/30, NovoLog Mix)", value: "Insulin (premixed)" },
     ],
-    condition: (d) => d.endocrine?.some(e => e.includes("Diabetes") || e.includes("HbA1c")),
+    condition: (d) => chatFlags.diabetes(d),
+  },
+  {
+    id: "dmType",
+    ask: "Is your diabetes type 1 or type 2?",
+    type: "quickReply",
+    field: "dmType",
+    options: [
+      { label: "Type 1", value: "T1DM" },
+      { label: "Type 2", value: "T2DM" },
+      { label: "Not sure", value: "" },
+    ],
+    condition: (d) => chatFlags.diabetes(d) && !inArr(d.endocrine, "Type 1 Diabetes", "Type 2 Diabetes"),
+  },
+  {
+    id: "dmDurationYears",
+    ask: "How long have you had diabetes?",
+    type: "quickReply",
+    field: "dmDurationYears",
+    options: [
+      { label: "Less than 5 years", value: "lt5" },
+      { label: "5–10 years", value: "5-10" },
+      { label: "More than 10 years", value: "gt10" },
+      { label: "Not sure", value: "" },
+    ],
+    condition: (d) => chatFlags.diabetes(d),
   },
   {
     id: "a1cValue",
@@ -6163,10 +6429,11 @@ const CHAT_QUESTIONS = [
     options: [
       { label: "Below 7% (well controlled)", value: "6.5" },
       { label: "7–8%", value: "7.5" },
-      { label: "Above 8% (poorly controlled)", value: "8.5" },
+      { label: "8–10% (poorly controlled)", value: "8.5" },
+      { label: "Above 10%", value: "10.5" },
       { label: "I don't know", value: "" },
     ],
-    condition: (d) => d.endocrine?.some(e => e.includes("Diabetes") || e.includes("HbA1c")),
+    condition: (d) => chatFlags.diabetes(d),
   },
   {
     id: "insulinType",
@@ -6177,9 +6444,54 @@ const CHAT_QUESTIONS = [
       { label: "Basal insulin only (long-acting, once daily)", value: "basal" },
       { label: "Basal + mealtime insulin (multiple daily shots)", value: "basal-bolus" },
       { label: "Insulin pump", value: "pump" },
+      { label: "Premixed insulin", value: "premixed" },
       { label: "I don't take insulin", value: "none" },
     ],
-    condition: (d) => d.diabetesMeds?.includes("Insulin"),
+    condition: (d) => (d.diabetesMeds || []).some(m => m.includes("Insulin")),
+  },
+  {
+    id: "insulinTDD",
+    ask: "Roughly how many units of insulin do you take in total each day? Skip if you are not sure.",
+    type: "number",
+    field: "insulinTDD",
+    placeholder: "e.g., 45",
+    skippable: true,
+    condition: (d) => ["basal", "basal-bolus", "pump", "premixed"].includes(d.insulinType),
+  },
+  {
+    id: "cgmUse",
+    ask: "Do you use a continuous glucose monitor (CGM) such as Dexcom or Libre?",
+    type: "quickReply",
+    field: "cgmUse",
+    options: [
+      { label: "Yes, actively using", value: "yes" },
+      { label: "I used one previously", value: "past" },
+      { label: "No", value: "no" },
+    ],
+    condition: (d) => chatFlags.diabetes(d),
+  },
+  {
+    id: "timeInRange",
+    ask: "What is your time-in-range percentage on your CGM? The goal is 70% or above. Skip if you are not sure.",
+    type: "number",
+    field: "timeInRange",
+    placeholder: "e.g., 68",
+    skippable: true,
+    condition: (d) => d.cgmUse === "yes",
+  },
+  {
+    id: "dmRiskFactors",
+    ask: "Do any of these apply to your diabetes? Select all that apply.",
+    type: "multiSelect",
+    field: "dmRiskFactors",
+    options: [
+      { label: "None of these", value: "none", exclusive: true },
+      { label: "I cannot feel my low blood sugars coming on", value: "Hypoglycemia unawareness" },
+      { label: "A severe low needing help in the past year", value: "Severe hypo episode in past 12 months" },
+      { label: "Gastroparesis (slow stomach emptying)", value: "Gastroparesis" },
+      { label: "A prior hospital admission for DKA", value: "Prior DKA admission" },
+    ],
+    condition: (d) => chatFlags.diabetes(d),
   },
   {
     id: "glp1Phase",
@@ -6190,7 +6502,7 @@ const CHAT_QUESTIONS = [
       { label: "Yes, still increasing the dose", value: "yes" },
       { label: "No, on a stable maintenance dose", value: "no" },
     ],
-    condition: (d) => d.diabetesMeds?.some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
+    condition: (d) => (d.diabetesMeds || []).some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
   },
   {
     id: "glp1GI",
@@ -6202,7 +6514,7 @@ const CHAT_QUESTIONS = [
       { label: "Mild (occasional nausea)", value: "mild" },
       { label: "Active symptoms (nausea, vomiting, or bloating)", value: "active" },
     ],
-    condition: (d) => d.diabetesMeds?.some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
+    condition: (d) => (d.diabetesMeds || []).some(m => m.includes("GLP-1") || m.includes("Tirzepatide")),
   },
   {
     id: "painMeds",
@@ -6211,11 +6523,13 @@ const CHAT_QUESTIONS = [
     field: "painMeds",
     options: [
       { label: "None", value: "none", exclusive: true },
-      { label: "Chronic opioids (oxycodone, hydrocodone, etc.)", value: "Chronic opioids (not buprenorphine/methadone)" },
-      { label: "Buprenorphine (Suboxone, Subutex)", value: "Buprenorphine" },
+      { label: "Chronic opioids (oxycodone, hydrocodone, morphine)", value: "Chronic opioids" },
+      { label: "Buprenorphine (Suboxone, Subutex)", value: "Buprenorphine (Suboxone/Subutex)" },
       { label: "Methadone", value: "Methadone" },
-      { label: "Naltrexone (Vivitrol)", value: "Naltrexone (XR/Vivitrol)" },
-      { label: "Medical marijuana or cannabis", value: "Marijuana" },
+      { label: "Naltrexone tablets (oral)", value: "Naltrexone (oral)" },
+      { label: "Naltrexone injection (Vivitrol)", value: "Naltrexone (XR/Vivitrol)" },
+      { label: "Medical marijuana or cannabis", value: "Marijuana (medical/recreational)" },
+      { label: "Other recreational drugs", value: "Other recreational drugs" },
     ],
     condition: (d) => d.userRole !== "provider",
   },
@@ -6232,6 +6546,44 @@ const CHAT_QUESTIONS = [
       { label: "Immunotherapy or checkpoint inhibitors", value: "Immunotherapy/checkpoint inhibitors" },
     ],
     condition: (d) => d.userRole !== "provider",
+  },
+  {
+    id: "steroidDose",
+    ask: "What dose of steroid do you take each day, as a prednisone equivalent?",
+    type: "quickReply",
+    field: "steroidDose",
+    options: [
+      { label: "5 mg a day or less", value: "le5" },
+      { label: "Between 5 and 20 mg a day", value: "5-20" },
+      { label: "20 mg a day or more", value: "ge20" },
+      { label: "Replacement dose for Addison's", value: "addisons" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.steroid(d),
+  },
+  {
+    id: "steroidDurationWks",
+    ask: "How long have you been taking steroids continuously?",
+    type: "quickReply",
+    field: "steroidDurationWks",
+    options: [
+      { label: "Less than 3 weeks", value: "lt3" },
+      { label: "3 weeks or longer", value: "ge3" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.steroid(d),
+  },
+  {
+    id: "alphaBlockadeStarted",
+    ask: "Have you started alpha-blockade (such as phenoxybenzamine or doxazosin) at least 10–14 days before surgery?",
+    type: "quickReply",
+    field: "alphaBlockadeStarted",
+    options: [
+      { label: "Yes, for 10–14 days or more", value: "yes" },
+      { label: "No, or not yet", value: "no" },
+      { label: "I don't know", value: "" },
+    ],
+    condition: (d) => chatFlags.pheo(d),
   },
   // ── SMOKING & ALCOHOL ───────────────────────────────────────────────────────
   {
@@ -6310,6 +6662,13 @@ const CHAT_QUESTIONS = [
     condition: (d) => d.userRole !== "provider",
   },
   {
+    id: "dasi",
+    ask: "Now a short activity questionnaire — the Duke Activity Status Index. It estimates your fitness for surgery, which is one of the strongest predictors of how you will recover. Answer yes or no for each.",
+    type: "dasi",
+    fields: ["dasiScore", "vo2max", "mets"],
+    condition: (d) => d.userRole !== "provider",
+  },
+  {
     id: "mets",
     ask: "Which best describes your physical fitness level?",
     type: "quickReply",
@@ -6319,6 +6678,15 @@ const CHAT_QUESTIONS = [
       { label: "I can climb a flight of stairs or do yard work without stopping", value: "4-7" },
       { label: "I exercise regularly — running, cycling, or vigorous activity", value: "gt7" },
     ],
+    condition: (d) => d.userRole !== "provider" && !d.dasiScore,
+  },
+  {
+    id: "gripStrength",
+    ask: "If you have measured your grip strength with a hand dynamometer, enter it in kilograms. Skip if you have not.",
+    type: "number",
+    field: "gripStrength",
+    placeholder: "e.g., 35",
+    skippable: true,
     condition: (d) => d.userRole !== "provider",
   },
   {
@@ -6350,6 +6718,7 @@ const CHAT_QUESTIONS = [
     type: "number",
     field: "hrvValue",
     placeholder: "e.g., 45",
+    skippable: true,
     condition: (d) => d.tracksHRV === "yes",
   },
   // ── NUTRITION ───────────────────────────────────────────────────────────────
@@ -6438,6 +6807,7 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
   const [heightFt, setHeightFt] = useState("");
   const [heightIn, setHeightIn] = useState("");
   const [weightLbs, setWeightLbs] = useState("");
+  const [dasiAnswers, setDasiAnswers] = useState({});
   const messagesEndRef = useRef(null);
   const chatDataRef = useRef({});
   const inputRef = useRef(null);
@@ -6476,35 +6846,40 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
     if (nextIdx === -1) return;
     const nextQ = CHAT_QUESTIONS[nextIdx];
     const askText = typeof nextQ.ask === "function" ? nextQ.ask(latestData) : nextQ.ask;
+    // Set typing immediately: it unmounts the answer controls, so a second tap on the
+    // question just answered can't record twice and skip the next question.
+    setIsTyping(true);
     setTimeout(() => {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        setMessages(prev => [...prev, { role: "assistant", content: askText, qIdx: nextIdx }]);
-        setCurrentQIdx(nextIdx);
-        setMultiSelected([]);
-        setInputValue("");
-        setHeightFt("");
-        setHeightIn("");
-        setWeightLbs("");
-      }, 500);
-    }, 200);
+      setIsTyping(false);
+      setMessages(prev => [...prev, { role: "assistant", content: askText, qIdx: nextIdx }]);
+      setCurrentQIdx(nextIdx);
+      setMultiSelected([]);
+      setInputValue("");
+      setHeightFt("");
+      setHeightIn("");
+      setWeightLbs("");
+      setDasiAnswers({});
+    }, 700);
   };
 
   const handleConfirm = () => {
     const cd = chatDataRef.current;
-    // bloodLoss is not asked in chat — apply safe default
     if (!cd.bloodLoss) cd.bloodLoss = "moderate";
-    // Array fields: ensure they exist even if question was skipped
-    if (!cd.other) cd.other = [];
-    if (!cd.cardioMeds) cd.cardioMeds = [];
-    if (!cd.painMeds) cd.painMeds = [];
-    if (!cd.otherMeds) cd.otherMeds = [];
-    if (!cd.surgeryTags) cd.surgeryTags = [];
-    if (!cd.diabetesMeds) cd.diabetesMeds = [];
-    if (!cd.anticoag) cd.anticoag = [];
-    if (!cd.thermalHabits) cd.thermalHabits = [];
-    if (!cd.supplements) cd.supplements = [];
+    // Array fields: ensure they exist even if the question was skipped
+    ["cardiac", "respiratory", "endocrine", "other", "cardioMeds", "painMeds", "otherMeds",
+     "surgeryTags", "diabetesMeds", "anticoag", "thermalHabits", "supplements",
+     "aedMeds", "biologicMeds", "conventionalDMARDs", "dmRiskFactors"].forEach(k => {
+      if (!cd[k]) cd[k] = [];
+    });
+    // Derive fields the form asks for outright but the conversation can infer,
+    // so the chat never asks something it already knows.
+    if (!cd.dmType) {
+      if (cd.endocrine.includes("Type 1 Diabetes")) cd.dmType = "T1DM";
+      else if (cd.endocrine.includes("Type 2 Diabetes")) cd.dmType = "T2DM";
+    }
+    if (!cd.onDialysis && cd.other.some(o => o === "On dialysis" || o === "Renal insufficiency/dialysis")) {
+      cd.onDialysis = "yes";
+    }
     Object.entries(cd).forEach(([k, v]) => update(k, v));
     onComplete({ ...cd });
   };
@@ -6569,8 +6944,30 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
     const q = CHAT_QUESTIONS[currentQIdx];
     const isNone = multiSelected.includes("none") || multiSelected.length === 0;
     const values = isNone ? [] : multiSelected;
-    const displayText = isNone ? "None" : multiSelected.join(", ");
+    // Echo the friendly labels, not the internal coded values.
+    const displayText = isNone ? "None"
+      : multiSelected.map(v => (q.options.find(o => o.value === v) || {}).label || v).join(", ");
     recordAndAdvance(q.id, q.field, values, displayText, currentQIdx);
+  };
+
+  const handleSkip = () => {
+    setMessages(prev => [...prev, { role: "user", content: "Skip" }]);
+    showNextQuestion(currentQIdx, chatDataRef.current);
+  };
+
+  const handleDasiSubmit = () => {
+    const score = DASI_QUESTIONS.reduce((sum, q) => sum + (dasiAnswers[q.id] === "yes" ? q.weight : 0), 0);
+    const vo2 = (0.43 * score + 9.48).toFixed(1);
+    const mets = score < 34 ? "lt4" : score < 50 ? "4-7" : "gt7";
+    chatDataRef.current = { ...chatDataRef.current, dasiScore: score.toFixed(1), vo2max: vo2, mets };
+    update("dasiScore", score.toFixed(1));
+    update("vo2max", vo2);
+    update("mets", mets);
+    setMessages(prev => [...prev, {
+      role: "user",
+      content: `DASI ${score.toFixed(1)} — estimated VO₂max ${vo2} mL/kg/min (${score >= 34 ? "at or above" : "below"} 4 METs)`,
+    }]);
+    showNextQuestion(currentQIdx, chatDataRef.current);
   };
 
   const handleHeightWeightSubmit = () => {
@@ -6591,6 +6988,8 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
   const showHW = !isWaiting && currentQ?.type === "heightWeight";
   const showCF = !isWaiting && currentQ?.type === "confirm";
   const showTxt = !isWaiting && (currentQ?.type === "text" || currentQ?.type === "number");
+  const showDASI = !isWaiting && currentQ?.type === "dasi";
+  const canSkip = !isWaiting && currentQ?.skippable;
 
   const totalQ = CHAT_QUESTIONS.filter(q => q.id !== "complete" && (!q.condition || q.condition(chatDataRef.current))).length;
   const answeredQ = CHAT_QUESTIONS.slice(0, currentQIdx).filter(q => q.id !== "complete" && (!q.condition || q.condition(chatDataRef.current))).length;
@@ -6635,18 +7034,18 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
       </div>
       {showQR && (
         <div style={{ padding: "8px 16px 12px", display: "flex", flexWrap: "wrap", gap: "8px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
-          {currentQ.options.map(opt => (
-            <button key={opt.value} onClick={() => handleQuickReply(opt)} style={{ padding: "8px 16px", borderRadius: "20px", border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>{opt.label}</button>
+          {currentQ.options.map((opt, oi) => (
+            <button key={`${opt.value}-${oi}`} onClick={() => handleQuickReply(opt)} style={{ padding: "8px 16px", borderRadius: "20px", border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: SR.font }}>{opt.label}</button>
           ))}
         </div>
       )}
       {showMS && (
         <div style={{ padding: "10px 16px 12px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px", maxHeight: "96px", overflowY: "auto" }}>
-            {currentQ.options.map(opt => {
+            {currentQ.options.map((opt, oi) => {
               const sel = multiSelected.includes(opt.value);
               return (
-                <button key={opt.value} onClick={() => {
+                <button key={`${opt.value}-${oi}`} onClick={() => {
                   if (opt.exclusive) { setMultiSelected(sel ? [] : ["none"]); }
                   else { setMultiSelected(prev => { const without = prev.filter(v => v !== "none"); return sel ? without.filter(v => v !== opt.value) : [...without, opt.value]; }); }
                 }} style={{ padding: "6px 14px", borderRadius: "20px", fontSize: "12px", cursor: "pointer", fontFamily: SR.font, border: `1.5px solid ${sel ? SR.teal : SR.border}`, background: sel ? SR.tealLight : SR.white, color: sel ? SR.teal : SR.textSecondary, fontWeight: sel ? 600 : 400, transition: "all 0.15s" }}>{opt.label}</button>
@@ -6672,6 +7071,43 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
           <button onClick={handleHeightWeightSubmit} disabled={!heightFt || !weightLbs} style={{ width: "100%", padding: "9px", borderRadius: "10px", border: "none", background: (heightFt && weightLbs) ? SR.teal : SR.borderLight, color: (heightFt && weightLbs) ? SR.white : SR.muted, fontSize: "13px", fontWeight: 600, cursor: (heightFt && weightLbs) ? "pointer" : "not-allowed", fontFamily: SR.font }}>Continue</button>
         </div>
       )}
+      {showDASI && (() => {
+        const answered = Object.keys(dasiAnswers).length;
+        const running = DASI_QUESTIONS.reduce((sum, q) => sum + (dasiAnswers[q.id] === "yes" ? q.weight : 0), 0);
+        const allDone = answered === DASI_QUESTIONS.length;
+        return (
+          <div style={{ padding: "10px 16px 12px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: SR.muted, fontFamily: SR.font }}>{answered} of {DASI_QUESTIONS.length} answered</span>
+              {answered > 0 && <span style={{ fontSize: "11px", fontWeight: 700, color: SR.teal, fontFamily: SR.font }}>Score so far: {running.toFixed(1)}</span>}
+            </div>
+            <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+              {DASI_QUESTIONS.map(q => (
+                <div key={q.id} style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: "12px", color: SR.text, fontFamily: SR.font, lineHeight: 1.4, flex: 1 }}>{q.text}</span>
+                  <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                    {["yes", "no"].map(v => (
+                      <button key={v} onClick={() => setDasiAnswers(prev => ({ ...prev, [q.id]: v }))} style={{
+                        padding: "4px 12px", borderRadius: "14px", fontSize: "11px", cursor: "pointer", fontFamily: SR.font,
+                        border: `1.5px solid ${dasiAnswers[q.id] === v ? SR.teal : SR.border}`,
+                        background: dasiAnswers[q.id] === v ? SR.teal : SR.white,
+                        color: dasiAnswers[q.id] === v ? SR.white : SR.textSecondary,
+                        fontWeight: dasiAnswers[q.id] === v ? 600 : 400,
+                      }}>{v === "yes" ? "Yes" : "No"}</button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleSkip} style={{ padding: "9px 16px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontSize: "13px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font, flexShrink: 0 }}>Skip</button>
+              <button onClick={handleDasiSubmit} disabled={!allDone} style={{ flex: 1, padding: "9px", borderRadius: "10px", border: "none", background: allDone ? SR.teal : SR.borderLight, color: allDone ? SR.white : SR.muted, fontSize: "13px", fontWeight: 600, cursor: allDone ? "pointer" : "not-allowed", fontFamily: SR.font }}>
+                {allDone ? "Calculate my fitness score" : `Answer all ${DASI_QUESTIONS.length} to continue`}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
       {showCF && (
         <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${SR.borderLight}`, flexShrink: 0, background: SR.white }}>
           <button onClick={handleConfirm} style={{ width: "100%", padding: "13px", borderRadius: "10px", border: "none", background: `linear-gradient(135deg, ${SR.navy} 0%, ${SR.tealDark} 100%)`, color: SR.white, fontSize: "14px", fontWeight: 700, cursor: "pointer", fontFamily: SR.font, boxShadow: "0 3px 12px rgba(27,58,92,0.3)" }}>Generate my plan</button>
@@ -6689,6 +7125,9 @@ function ChatIntake({ update, onComplete, onSwitchToForm }) {
             style={{ flex: 1, padding: "10px 14px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, fontSize: "13px", fontFamily: SR.font, color: SR.text, outline: "none" }}
             autoFocus
           />
+          {canSkip && (
+            <button onClick={handleSkip} style={{ padding: "10px 14px", borderRadius: "10px", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontSize: "13px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font, flexShrink: 0 }}>Skip</button>
+          )}
           <button onClick={handleTextSubmit} disabled={!inputValue.trim()} style={{ padding: "10px 18px", borderRadius: "10px", border: "none", background: inputValue.trim() ? SR.teal : SR.borderLight, color: inputValue.trim() ? SR.white : SR.muted, fontSize: "13px", fontWeight: 600, cursor: inputValue.trim() ? "pointer" : "not-allowed", fontFamily: SR.font, flexShrink: 0 }}>Send</button>
         </div>
       )}
