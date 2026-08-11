@@ -176,17 +176,27 @@ Results rendered as expandable cards, one per clinical domain. Each card has:
 
 ---
 
-## PDF Export
+## PDF Export / Print Plan
 
-The plan view header has a **Download PDF** button. It calls `buildReadinessPlanHTML(data, plan)` — a builder (just above `PreOpPage` in `src/App.jsx`) that renders a complete standalone HTML document, **"Your Perioperative Readiness Plan,"** directly from the in-memory intake `data` and the `plan` object. The HTML is opened in a new window via `window.open`, written with `document.write`, and printed with `window.print()` after a 600 ms delay (browser print-to-PDF).
+The plan view header has a **Print Plan** button. It opens the `PrintCustomizer` modal ("Choose what to print"), which shows the whole document as it will print and lets the user delete any part of it before printing. Confirming calls `buildReadinessPlanHTML(data, plan, sel)` — a builder (just above `PreOpPage` in `src/App.jsx`) that renders a complete standalone HTML document, **"Your Perioperative Readiness Plan,"** directly from the in-memory intake `data` and the `plan` object. The HTML is opened in a new window via `window.open`, written with `document.write`, and printed with `window.print()` after a 600 ms delay (browser print-to-PDF).
 
-Every value and sentence is copied **verbatim** from `data`/`plan` — nothing is invented. Coded scalar fields are mapped to human labels via the in-builder `LBL` map. Three sections:
+Every value and sentence is copied **verbatim** from `data`/`plan` — nothing is invented. Coded scalar fields are mapped to human labels via the module-level `PRINT_LBL` map. Three sections:
 
 1. **About You** — all intake inputs echoed verbatim, grouped by step (demographics incl. computed BMI, surgery, medical, medications, fitness, nutrition).
 2. **Your Readiness Plan** — every patient recommendation including action steps, "Your Target" banners, and full Why / Evidence / Citations.
 3. **Clinical / Provider Track** — leads with a "not physician-reviewed, not medical advice" disclaimer, then risk summary, alerts, and full provider cards with evidence.
 
 This replaced an earlier `innerHTML`-dump approach that only captured the visible/collapsed DOM (anything behind popups or collapsed evidence panels was lost).
+
+### Selective printing (`PrintCustomizer`)
+
+`PrintCustomizer` renders a live preview built from the **same** module-level structures the HTML builder uses (`PRINT_LBL`, `PRINT_GROUPS`, `printRowValue()`, `printSortRecs()`, `PRINT_PAT_PRI`/`PRINT_PROV_PRI`), so the on-screen preview and the printed document can never diverge. Every removable block has an X; removing collapses it to a dashed placeholder with **Undo**, and the footer offers **Restore all**.
+
+Removable: whole sections (About You, Your Readiness Plan, Clinical / Provider Track), each About You group, each individual intake row, the perioperative risk banner, each critical alert, and each patient/provider recommendation card. Three **Card detail** chips (Action steps · Targets · Why & evidence) apply across all cards. Three **Start from** presets seed the selection: Everything, Patient handout (drops the clinical track), Clinical only (drops the patient plan).
+
+Always printed and not removable: the medical and clinical disclaimers, and the "not physician-reviewed" banner that leads the clinical track.
+
+The selection object is `{ sections, groups, rows, patient, provider, alerts, detail }`; a value of `false` means removed and anything else means included, so passing no selection (`buildReadinessPlanHTML(data, plan)`) prints the complete plan. Cards are keyed by their **original index** in `plan.patient` / `plan.provider` — `printSortRecs()` sorts by priority while preserving that index. Section numbers renumber themselves when a whole section is removed, and the risk line in the document header drops with the clinical track. Nothing in the customizer mutates the saved plan.
 
 ---
 

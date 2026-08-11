@@ -157,6 +157,9 @@ function ResponsiveStyles() {
       @media (max-width: 480px) {
         .sr-grid-3-algo { grid-template-columns: 1fr !important; }
         .sr-hero h1 { font-size: 28px !important; }
+        /* Keep the print customizer's preview visible on small screens */
+        .sr-print-intro { display: none; }
+        .sr-print-head { padding-bottom: 10px !important; }
       }
     `}</style>
   );
@@ -4464,18 +4467,12 @@ function generatePlan(d) {
   return { patient, provider, alerts, riskLevel };
 }
 
-// ───────── COMPREHENSIVE PDF BUILDER ─────────
-// Builds a complete standalone HTML document for "Your Perioperative Readiness Plan"
-// directly from the intake `data` and the `plan` returned by generatePlan().
-// Every value/sentence is copied verbatim from those objects — nothing is invented.
-function buildReadinessPlanHTML(data, plan) {
-  const d = data || {};
-  const esc = (s) => String(s == null ? "" : s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const nl2br = (s) => esc(s).replace(/\n/g, "<br>");
+// ───────── PRINT / PDF SHARED DATA MAPS ─────────
+// Used by BOTH buildReadinessPlanHTML() and the PrintCustomizer preview so the
+// on-screen "choose what to print" view and the printed document never diverge.
 
-  // Value→label maps mirroring the intake form options (coded scalar fields only).
-  const LBL = {
+// Value→label maps mirroring the intake form options (coded scalar fields only).
+const PRINT_LBL = {
     userRole: { patient: "Patient", provider: "Provider" },
     sex: { male: "Male", female: "Female" },
     riskCategory: { low: "Low Risk", elevated: "Elevated Risk", high: "High Risk (Vascular/Cardiac)" },
@@ -4500,76 +4497,125 @@ function buildReadinessPlanHTML(data, plan) {
     proteinLevel: { low: "Low — minimal meat/protein sources", moderate: "Moderate — some protein each meal", high: "High — actively tracking 1.2+ g/kg/day" },
     weightLoss: { no: "No", mild: "Yes — < 5% in 3 months", significant: "Yes — > 5% in 3 months" },
     eatingPattern: { regular: "Regular — 3 meals/day", if: "Intermittent fasting — 16:8 or similar", restricted: "Calorie-restricted / dieting", irregular: "Irregular — skips meals frequently" },
-  };
+};
 
-  const hasVal = (v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
-  const disp = (key, v) => {
-    if (Array.isArray(v)) return esc(v.join(", "));
-    if (LBL[key] && LBL[key][v] != null) return esc(LBL[key][v]);
-    return esc(v);
-  };
-  const row = (key, label) => {
-    const v = d[key];
-    if (!hasVal(v)) return "";
-    return "<tr><td class='k'>" + esc(label) + "</td><td class='v'>" + disp(key, v) + "</td></tr>";
-  };
-  const group = (title, rowsHtml) => rowsHtml
-    ? "<h3 class='grp'>" + esc(title) + "</h3><table class='kv'>" + rowsHtml + "</table>" : "";
+// Ordered "About You" groups. Each row is [dataKey, label]; `__bmi` is computed.
+const PRINT_GROUPS = [
+  { id: "demographics", title: "Demographics", rows: [
+    ["firstName", "First name"], ["userRole", "Completing as"], ["age", "Age"], ["sex", "Sex"],
+    ["height", "Height (in)"], ["weight", "Weight (lbs)"], ["__bmi", "BMI"],
+  ] },
+  { id: "surgery", title: "Surgery", rows: [
+    ["surgeryType", "Type of surgery"], ["riskCategory", "Surgical risk category"],
+    ["weeksUntil", "Weeks until surgery"], ["duration", "Expected duration"],
+    ["eras", "ERAS pathway available"], ["bloodLoss", "Expected blood loss"],
+    ["surgeryTags", "Surgery involves"],
+  ] },
+  { id: "history", title: "Medical history", rows: [
+    ["cardiac", "Cardiac conditions"], ["respiratory", "Respiratory conditions"],
+    ["endocrine", "Endocrine conditions"], ["other", "Other conditions"],
+    ["cardiacEventMonths", "Time since cardiac event"], ["stentType", "Stent type"],
+    ["onDAPT", "On dual antiplatelet therapy"], ["hfType", "Heart failure type"],
+    ["hasRecentEcho", "Echo within last year"], ["rateControlled", "AF rate-controlled"],
+    ["smokingStatus", "Smoking status"], ["cigPerDay", "Cigarettes per day"],
+    ["alcoholUse", "Alcohol use"], ["bingeDrinking", "Binge drinking"],
+    ["withdrawalHistory", "Alcohol withdrawal history"], ["hemoglobin", "Hemoglobin (g/dL)"],
+    ["raiScore", "RAI frailty score"],
+  ] },
+  { id: "meds", title: "Medications", rows: [
+    ["cardioMeds", "Cardiovascular meds"], ["anticoag", "Anticoagulants / antiplatelets"],
+    ["diabetesMeds", "Diabetes meds"], ["painMeds", "Pain / substance-use meds"],
+    ["otherMeds", "Other meds"], ["glp1Phase", "GLP-1 RA dose phase"],
+    ["glp1GI", "GLP-1 RA GI symptoms"],
+  ] },
+  { id: "fitness", title: "Fitness & function", rows: [
+    ["exerciseLevel", "Exercise level"], ["dasiScore", "DASI score"], ["mets", "Estimated METs"],
+    ["vo2max", "VO₂max (mL/kg/min)"], ["gripStrength", "Grip strength (kg)"],
+    ["tracksHRV", "Tracks HRV"], ["hrvValue", "Recent HRV (ms)"], ["thermalHabits", "Thermal conditioning"],
+  ] },
+  { id: "nutrition", title: "Nutrition", rows: [
+    ["proteinLevel", "Daily protein intake"], ["albumin", "Albumin (g/dL)"],
+    ["weightLoss", "Unintentional weight loss"], ["eatingPattern", "Eating pattern"],
+    ["supplements", "Supplements"],
+  ] },
+];
+
+const printHasVal = (v) => v != null && v !== "" && !(Array.isArray(v) && v.length === 0);
+
+// Returns the display string for an intake row, or null when the patient left it blank.
+function printRowValue(d, key) {
+  if (key === "__bmi") {
+    if (!printHasVal(d.height) || !printHasVal(d.weight)) return null;
+    const b = 703 * parseFloat(d.weight) / (parseFloat(d.height) ** 2);
+    return isFinite(b) ? b.toFixed(1) : null;
+  }
+  const v = d[key];
+  if (!printHasVal(v)) return null;
+  if (Array.isArray(v)) return v.join(", ");
+  if (PRINT_LBL[key] && PRINT_LBL[key][v] != null) return PRINT_LBL[key][v];
+  return String(v);
+}
+
+// Priority label maps (patient-facing vs clinical wording).
+const PRINT_PAT_PRI = { high: "Important", medium: "Recommended", low: "Optional" };
+const PRINT_PROV_PRI = { high: "HIGH", medium: "MED", low: "LOW" };
+const PRINT_PRI_ORDER = { high: 0, medium: 1, low: 2 };
+
+// Sorts recommendations by priority while preserving each card's ORIGINAL index —
+// that index is the stable id used by the print selection.
+function printSortRecs(arr) {
+  return (arr || []).map((rec, i) => ({ rec, i }))
+    .sort((a, b) => (PRINT_PRI_ORDER[a.rec.priority] ?? 9) - (PRINT_PRI_ORDER[b.rec.priority] ?? 9));
+}
+
+// A selection value of `false` means "the user removed this"; anything else includes it.
+// An undefined/empty selection therefore prints the complete plan.
+const printIncl = (obj, key) => !(obj && obj[key] === false);
+
+// ───────── COMPREHENSIVE PDF BUILDER ─────────
+// Builds a complete standalone HTML document for "Your Perioperative Readiness Plan"
+// directly from the intake `data` and the `plan` returned by generatePlan().
+// Every value/sentence is copied verbatim from those objects — nothing is invented.
+// `sel` (optional) is the PrintCustomizer selection; omitting it prints everything.
+function buildReadinessPlanHTML(data, plan, sel) {
+  const d = data || {};
+  const S = sel || {};
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const nl2br = (s) => esc(s).replace(/\n/g, "<br>");
+  const hasVal = printHasVal;
 
   // ── Section 1: About You (intake inputs) ──
-  const bmi = (hasVal(d.height) && hasVal(d.weight))
-    ? (703 * parseFloat(d.weight) / (parseFloat(d.height) ** 2)).toFixed(1) : null;
-  const demoRows = row("firstName", "First name") + row("userRole", "Completing as")
-    + row("age", "Age") + row("sex", "Sex") + row("height", "Height (in)") + row("weight", "Weight (lbs)")
-    + (bmi ? "<tr><td class='k'>BMI</td><td class='v'>" + esc(bmi) + "</td></tr>" : "");
-  const surgRows = row("surgeryType", "Type of surgery") + row("riskCategory", "Surgical risk category")
-    + row("weeksUntil", "Weeks until surgery") + row("duration", "Expected duration")
-    + row("eras", "ERAS pathway available") + row("bloodLoss", "Expected blood loss")
-    + row("surgeryTags", "Surgery involves");
-  const medRows = row("cardiac", "Cardiac conditions") + row("respiratory", "Respiratory conditions")
-    + row("endocrine", "Endocrine conditions") + row("other", "Other conditions")
-    + row("cardiacEventMonths", "Time since cardiac event") + row("stentType", "Stent type")
-    + row("onDAPT", "On dual antiplatelet therapy") + row("hfType", "Heart failure type")
-    + row("hasRecentEcho", "Echo within last year") + row("rateControlled", "AF rate-controlled")
-    + row("smokingStatus", "Smoking status") + row("cigPerDay", "Cigarettes per day")
-    + row("alcoholUse", "Alcohol use") + row("bingeDrinking", "Binge drinking")
-    + row("withdrawalHistory", "Alcohol withdrawal history") + row("hemoglobin", "Hemoglobin (g/dL)")
-    + row("raiScore", "RAI frailty score");
-  const medsRows = row("cardioMeds", "Cardiovascular meds") + row("anticoag", "Anticoagulants / antiplatelets")
-    + row("diabetesMeds", "Diabetes meds") + row("painMeds", "Pain / substance-use meds")
-    + row("otherMeds", "Other meds") + row("glp1Phase", "GLP-1 RA dose phase")
-    + row("glp1GI", "GLP-1 RA GI symptoms");
-  const fitRows = row("exerciseLevel", "Exercise level") + row("dasiScore", "DASI score")
-    + row("mets", "Estimated METs") + row("vo2max", "VO₂max (mL/kg/min)")
-    + row("gripStrength", "Grip strength (kg)") + row("tracksHRV", "Tracks HRV")
-    + row("hrvValue", "Recent HRV (ms)") + row("thermalHabits", "Thermal conditioning");
-  const nutRows = row("proteinLevel", "Daily protein intake") + row("albumin", "Albumin (g/dL)")
-    + row("weightLoss", "Unintentional weight loss") + row("eatingPattern", "Eating pattern")
-    + row("supplements", "Supplements");
+  const aboutGroupsHtml = PRINT_GROUPS.map((g) => {
+    if (!printIncl(S.groups, g.id)) return "";
+    const rows = g.rows.map(([key, label]) => {
+      if (!printIncl(S.rows, key)) return "";
+      const v = printRowValue(d, key);
+      if (v == null) return "";
+      return "<tr><td class='k'>" + esc(label) + "</td><td class='v'>" + esc(v) + "</td></tr>";
+    }).join("");
+    return rows ? "<h3 class='grp'>" + esc(g.title) + "</h3><table class='kv'>" + rows + "</table>" : "";
+  }).join("");
 
-  const section1 = "<section><h2>1 &middot; About You</h2>"
-    + "<p class='lead'>A summary of the information you provided. These inputs drive every recommendation below.</p>"
-    + group("Demographics", demoRows) + group("Surgery", surgRows)
-    + group("Medical history", medRows) + group("Medications", medsRows)
-    + group("Fitness &amp; function", fitRows) + group("Nutrition", nutRows)
-    + "</section>";
+  const showAbout = printIncl(S.sections, "about") && !!aboutGroupsHtml;
 
   // ── Shared recommendation-card renderer ──
-  const orderP = { high: 0, medium: 1, low: 2 };
-  const sortRecs = (arr) => (arr || []).slice().sort((a, b) => (orderP[a.priority] ?? 9) - (orderP[b.priority] ?? 9));
-  const patPri = { high: "Important", medium: "Recommended", low: "Optional" };
-  const provPri = { high: "HIGH", medium: "MED", low: "LOW" };
+  const patPri = PRINT_PAT_PRI;
+  const provPri = PRINT_PROV_PRI;
+  const wantSteps = printIncl(S.detail, "steps");
+  const wantTargets = printIncl(S.detail, "targets");
+  const wantEvidence = printIncl(S.detail, "evidence");
 
   const stepsHtml = (steps) => {
-    if (!steps || !steps.length) return "";
+    if (!wantSteps || !steps || !steps.length) return "";
     return "<div class='subhead'>Action Steps</div><ol class='steps'>" + steps.map((s) =>
       "<li><div class='steptitle'>" + esc(s.title) + (s.timing ? " <span class='timing'>" + esc(s.timing) + "</span>" : "") + "</div>"
       + (s.desc ? "<div class='stepdesc'>" + nl2br(s.desc) + "</div>" : "") + "</li>").join("") + "</ol>";
   };
-  const targetHtml = (t) => t ? "<div class='target'><span class='tlabel'>Your Target</span>" + esc(t.label)
+  const targetHtml = (t) => (wantTargets && t) ? "<div class='target'><span class='tlabel'>Your Target</span>" + esc(t.label)
     + (t.desc ? "<div class='tdesc'>" + nl2br(t.desc) + "</div>" : "") + "</div>" : "";
   const evidenceHtml = (lm) => {
-    if (!lm) return "";
+    if (!wantEvidence || !lm) return "";
     let h = "<div class='evidence'>";
     if (lm.why) h += "<div class='subhead'>Why this matters</div><p>" + nl2br(lm.why) + "</p>";
     if (lm.evidence) h += "<div class='subhead'>What the evidence shows</div><p>" + nl2br(lm.evidence) + "</p>";
@@ -4587,25 +4633,43 @@ function buildReadinessPlanHTML(data, plan) {
     + stepsHtml(rec.steps) + targetHtml(rec.target) + evidenceHtml(rec.learnMore) + "</div>";
 
   // ── Section 2: Patient-facing plan ──
-  const patCards = sortRecs(plan.patient).map((r) => card(r, patPri)).join("");
-  const section2 = "<section><h2>2 &middot; Your Readiness Plan</h2>"
-    + "<p class='lead'>Your personalized, patient-facing preparation plan — including the detailed action steps, targets, and the evidence behind each recommendation.</p>"
-    + (patCards || "<p class='empty'>No patient recommendations were generated.</p>") + "</section>";
+  const patCards = printSortRecs(plan.patient)
+    .filter(({ i }) => printIncl(S.patient, i)).map(({ rec }) => card(rec, patPri)).join("");
+  const showPatient = printIncl(S.sections, "patient") && !!patCards;
 
   // ── Section 3: Clinical / provider track ──
   const riskDesc = plan.riskLevel === "low" ? "Standard preoperative pathway. Focus on patient preparation."
     : plan.riskLevel === "elevated" ? "Enhanced evaluation recommended. Consider biomarkers and targeted optimization."
     : "Comprehensive evaluation required. All provider protocols activated. Consider cardiology/specialty consultation.";
-  const alertsHtml = (plan.alerts && plan.alerts.length)
-    ? "<div class='alerts'>" + plan.alerts.map((a) =>
+  const keptAlerts = (plan.alerts || []).map((a, i) => ({ a, i })).filter(({ i }) => printIncl(S.alerts, i));
+  const alertsHtml = keptAlerts.length
+    ? "<div class='alerts'>" + keptAlerts.map(({ a }) =>
         "<div class='alert alert-" + esc(a.type) + "'>" + esc(a.text) + "</div>").join("") + "</div>" : "";
-  const provCards = sortRecs(plan.provider).map((r) => card(r, provPri)).join("");
-  const section3 = "<section><h2>3 &middot; Clinical / Provider Track</h2>"
+  const provCards = printSortRecs(plan.provider)
+    .filter(({ i }) => printIncl(S.provider, i)).map(({ rec }) => card(rec, provPri)).join("");
+  // The risk banner lives in the clinical track, so it (and the risk line in the
+  // document header) drops with that whole section.
+  const showRisk = printIncl(S.sections, "risk") && printIncl(S.sections, "provider");
+  const showProvider = printIncl(S.sections, "provider") && !!(provCards || alertsHtml || showRisk);
+
+  // Section numbers renumber themselves when a whole section is removed.
+  let secNum = 0;
+  const secHead = (title) => "<h2>" + (++secNum) + " &middot; " + title + "</h2>";
+
+  const section1 = !showAbout ? "" : "<section>" + secHead("About You")
+    + "<p class='lead'>A summary of the information you provided. These inputs drive every recommendation below.</p>"
+    + aboutGroupsHtml + "</section>";
+
+  const section2 = !showPatient ? "" : "<section>" + secHead("Your Readiness Plan")
+    + "<p class='lead'>Your personalized, patient-facing preparation plan — including the detailed action steps, targets, and the evidence behind each recommendation.</p>"
+    + patCards + "</section>";
+
+  const section3 = !showProvider ? "" : "<section>" + secHead("Clinical / Provider Track")
     + "<div class='clin-disclaimer'><strong>Not physician-reviewed.</strong> This clinical track is generated by an automated algorithm. "
     + "It has NOT been reviewed by a physician, is not medical advice, and must not be used to direct care. "
     + "It is intended only as a discussion aid for a licensed clinician, who retains full clinical and legal responsibility for all decisions.</div>"
-    + "<div class='risk risk-" + esc(plan.riskLevel) + "'><strong>Perioperative Risk: " + esc((plan.riskLevel || "").toUpperCase()) + "</strong> &mdash; " + esc(riskDesc) + "</div>"
-    + alertsHtml + (provCards || "<p class='empty'>No provider recommendations were generated.</p>") + "</section>";
+    + (showRisk ? "<div class='risk risk-" + esc(plan.riskLevel) + "'><strong>Perioperative Risk: " + esc((plan.riskLevel || "").toUpperCase()) + "</strong> &mdash; " + esc(riskDesc) + "</div>" : "")
+    + alertsHtml + (provCards || "<p class='empty'>No provider recommendations were selected.</p>") + "</section>";
 
   // ── Footer disclaimer (verbatim from the on-page plan footer) ──
   const footer = "<footer>"
@@ -4621,7 +4685,8 @@ function buildReadinessPlanHTML(data, plan) {
 
   const subParts = [d.firstName, d.surgeryType,
     hasVal(d.weeksUntil) ? d.weeksUntil + " weeks until surgery" : null,
-    "Perioperative Risk: " + (plan.riskLevel || "").toUpperCase()].filter(hasVal).map(esc).join(" &middot; ");
+    showRisk ? "Perioperative Risk: " + (plan.riskLevel || "").toUpperCase() : null,
+  ].filter(hasVal).map(esc).join(" &middot; ");
   const docTitle = (d.firstName ? esc(d.firstName) + "'s" : "Your") + " Perioperative Readiness Plan";
   let genDate = "";
   try { genDate = new Date().toLocaleDateString(); } catch (e) { genDate = ""; }
@@ -4686,7 +4751,373 @@ footer .pw{text-align:center;font-weight:700;color:#1B3A5C;margin-top:6px;}
     + "<header><h1>Your Perioperative Readiness Plan</h1>"
     + (subParts ? "<p class='sub'>" + subParts + "</p>" : "")
     + (genDate ? "<p class='gen'>Generated " + esc(genDate) + "</p>" : "")
-    + "</header>" + section1 + section2 + section3 + footer + "</body></html>";
+    + "</header>"
+    + (section1 + section2 + section3 || "<p class='empty'>No sections were selected for printing.</p>")
+    + footer + "</body></html>";
+}
+
+// ───────── PRINT CUSTOMIZER ─────────
+// Shows the full plan as it will print and lets the user delete any part of it
+// (whole sections, intake groups, individual intake rows, alerts, single cards,
+// or the shared card detail blocks) before sending it to the printer.
+// The resulting selection is handed to buildReadinessPlanHTML().
+const EMPTY_PRINT_SEL = { sections: {}, groups: {}, rows: {}, patient: {}, provider: {}, alerts: {}, detail: {} };
+
+// Round X button used on every removable block.
+function PrintRemoveBtn({ onClick, label }) {
+  return (
+    <button onClick={onClick} aria-label={`Remove ${label}`} title={`Remove ${label}`} style={{
+      width: "24px", height: "24px", minWidth: "24px", borderRadius: "50%", cursor: "pointer",
+      border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
+      display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0,
+      fontFamily: SR.font, transition: "all 0.15s",
+    }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = SR.danger; e.currentTarget.style.color = SR.danger; e.currentTarget.style.background = SR.dangerBg; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = SR.border; e.currentTarget.style.color = SR.muted; e.currentTarget.style.background = SR.white; }}
+    >
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+      </svg>
+    </button>
+  );
+}
+
+// Placeholder left behind by a removed block, with an Undo affordance.
+function PrintRemovedBlock({ label, onRestore }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+      padding: "10px 14px", margin: "0 0 10px", borderRadius: "10px",
+      border: `1.5px dashed ${SR.border}`, background: SR.offWhite,
+    }}>
+      <span style={{ fontSize: "12.5px", color: SR.muted, fontFamily: SR.font, textDecoration: "line-through" }}>{label}</span>
+      <button onClick={onRestore} style={{
+        padding: "4px 12px", borderRadius: "7px", fontSize: "11.5px", fontWeight: 700, cursor: "pointer",
+        border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontFamily: SR.font, flexShrink: 0,
+      }}>Undo</button>
+    </div>
+  );
+}
+
+function PrintSectionShell({ title, count, onRemove, children }) {
+  return (
+    <div style={{ marginBottom: "24px" }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+        borderBottom: `2px solid ${SR.border}`, paddingBottom: "8px", marginBottom: "14px",
+      }}>
+        <div>
+          <h3 style={{ fontSize: "17px", fontWeight: 700, color: SR.navy, margin: 0, fontFamily: SR.font }}>{title}</h3>
+          {count != null && <div style={{ fontSize: "11.5px", color: SR.muted, marginTop: "2px", fontFamily: SR.font }}>{count}</div>}
+        </div>
+        <PrintRemoveBtn onClick={onRemove} label={`the ${title} section`} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// One recommendation card in the preview — collapses to an Undo row when removed.
+function PrintRecCard({ rec, removed, onRemove, onRestore, priMap, accent }) {
+  if (removed) return <PrintRemovedBlock label={rec.title} onRestore={onRestore} />;
+  const bits = [
+    rec.steps && rec.steps.length ? `${rec.steps.length} action step${rec.steps.length === 1 ? "" : "s"}` : null,
+    rec.target ? "target" : null,
+    rec.learnMore ? "why & evidence" : null,
+  ].filter(Boolean);
+  return (
+    <div style={{
+      border: `1px solid ${SR.border}`, borderLeft: `4px solid ${accent}`, borderRadius: "10px",
+      padding: "13px 15px", marginBottom: "10px", background: SR.white,
+      display: "flex", alignItems: "flex-start", gap: "12px",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "4px" }}>
+          <span style={{
+            fontSize: "9.5px", fontWeight: 700, letterSpacing: "0.4px", padding: "2px 7px", borderRadius: "5px",
+            background: rec.priority === "high" ? SR.dangerBg : rec.priority === "medium" ? SR.warningBg : SR.tealLight,
+            color: rec.priority === "high" ? SR.danger : rec.priority === "medium" ? SR.warning : SR.teal,
+            fontFamily: SR.font,
+          }}>{priMap[rec.priority] || rec.priority}</span>
+          <span style={{ fontSize: "9.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: SR.teal, fontFamily: SR.font }}>{rec.domain}</span>
+        </div>
+        <div style={{ fontSize: "14px", fontWeight: 700, color: SR.navy, fontFamily: SR.font }}>{rec.title}</div>
+        {rec.detail && (
+          <div style={{
+            fontSize: "12.5px", color: SR.textSecondary, marginTop: "4px", fontFamily: SR.font,
+            whiteSpace: "pre-line", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }}>{rec.detail}</div>
+        )}
+        {bits.length > 0 && (
+          <div style={{ fontSize: "11px", color: SR.muted, marginTop: "6px", fontFamily: SR.font }}>
+            Includes: {bits.join(" · ")}
+          </div>
+        )}
+      </div>
+      <PrintRemoveBtn onClick={onRemove} label={rec.title} />
+    </div>
+  );
+}
+
+function PrintCustomizer({ open, data, plan, onClose, onPrint }) {
+  const [sel, setSel] = useState(EMPTY_PRINT_SEL);
+
+  useEffect(() => { if (open) setSel(EMPTY_PRINT_SEL); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
+  if (!open || !plan) return null;
+  const d = data || {};
+
+  const kept = (bucket, key) => printIncl(sel[bucket], key);
+  const setKept = (bucket, key, on) => setSel(s => ({ ...s, [bucket]: { ...s[bucket], [key]: on } }));
+
+  const removedCount = Object.keys(EMPTY_PRINT_SEL)
+    .reduce((n, b) => n + Object.values(sel[b] || {}).filter(v => v === false).length, 0);
+
+  const patCards = printSortRecs(plan.patient);
+  const provCards = printSortRecs(plan.provider);
+  const alerts = plan.alerts || [];
+
+  const aboutGroups = PRINT_GROUPS
+    .map(g => ({ ...g, liveRows: g.rows.filter(([k]) => printRowValue(d, k) != null) }))
+    .filter(g => g.liveRows.length > 0);
+
+  const aboutHasContent = aboutGroups.some(g => kept("groups", g.id) && g.liveRows.some(([k]) => kept("rows", k)));
+  const patientHasContent = patCards.some(({ i }) => kept("patient", i));
+  const providerHasContent = provCards.some(({ i }) => kept("provider", i))
+    || alerts.some((a, i) => kept("alerts", i)) || kept("sections", "risk");
+  const nothingToPrint = !(kept("sections", "about") && aboutHasContent)
+    && !(kept("sections", "patient") && patientHasContent)
+    && !(kept("sections", "provider") && providerHasContent);
+
+  const applyPreset = (preset) => {
+    if (preset === "all") return setSel(EMPTY_PRINT_SEL);
+    if (preset === "patient") return setSel({ ...EMPTY_PRINT_SEL, sections: { provider: false } });
+    if (preset === "clinical") return setSel({ ...EMPTY_PRINT_SEL, sections: { patient: false } });
+  };
+
+  const detailToggles = [
+    { key: "steps", label: "Action steps" },
+    { key: "targets", label: "Targets" },
+    { key: "evidence", label: "Why & evidence" },
+  ];
+  const presets = [
+    { key: "all", label: "Everything" },
+    { key: "patient", label: "Patient handout" },
+    { key: "clinical", label: "Clinical only" },
+  ];
+  const chipStyle = (on) => ({
+    padding: "6px 13px", borderRadius: "8px", fontSize: "11.5px", fontWeight: 600, cursor: "pointer",
+    border: `1.5px solid ${on ? SR.teal : SR.border}`, background: on ? SR.teal : SR.white,
+    color: on ? SR.white : SR.textSecondary, fontFamily: SR.font, transition: "all 0.15s",
+  });
+
+  return (
+    <div onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 10000, background: "rgba(27,58,92,0.55)",
+      backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: SR.white, borderRadius: "16px", width: "100%", maxWidth: "820px",
+        maxHeight: "92vh", display: "flex", flexDirection: "column", overflow: "hidden",
+        boxShadow: "0 8px 40px rgba(27,58,92,0.22)", fontFamily: SR.font,
+      }}>
+        {/* Header */}
+        <div className="sr-print-head" style={{ padding: "20px 24px 14px", borderBottom: `1px solid ${SR.borderLight}` }}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+            <div>
+              <h2 style={{ fontSize: "18px", fontWeight: 700, color: SR.navy, margin: 0 }}>Choose what to print</h2>
+              <p className="sr-print-intro" style={{ fontSize: "12.5px", color: SR.textSecondary, margin: "4px 0 0", lineHeight: 1.5 }}>
+                This is the full plan as it will print. Remove anything you do not want the patient to receive — nothing here changes the saved plan.
+              </p>
+            </div>
+            <button onClick={onClose} aria-label="Close" style={{
+              width: "30px", height: "30px", borderRadius: "8px", cursor: "pointer", flexShrink: 0,
+              border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary,
+              display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
+            </button>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "14px" }}>
+            <span style={{ fontSize: "10.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: SR.muted }}>Start from</span>
+            {presets.map(p => (
+              <button key={p.key} onClick={() => applyPreset(p.key)} style={{
+                padding: "6px 13px", borderRadius: "8px", fontSize: "11.5px", fontWeight: 600, cursor: "pointer",
+                border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontFamily: SR.font,
+              }}>{p.label}</button>
+            ))}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
+            <span style={{ fontSize: "10.5px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.6px", color: SR.muted }}>Card detail</span>
+            {detailToggles.map(t => (
+              <button key={t.key} onClick={() => setKept("detail", t.key, !kept("detail", t.key))} style={chipStyle(kept("detail", t.key))}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Scrollable preview */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", background: SR.bg }}>
+          <div style={{
+            background: SR.white, border: `1px solid ${SR.borderLight}`, borderRadius: "12px",
+            padding: "22px 22px 18px", boxShadow: SR.cardShadow,
+          }}>
+            {/* Document header (always printed) */}
+            <div style={{ borderBottom: `3px solid ${SR.teal}`, paddingBottom: "12px", marginBottom: "20px" }}>
+              <div style={{ fontSize: "19px", fontWeight: 700, color: SR.navy }}>Your Perioperative Readiness Plan</div>
+              <div style={{ fontSize: "12px", color: SR.textSecondary, marginTop: "3px" }}>
+                {[d.firstName, d.surgeryType, printHasVal(d.weeksUntil) ? `${d.weeksUntil} weeks until surgery` : null,
+                  kept("sections", "risk") && kept("sections", "provider") ? `Perioperative Risk: ${(plan.riskLevel || "").toUpperCase()}` : null].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+
+            {/* 1 — About You */}
+            {!kept("sections", "about")
+              ? <PrintRemovedBlock label="About You (all intake answers)" onRestore={() => setKept("sections", "about", true)} />
+              : (
+                <PrintSectionShell title="About You" count="Everything you entered in the assessment" onRemove={() => setKept("sections", "about", false)}>
+                  {aboutGroups.map(g => !kept("groups", g.id)
+                    ? <PrintRemovedBlock key={g.id} label={g.title} onRestore={() => setKept("groups", g.id, true)} />
+                    : (
+                      <div key={g.id} style={{ marginBottom: "14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "4px" }}>
+                          <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: SR.teal }}>{g.title}</div>
+                          <PrintRemoveBtn onClick={() => setKept("groups", g.id, false)} label={g.title} />
+                        </div>
+                        {g.liveRows.map(([key, label]) => !kept("rows", key)
+                          ? (
+                            <div key={key} style={{
+                              display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+                              padding: "5px 8px", borderBottom: `1px solid ${SR.borderLight}`,
+                            }}>
+                              <span style={{ fontSize: "12px", color: SR.muted, textDecoration: "line-through" }}>{label}</span>
+                              <button onClick={() => setKept("rows", key, true)} style={{
+                                padding: "2px 9px", borderRadius: "6px", fontSize: "10.5px", fontWeight: 700, cursor: "pointer",
+                                border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal, fontFamily: SR.font,
+                              }}>Undo</button>
+                            </div>
+                          ) : (
+                            <div key={key} style={{
+                              display: "flex", alignItems: "center", gap: "10px",
+                              padding: "5px 8px", borderBottom: `1px solid ${SR.borderLight}`,
+                            }}>
+                              <span style={{ width: "38%", fontSize: "12.5px", fontWeight: 600, color: SR.textSecondary }}>{label}</span>
+                              <span style={{ flex: 1, fontSize: "12.5px", color: SR.text, minWidth: 0, wordBreak: "break-word" }}>{printRowValue(d, key)}</span>
+                              <PrintRemoveBtn onClick={() => setKept("rows", key, false)} label={label} />
+                            </div>
+                          ))}
+                      </div>
+                    ))}
+                  {!aboutHasContent && <div style={{ fontSize: "12.5px", color: SR.muted }}>Every intake detail has been removed.</div>}
+                </PrintSectionShell>
+              )}
+
+            {/* 2 — Patient plan */}
+            {!kept("sections", "patient")
+              ? <PrintRemovedBlock label="Your Readiness Plan (all patient recommendations)" onRestore={() => setKept("sections", "patient", true)} />
+              : (
+                <PrintSectionShell title="Your Readiness Plan" count={`${patCards.filter(({ i }) => kept("patient", i)).length} of ${patCards.length} recommendations kept`} onRemove={() => setKept("sections", "patient", false)}>
+                  {patCards.length === 0 && <div style={{ fontSize: "12.5px", color: SR.muted }}>No patient recommendations were generated.</div>}
+                  {patCards.map(({ rec, i }) => (
+                    <PrintRecCard key={i} rec={rec} removed={!kept("patient", i)} priMap={PRINT_PAT_PRI} accent={SR.patientTeal}
+                      onRemove={() => setKept("patient", i, false)} onRestore={() => setKept("patient", i, true)} />
+                  ))}
+                </PrintSectionShell>
+              )}
+
+            {/* 3 — Clinical / provider track */}
+            {!kept("sections", "provider")
+              ? <PrintRemovedBlock label="Clinical / Provider Track (risk summary, alerts, provider cards)" onRestore={() => setKept("sections", "provider", true)} />
+              : (
+                <PrintSectionShell title="Clinical / Provider Track" count={`${provCards.filter(({ i }) => kept("provider", i)).length} of ${provCards.length} provider cards kept`} onRemove={() => setKept("sections", "provider", false)}>
+                  <div style={{
+                    background: SR.dangerBg, border: `1.5px solid ${SR.danger}`, borderRadius: "8px",
+                    padding: "10px 14px", fontSize: "11.5px", color: SR.text, lineHeight: 1.6, marginBottom: "12px",
+                  }}>
+                    <strong>Not physician-reviewed.</strong> This clinical track is generated by an automated algorithm and is a discussion aid only.
+                    <div style={{ fontSize: "10.5px", color: SR.muted, marginTop: "4px" }}>Always printed with the clinical track — cannot be removed.</div>
+                  </div>
+
+                  {!kept("sections", "risk")
+                    ? <PrintRemovedBlock label={`Perioperative Risk: ${(plan.riskLevel || "").toUpperCase()}`} onRestore={() => setKept("sections", "risk", true)} />
+                    : (
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+                        borderRadius: "8px", padding: "9px 14px", marginBottom: "10px",
+                        background: plan.riskLevel === "low" ? SR.tealLight : plan.riskLevel === "elevated" ? SR.warningBg : SR.dangerBg,
+                        color: plan.riskLevel === "low" ? SR.tealDark : plan.riskLevel === "elevated" ? SR.warning : SR.danger,
+                      }}>
+                        <span style={{ fontSize: "12.5px", fontWeight: 700 }}>Perioperative Risk: {(plan.riskLevel || "").toUpperCase()}</span>
+                        <PrintRemoveBtn onClick={() => setKept("sections", "risk", false)} label="the risk summary" />
+                      </div>
+                    )}
+
+                  {alerts.map((a, i) => !kept("alerts", i)
+                    ? <PrintRemovedBlock key={i} label={a.text} onRestore={() => setKept("alerts", i, true)} />
+                    : (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
+                        borderRadius: "8px", padding: "9px 14px", marginBottom: "8px",
+                        background: a.type === "danger" ? SR.dangerBg : SR.warningBg,
+                        color: a.type === "danger" ? SR.danger : SR.warning,
+                        border: `1px solid ${a.type === "danger" ? "rgba(197,48,48,0.2)" : "rgba(183,121,31,0.2)"}`,
+                      }}>
+                        <span style={{ fontSize: "12px", fontWeight: 600 }}>{a.text}</span>
+                        <PrintRemoveBtn onClick={() => setKept("alerts", i, false)} label="this alert" />
+                      </div>
+                    ))}
+
+                  {provCards.length === 0 && <div style={{ fontSize: "12.5px", color: SR.muted }}>No provider recommendations were generated.</div>}
+                  {provCards.map(({ rec, i }) => (
+                    <PrintRecCard key={i} rec={rec} removed={!kept("provider", i)} priMap={PRINT_PROV_PRI} accent={SR.providerNavy}
+                      onRemove={() => setKept("provider", i, false)} onRestore={() => setKept("provider", i, true)} />
+                  ))}
+                </PrintSectionShell>
+              )}
+
+            <div style={{ borderTop: `1px solid ${SR.border}`, paddingTop: "12px", fontSize: "11px", color: SR.muted, lineHeight: 1.6 }}>
+              The medical and clinical disclaimers are always printed at the end of the document.
+            </div>
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        <div style={{
+          padding: "14px 24px", borderTop: `1px solid ${SR.borderLight}`, background: SR.white,
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+        }}>
+          <div style={{ fontSize: "12px", color: SR.textSecondary }}>
+            {removedCount === 0 ? "Printing the complete plan" : `${removedCount} item${removedCount === 1 ? "" : "s"} removed`}
+            {removedCount > 0 && (
+              <button onClick={() => setSel(EMPTY_PRINT_SEL)} style={{
+                marginLeft: "10px", padding: "3px 10px", borderRadius: "7px", fontSize: "11.5px", fontWeight: 600,
+                cursor: "pointer", border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontFamily: SR.font,
+              }}>Restore all</button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <button onClick={onClose} style={{
+              padding: "9px 18px", borderRadius: "9px", fontSize: "13px", fontWeight: 600, cursor: "pointer",
+              border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary, fontFamily: SR.font,
+            }}>Cancel</button>
+            <button onClick={() => onPrint(sel)} disabled={nothingToPrint} style={{
+              padding: "9px 22px", borderRadius: "9px", fontSize: "13px", fontWeight: 700,
+              cursor: nothingToPrint ? "not-allowed" : "pointer", opacity: nothingToPrint ? 0.5 : 1,
+              border: `1.5px solid ${SR.teal}`, background: SR.teal, color: SR.white, fontFamily: SR.font,
+            }}>Print plan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ───────── STEP ILLUSTRATIONS ─────────
@@ -7149,6 +7580,7 @@ function PreOpPage() {
   const [intakeMode, setIntakeMode] = useState(null); // null = pick, "form" = form, "chat" = chat
   const [isRefining, setIsRefining] = useState(false);
   const [progress, setProgress] = useState(null);
+  const [showPrintCustomizer, setShowPrintCustomizer] = useState(false);
 
   // Disclaimer acknowledgment (once per session)
   const [disclaimerAck, setDisclaimerAck] = useState(
@@ -7629,19 +8061,11 @@ function PreOpPage() {
                   My Timeline
                 </button>
               )}
-              <button onClick={() => {
-                const html = buildReadinessPlanHTML(data, plan);
-                const w = window.open("", "_blank");
-                if (!w) return;
-                w.document.write(html);
-                w.document.close();
-                w.focus();
-                setTimeout(() => { w.print(); }, 600);
-              }} style={{
+              <button onClick={() => setShowPrintCustomizer(true)} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
                 border: `1.5px solid ${SR.teal}`, background: SR.white, color: SR.teal,
                 fontFamily: SR.font, transition: "all 0.2s",
-              }}>Download PDF</button>
+              }}>Print Plan</button>
               {codeHash ? (
                 <button onClick={() => { setCodeModalPartial(false); setShowCodeModal(true); }} style={{
                   padding: "7px 14px", borderRadius: "8px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
@@ -7774,6 +8198,22 @@ function PreOpPage() {
       </div>
       <SaveConsentModal open={showSaveConsent} onClose={() => setShowSaveConsent(false)} onConfirm={handleSavePlan} />
       <AccessCodeModal open={showCodeModal} code={accessCode} partial={codeModalPartial} onClose={() => setShowCodeModal(false)} />
+      <PrintCustomizer
+        open={showPrintCustomizer}
+        data={data}
+        plan={plan}
+        onClose={() => setShowPrintCustomizer(false)}
+        onPrint={(sel) => {
+          setShowPrintCustomizer(false);
+          const html = buildReadinessPlanHTML(data, plan, sel);
+          const w = window.open("", "_blank");
+          if (!w) return;
+          w.document.write(html);
+          w.document.close();
+          w.focus();
+          setTimeout(() => { w.print(); }, 600);
+        }}
+      />
       </>
     );
   }
