@@ -2874,14 +2874,21 @@ function generatePlan(d) {
   const age = parseInt(d.age) || 50;
   const bmi = d.height && d.weight ? (703 * parseFloat(d.weight) / (parseFloat(d.height) ** 2)) : null;
   const weightKg = d.weight ? parseFloat(d.weight) * 0.453592 : null;
-  // Ideal body weight (Devine): male 50 kg + 2.3 kg per inch over 60"; female 45.5 kg + 2.3 kg per inch.
+  // Ideal body weight. Devine (male 50 kg + 2.3 kg/inch over 60"; female 45.5 kg + 2.3 kg/inch)
+  // when sex is recorded. Sex is optional on the form, so when it is missing fall back to a
+  // sex-neutral estimate from mid-normal BMI (22.5 kg/m²) rather than abandoning IBW entirely —
+  // otherwise an unanswered Sex field silently reverts the target to actual body weight.
   const heightIn = d.height ? parseFloat(d.height) : null;
-  const ibwKg = (heightIn && heightIn >= 58 && heightIn <= 90 && (d.sex === "male" || d.sex === "female"))
+  const heightM = (heightIn && heightIn >= 48 && heightIn <= 90) ? heightIn * 0.0254 : null;
+  const ibwSource = !heightM ? null
+    : ((d.sex === "male" || d.sex === "female") && heightIn >= 58) ? "devine" : "bmi";
+  const ibwKg = ibwSource === "devine"
     ? (d.sex === "male" ? 50 : 45.5) + 2.3 * (heightIn - 60)
+    : ibwSource === "bmi" ? 22.5 * heightM * heightM
     : null;
   // Protein is dosed on the lower of actual and ideal body weight so that excess adipose
   // tissue does not inflate the target. basis drives the explanatory copy on the card.
-  const proteinBasis = (ibwKg && weightKg) ? (ibwKg < weightKg ? "ibw" : "actual")
+  const proteinBasis = (ibwKg && weightKg) ? (ibwKg < weightKg ? (ibwSource === "bmi" ? "ibwBmi" : "ibw") : "actual")
     : weightKg ? "noIbw" : "default";
   const proteinWeightKg = (ibwKg && weightKg) ? Math.min(weightKg, ibwKg) : (weightKg || 80);
   const cardiac = d.cardiac || [];
@@ -3046,13 +3053,15 @@ function generatePlan(d) {
   const proteinBasisNote =
     proteinBasis === "ibw"
       ? `Your ideal body weight is ~${ibwKg.toFixed(0)} kg (Devine formula, from your height and sex), below your recorded weight of ~${weightKg.toFixed(0)} kg. Protein needs track lean body mass rather than total weight, so your target is calculated on ideal body weight.`
+      : proteinBasis === "ibwBmi"
+      ? `Your ideal body weight is ~${ibwKg.toFixed(0)} kg, estimated from your height at a mid-normal BMI, below your recorded weight of ~${weightKg.toFixed(0)} kg. Protein needs track lean body mass rather than total weight, so your target is calculated on ideal body weight. Adding your sex gives a more precise figure.`
       : proteinBasis === "actual"
       ? `Your recorded weight of ~${weightKg.toFixed(0)} kg is at or below your ideal body weight of ~${ibwKg.toFixed(0)} kg, so your target is calculated on your actual weight.`
       : proteinBasis === "noIbw"
-      ? `Calculated on your recorded weight of ~${weightKg.toFixed(0)} kg. Height and sex were not both provided, so ideal body weight could not be calculated — add them for a target based on lean body mass.`
-      : `No weight was provided, so this uses a typical reference weight of 80 kg. Add your height, weight, and sex for a target based on your ideal body weight.`;
+      ? `Calculated on your recorded weight of ~${weightKg.toFixed(0)} kg. Your height was not provided, so ideal body weight could not be calculated — add it for a target based on lean body mass.`
+      : `No weight was provided, so this uses a typical reference weight of 80 kg. Add your height and weight for a target based on your ideal body weight.`;
   patient.push({
-    domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg ${proteinBasis === "ibw" ? "ideal body weight" : "body weight"})`,
+    domain: "Nutrition", priority: "high", title: `Protein Target: ${proteinTarget}g/day (1.5 g/kg ${(proteinBasis === "ibw" || proteinBasis === "ibwBmi") ? "ideal body weight" : "body weight"})`,
     detail: `${proteinBasisNote} Target range is 1.2–2.0 g/kg/day; ${proteinTarget}g is the middle of that range. Distribute across 3–4 meals. Good sources: lean meats, fish, eggs, Greek yogurt, legumes, whey protein. If current intake is low, increase gradually over 1 week.`,
     steps: [
       { title: `Spread ${proteinTarget}g across 3–4 meals`, desc: `Protein synthesis is maximized in 25–40g doses per meal. Skipping meals means losing critical muscle-building windows that protect you during recovery. Plan every meal around a protein anchor.`, icon: "protein", timing: "Every meal, every day" },

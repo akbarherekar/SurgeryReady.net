@@ -128,20 +128,30 @@ const STEP_NUMS = ["01", "02", "03", "04", "05", "06"];
 Protein is dosed on the **lower of actual and ideal body weight**, so excess adipose tissue does not inflate the target (protein requirement scales with lean mass, per ESPEN).
 
 ```
-ibwKg (Devine)   = (sex === "male" ? 50 : 45.5) + 2.3 × (heightInches − 60)
-                   only when height is 58–90 in and sex is male/female, else null
+ibwKg = sex recorded and height ≥ 58 in
+          → (sex === "male" ? 50 : 45.5) + 2.3 × (heightInches − 60)      // Devine
+        height 48–90 in but sex missing (or height < 58 in)
+          → 22.5 × heightMeters²                                          // mid-normal BMI
+        no usable height → null
 proteinWeightKg  = (ibwKg && weightKg) ? min(weightKg, ibwKg) : (weightKg || 80)
 proteinTarget    = proteinWeightKg × 1.5   g/day
 ```
 
-`weightKg = weightLbs × 0.453592`. The card copy names its basis explicitly via `proteinBasis`:
+`weightKg = weightLbs × 0.453592`.
+
+**Sex is optional on the form, so IBW must not depend on it.** Devine needs sex; when it is blank the sex-neutral mid-normal-BMI estimate is used instead. Without this fallback an unanswered Sex field silently reverted the target to actual body weight — an obese patient with no sex recorded got the full actual-weight target, which looked identical to the pre-IBW behaviour.
+
+The card copy names its basis explicitly via `proteinBasis`:
 
 | `proteinBasis` | Condition | Copy states |
 |---|---|---|
-| `ibw` | IBW < actual weight | Target calculated on ideal body weight (both values shown) |
-| `actual` | Actual weight ≤ IBW | Target calculated on actual weight (both values shown) |
-| `noIbw` | Weight present, height or sex missing | Calculated on actual weight; IBW could not be computed |
-| `default` | No weight at all (e.g. provider intake) | Uses an 80 kg reference weight; prompts for height/weight/sex |
+| `ibw` | Devine IBW < actual weight | Target calculated on ideal body weight (both values shown) |
+| `ibwBmi` | BMI-estimated IBW < actual weight | Same, notes the estimate is from height alone and invites adding sex |
+| `actual` | Actual weight ≤ IBW (underweight) | Target calculated on actual weight (both values shown) |
+| `noIbw` | Weight present, no usable height | Calculated on actual weight; IBW could not be computed |
+| `default` | No weight at all (e.g. provider intake) | Uses an 80 kg reference weight; prompts for height and weight |
+
+Actual body weight is therefore used in only two situations: the patient is genuinely underweight (actual < IBW), or no height was given.
 
 Provider cards for cirrhosis and frailty quote the ESPEN 1.2–1.5 g/kg range, also on ideal body weight.
 
