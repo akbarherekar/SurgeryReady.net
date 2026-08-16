@@ -1139,7 +1139,7 @@ function AccessCodeModal({ open, code, partial, onClose }) {
           </p>
         </div>
         <p style={{ fontSize: "11px", color: SR.muted, lineHeight: 1.6, margin: "0 0 16px" }}>
-          We also keep a copy of this code in this browser so you can resume without typing it. Use "Forget this device" on the resume screen if this is a shared computer.
+          We also keep the most recent code in this browser so you can return without typing it. Saving another assessment on this device replaces the remembered code, not the saved plan — every plan stays available under its own code.
         </p>
         <button onClick={onClose} style={{
           width: "100%", padding: "12px", borderRadius: "10px",
@@ -1152,7 +1152,7 @@ function AccessCodeModal({ open, code, partial, onClose }) {
 }
 
 // ─── RESUME WITH CODE ───
-function ResumeWithCodeCard({ onLoaded }) {
+function ResumeWithCodeCard({ onLoaded, label }) {
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
   const [checking, setChecking] = useState(false);
@@ -1195,7 +1195,7 @@ function ResumeWithCodeCard({ onLoaded }) {
           justifyContent: "space-between", gap: "10px",
         }}>
           <span style={{ fontSize: "13px", fontWeight: 600, color: SR.navy }}>
-            Returning? Resume with your access code
+            {label || "Returning? Resume with your access code"}
           </span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 18l6-6-6-6" stroke={SR.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
         </button>
@@ -6037,7 +6037,7 @@ function ProgressTracker({ plan, data, progress, onToggleStep, onToggleRec, onLo
               padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
               border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
               fontFamily: SR.font, transition: "all 0.2s",
-            }}>Start Over</button>
+            }}>New assessment</button>
           </div>
         </div>
 
@@ -7617,14 +7617,20 @@ function PreOpPage() {
   useEffect(() => {
     if (!supabase || !accessCode) return;
     hashCode(accessCode).then(hash => {
-      setCodeHash(hash);
       loadPlanByCode(hash).then(result => {
         if (result && !result.error) {
+          // Only adopt the code into this session once the plan actually loaded
+          setCodeHash(hash);
           setResumeData(result);
         } else if (result === null) {
           // Saved plan confirmed gone — forget the stale code.
-          // On lookup errors (result.error) keep the code; the plan may still exist.
           try { localStorage.removeItem(ACCESS_CODE_KEY); } catch (_) {}
+          setAccessCode(null);
+          setCodeHash(null);
+        } else {
+          // Lookup error — keep the stored code for a retry on the next load,
+          // but a save in this session must mint a fresh code rather than
+          // overwrite a record that was never loaded
           setAccessCode(null);
           setCodeHash(null);
         }
@@ -7705,14 +7711,25 @@ function PreOpPage() {
       if (codeHash) savePlanWithCode(codeHash, planData, newPlan, null, newProgress);
     }, 10000);
   };
-  const reset = () => { setStep(0); setData({}); setPlan(null); setMode(null); setIntakeMode(null); setIsRefining(false); setProgress(null); setAccessCode(null); setCodeHash(null); setResumeData(null); };
+  // New assessment = a different patient. In-memory reset only: the plan saved
+  // on the server and the code remembered in this browser are untouched, and the
+  // next save mints a fresh code instead of overwriting the previous record.
+  const handleStartNew = () => {
+    try { sessionStorage.removeItem("sr_disclaimer_ack"); } catch (_) {}
+    setDisclaimerAck(false);
+    setDisclaimerChecked(false);
+    setStep(0); setData({}); setPlan(null); setMode(null); setIntakeMode(null); setIsRefining(false); setProgress(null); setAccessCode(null); setCodeHash(null); setResumeData(null);
+    window.scrollTo(0, 0);
+  };
+  const confirmStartNew = () => {
+    if (window.confirm("Start a new assessment for a different patient? The current plan stays saved — use its access code to return to it. The next save will create a new code.")) handleStartNew();
+  };
   const handleRefine = () => { setPlan(null); setIntakeMode("form"); setStep(0); setIsRefining(true); setProgress(null); window.scrollTo(0, 0); };
 
   const applyResume = (result) => {
-    let storedName;
-    try { storedName = localStorage.getItem(FIRST_NAME_KEY) || undefined; } catch (_) {}
-    const merged = storedName ? { ...result.data, firstName: storedName } : result.data;
-    setData(merged);
+    // Use the loaded plan's data as-is: the first name stored on this device may
+    // belong to a different patient on a shared computer, so it is never merged in
+    setData(result.data);
     // Disclaimer + consent were acknowledged when the plan was saved
     sessionStorage.setItem("sr_disclaimer_ack", "1");
     setDisclaimerAck(true);
@@ -7720,7 +7737,7 @@ function PreOpPage() {
       setPlan(result.plan);
       setProgress(result.progress && result.progress.items && Object.keys(result.progress.items).length > 0 ? result.progress : initProgress(result.plan));
       setMode(null); // show choice screen
-      setViewMode(merged.userRole === "patient" ? "patient" : merged.userRole === "provider" ? "provider" : "both");
+      setViewMode(result.data.userRole === "patient" ? "patient" : result.data.userRole === "provider" ? "provider" : "both");
     } else {
       // Partial save — re-open the pre-filled form at the saved step
       setIntakeMode("form");
@@ -7920,8 +7937,6 @@ function PreOpPage() {
   // ── WELCOME BACK / RESUME (same-device code found) ──
   if (!plan && resumeData && intakeMode === null) {
     const isPartialSave = !resumeData.plan;
-    let storedName;
-    try { storedName = localStorage.getItem(FIRST_NAME_KEY); } catch (_) {}
     return (
       <div style={{ fontFamily: SR.font, background: SR.bg, minHeight: "100vh", paddingTop: "100px", paddingBottom: "40px", paddingLeft: "16px", paddingRight: "16px" }}>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -7929,7 +7944,7 @@ function PreOpPage() {
           <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "28px" }}>
             <SRLogo size={38} />
             <div>
-              <h1 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: 0 }}>Welcome back{storedName ? `, ${storedName}` : ""}</h1>
+              <h1 style={{ fontSize: "22px", fontWeight: 700, color: SR.navy, margin: 0 }}>Resume a saved plan</h1>
               <p style={{ fontSize: "13px", color: SR.muted, margin: "4px 0 0" }}>
                 {accessCode ? `Access code SR-••••-••••-${accessCode.slice(-4)} found on this device` : "Saved plan found on this device"}
               </p>
@@ -7947,6 +7962,7 @@ function PreOpPage() {
                 ? `Assessment in progress — step ${Math.min((resumeData.currentStep ?? 0) + 1, STEPS.length)} of ${STEPS.length}`
                 : <>
                     {resumeData.data.surgeryType || "Surgery"} preparation plan
+                    {resumeData.data.weeksUntil ? ` - ${resumeData.data.weeksUntil} weeks to surgery` : ""}
                     {(() => { const s = computeProgress(resumeData.progress, resumeData.plan); return s.total > 0 ? ` - ${s.pct}% complete (${s.done} of ${s.total} steps)` : ""; })()}
                   </>}
             </p>
@@ -7957,11 +7973,15 @@ function PreOpPage() {
               marginTop: "8px",
             }}>{isPartialSave ? "Resume my assessment" : "Resume my plan"}</button>
           </div>
-          <button onClick={() => { setResumeData(null); }} style={{
+          <button onClick={handleStartNew} style={{
             width: "100%", padding: "13px", borderRadius: "10px",
             background: SR.white, color: SR.textSecondary, border: `1.5px solid ${SR.border}`,
             fontSize: "14px", fontWeight: 500, cursor: "pointer", fontFamily: SR.font,
           }}>Start a new assessment</button>
+          <p style={{ fontSize: "12px", color: SR.muted, textAlign: "center", lineHeight: 1.5, margin: "8px 0 0" }}>
+            The plan above stays saved. This device remembers only the most recent code, so keep each plan's code written down.
+          </p>
+          <ResumeWithCodeCard label="Working with a different patient? Enter their access code" onLoaded={handleCodeLoaded} />
           <div style={{ textAlign: "center", marginTop: "20px", display: "flex", justifyContent: "center", gap: "20px" }}>
             <button onClick={handleForgetDevice} style={{
               background: "none", border: "none", color: SR.muted, fontSize: "12px",
@@ -8012,7 +8032,7 @@ function PreOpPage() {
           onToggleRec={handleToggleRec}
           onLogValue={handleLogValue}
           onViewPlan={() => setMode("view")}
-          onReset={reset}
+          onReset={confirmStartNew}
           saved={!!codeHash}
           onSave={() => { consentContextRef.current = "plan"; setShowSaveConsent(true); }}
           onShowCode={() => { setCodeModalPartial(false); setShowCodeModal(true); }}
@@ -8103,11 +8123,11 @@ function PreOpPage() {
                 border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.textSecondary,
                 fontFamily: SR.font, transition: "all 0.2s",
               }}>Refine details</button>
-              <button onClick={reset} style={{
+              <button onClick={confirmStartNew} style={{
                 padding: "7px 16px", borderRadius: "8px", fontSize: "12px", cursor: "pointer",
                 border: `1.5px solid ${SR.border}`, background: SR.white, color: SR.muted,
                 fontFamily: SR.font, transition: "all 0.2s",
-              }}>Start Over</button>
+              }}>New assessment</button>
             </div>
           </div>
 
